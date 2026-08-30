@@ -1,0 +1,22 @@
+{
+  "packageDirectories": [
+    {
+      "versionName": "RHC Reports 0.1.0",
+      "versionNumber": "0.1.0.NEXT",
+      "path": "force-app",
+      "default": true,
+      "package": "RHC Reports",
+      "versionDescription": "Durable reporting facts, trends, reports, and dashboards for Record Health Check.",
+      "dependencies": [{ "package": "Record Health Check@2.0.4-2" }]
+    }
+  ],
+  "name": "RHCReports",
+  "namespace": "rhc",
+  "sfdcLoginUrl": "https://login.salesforce.com",
+  "sourceApiVersion": "66.0",
+  "packageAliases": {
+    "Record Health Check": "0Hoak0000004kKPCAY",
+    "Record Health Check@2.0.4-2": "04tak000000cZBFAA2",
+    "RHC Reports": "0Hoak0000005M7xCAE"
+  }
+}

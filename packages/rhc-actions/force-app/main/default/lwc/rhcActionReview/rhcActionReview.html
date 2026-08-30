@@ -1,0 +1,81 @@
+<template>
+  <lightning-card title="Pending Corrective Actions" icon-name="standard:task">
+    <div class="slds-p-horizontal_medium">
+      <p class="slds-text-body_small slds-m-bottom_small">
+        Review the checked record and approved Flow before authorizing a
+        corrective action.
+      </p>
+      <template lwc:if={errorMessage}>
+        <div
+          class="slds-notify slds-notify_alert slds-alert_error slds-m-bottom_small"
+          role="alert"
+        >
+          <span>{errorMessage}</span>
+        </div>
+      </template>
+      <lightning-datatable
+        key-field="Id"
+        data={actions}
+        columns={columns}
+        is-loading={loading}
+        onrowaction={handleRowAction}
+      ></lightning-datatable>
+      <template lwc:if={selectedAction}>
+        <section
+          class="slds-box slds-m-top_medium"
+          aria-labelledby="review-heading"
+        >
+          <h2 id="review-heading" class="slds-text-heading_small">
+            Review {selectedAction.Name}
+          </h2>
+          <dl class="slds-list_horizontal slds-wrap slds-m-vertical_small">
+            <dt class="slds-item_label slds-truncate">Record</dt>
+            <dd class="slds-item_detail">
+              <lightning-formatted-url
+                value={selectedAction.recordUrl}
+                label={selectedAction.Record_Id__c}
+                target="_blank"
+              ></lightning-formatted-url>
+            </dd>
+            <dt class="slds-item_label slds-truncate">Check</dt>
+            <dd class="slds-item_detail">
+              {selectedAction.Check_Qualified_API_Name__c}
+            </dd>
+            <dt class="slds-item_label slds-truncate">Result</dt>
+            <dd class="slds-item_detail">
+              {selectedAction.Status__c} · {selectedAction.Severity__c}
+            </dd>
+            <dt class="slds-item_label slds-truncate">Reason</dt>
+            <dd class="slds-item_detail">{selectedAction.Reason_Code__c}</dd>
+            <dt class="slds-item_label slds-truncate">Flow</dt>
+            <dd class="slds-item_detail">
+              {selectedAction.Policy__r.Flow_API_Name__c}
+            </dd>
+          </dl>
+          <p class="slds-text-color_weak slds-m-bottom_small">
+            Flow effects are not fully provable by this package. Your sharing,
+            CRUD, FLS, and Flow permissions apply.
+          </p>
+          <lightning-button-group>
+            <lightning-button
+              label="Cancel"
+              onclick={clearSelection}
+            ></lightning-button>
+            <lightning-button
+              label="Reject"
+              variant="destructive-text"
+              onclick={rejectSelected}
+              disabled={submitting}
+            ></lightning-button>
+            <lightning-button
+              label="Run Action"
+              variant="brand"
+              onclick={runSelected}
+              disabled={submitting}
+            ></lightning-button>
+          </lightning-button-group>
+        </section>
+      </template>
+    </div>
+  </lightning-card>
+</template>

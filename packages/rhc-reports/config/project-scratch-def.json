@@ -1,0 +1,10 @@
+{
+  "orgName": "RHC Reports Source Validation",
+  "edition": "Enterprise",
+  "features": ["EnableSetPasswordInApi"],
+  "settings": {
+    "lightningExperienceSettings": {
+      "enableS1DesktopEnabled": true
+    }
+  }
+}

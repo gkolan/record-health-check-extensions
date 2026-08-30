@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>EvaluationType__c</fullName>
+    <description
+  >Denormalized core EvaluationType value for list views. Allowed values come from core.</description>
+    <label>Evaluation Type</label>
+    <length>80</length>
+    <type>Text</type>
+</CustomField>

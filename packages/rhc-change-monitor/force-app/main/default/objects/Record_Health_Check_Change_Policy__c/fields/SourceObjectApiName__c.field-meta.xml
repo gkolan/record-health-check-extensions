@@ -1,0 +1,2 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata"><fullName>SourceObjectApiName__c</fullName><label>Source Object API Name</label><description>Exact source object API name, not the ChangeEvent type.</description><inlineHelpText>Exact source object API name, not the ChangeEvent type.</inlineHelpText><length>120</length><type>Text</type></CustomField>

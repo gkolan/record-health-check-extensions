@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>DailyAggregationEnabled__c</fullName>
+    <defaultValue>true</defaultValue>
+    <description>When enabled, the scheduled maintenance job aggregates the prior local reporting day.</description>
+    <label>Daily Aggregation Enabled</label>
+    <type>Checkbox</type>
+</CustomField>

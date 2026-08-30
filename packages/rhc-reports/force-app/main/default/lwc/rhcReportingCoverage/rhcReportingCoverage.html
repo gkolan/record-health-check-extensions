@@ -1,0 +1,56 @@
+<template>
+    <lightning-card title="Reporting Coverage" icon-name="standard:dashboard">
+        <div class="slds-var-p-around_medium">
+            <p class="slds-var-m-bottom_medium">
+                Coverage is observed from independently delivered Set Run summaries and Result details.
+                Configured flags below apply only to user-initiated card runs; Apex, Flow, Batch, Queueable,
+                Future, Scheduled, and Agent callers choose NONE, ACTIONABLE, or ALL per request.
+            </p>
+            <template lwc:if={loading}>
+                <lightning-spinner alternative-text="Loading reporting coverage"></lightning-spinner>
+            </template>
+            <template lwc:elseif={hasRows}>
+                <div class="slds-scrollable_x">
+                    <table class="slds-table slds-table_cell-buffer slds-table_bordered">
+                        <thead>
+                            <tr>
+                                <th scope="col">Check Set</th>
+                                <th scope="col">Coverage state</th>
+                                <th scope="col">Run facts</th>
+                                <th scope="col">Result facts</th>
+                                <th scope="col">Latest event</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template for:each={rows} for:item="row">
+                                <tr key={row.checkSetQualifiedApiName}>
+                                    <th scope="row">
+                                        <div>{row.label}</div>
+                                        <div class="slds-text-color_weak slds-text-body_small">
+                                            {row.checkSetQualifiedApiName}
+                                        </div>
+                                    </th>
+                                    <td><lightning-badge label={row.stateLabel}></lightning-badge></td>
+                                    <td>{row.runFactCount}</td>
+                                    <td>{row.resultFactCount}</td>
+                                    <td><lightning-formatted-date-time value={row.latestEventAt}
+                                        year="numeric" month="short" day="2-digit"
+                                        hour="2-digit" minute="2-digit">
+                                    </lightning-formatted-date-time></td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+                <p class="slds-text-body_small slds-var-m-top_medium">
+                    “No failures” requires received run summaries with zero FAIL,
+                    UNABLE_TO_EVALUATE, and ERROR counts. “No events received” is not a clean bill
+                    of health. ALL coverage can appear partial while asynchronous details are still arriving.
+                </p>
+            </template>
+            <template lwc:else>
+                <div class="slds-box slds-theme_shade">No active Check Sets were found.</div>
+            </template>
+        </div>
+    </lightning-card>
+</template>

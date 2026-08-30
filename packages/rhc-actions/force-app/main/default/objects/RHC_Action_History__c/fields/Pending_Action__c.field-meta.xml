@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Pending_Action__c</fullName>
+    <description>Links an attempt to its pending action.</description>
+    <deleteConstraint>SetNull</deleteConstraint>
+    <inlineHelpText
+  >Open the pending action for approved event facts.</inlineHelpText>
+    <label>Pending Action</label>
+    <referenceTo>RHC_Pending_Action__c</referenceTo>
+    <relationshipLabel>Action History</relationshipLabel>
+    <relationshipName>Action_History</relationshipName>
+    <type>Lookup</type>
+</CustomField>

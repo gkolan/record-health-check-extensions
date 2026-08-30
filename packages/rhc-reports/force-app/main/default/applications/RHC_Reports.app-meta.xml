@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomApplication xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>Configure and inspect durable Record Health Check reporting facts, snapshots, reports, and dashboards.</description>
+    <formFactors>Large</formFactors>
+    <label>RHC Reports</label>
+    <navType>Standard</navType>
+    <tabs>RHC_Reporting_Coverage</tabs>
+    <tabs>RHC_Reports_Setup</tabs>
+    <tabs>standard-report</tabs>
+    <tabs>standard-Dashboard</tabs>
+    <uiType>Lightning</uiType>
+</CustomApplication>

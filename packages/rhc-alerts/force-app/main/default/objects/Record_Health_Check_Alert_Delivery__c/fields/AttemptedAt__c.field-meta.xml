@@ -1,0 +1,2 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata"><fullName>AttemptedAt__c</fullName><label>Attempted At</label><description>Most recent delivery attempt time.</description><inlineHelpText>Most recent delivery attempt time.</inlineHelpText><type>DateTime</type></CustomField>

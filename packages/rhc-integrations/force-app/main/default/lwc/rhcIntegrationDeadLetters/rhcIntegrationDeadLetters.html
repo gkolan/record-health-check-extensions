@@ -1,0 +1,29 @@
+<template>
+    <lightning-card title="RHC Integration Dead Letters" icon-name="utility:error">
+        <lightning-button
+            slot="actions"
+            label="Refresh"
+            icon-name="utility:refresh"
+            onclick={handleRefresh}
+            disabled={isLoading}
+        ></lightning-button>
+        <template lwc:if={isLoading}>
+            <lightning-spinner alternative-text="Loading dead-letter deliveries" size="small"></lightning-spinner>
+        </template>
+        <template lwc:if={hasRows}>
+            <lightning-datatable
+                key-field="id"
+                data={rows}
+                columns={columns}
+                onrowaction={handleRowAction}
+                hide-checkbox-column
+            ></lightning-datatable>
+        </template>
+        <template lwc:elseif={hasError}>
+            <div class="slds-var-p-around_medium" role="alert">{errorMessage}</div>
+        </template>
+        <template lwc:else>
+            <div class="slds-var-p-around_medium">No dead-letter deliveries require attention.</div>
+        </template>
+    </lightning-card>
+</template>

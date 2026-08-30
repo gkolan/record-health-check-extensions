@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Map_Record_Id__c</fullName>
+    <description>Maps the event Record ID into rhcRecordIdV1.</description>
+    <defaultValue>false</defaultValue>
+    <inlineHelpText
+  >Select only when the Flow declares the matching Text input.</inlineHelpText>
+    <label>Map Record ID</label>
+    <type>Checkbox</type>
+</CustomField>

@@ -1,0 +1,76 @@
+{
+  "schemaVersion": 1,
+  "packageName": "RHC Alerts",
+  "sourceCommit": null,
+  "local": {
+    "status": "PENDING",
+    "completedAt": null,
+    "repositoryContracts": "PENDING",
+    "packageContracts": "PENDING",
+    "formatting": "PENDING",
+    "minimumCoreContract": "PENDING",
+    "metadataXml": "PENDING",
+    "sourceConversion": "PENDING",
+    "lwc": {
+      "status": "PENDING",
+      "testsPassed": null,
+      "statements": null,
+      "branches": null,
+      "functions": null,
+      "lines": null
+    },
+    "slds": {
+      "status": "PENDING",
+      "violations": null
+    },
+    "codeAnalyzer": {
+      "status": "PENDING",
+      "findings": null,
+      "resultFile": null,
+      "resultSha256": null
+    },
+    "dependencyAudit": {
+      "status": "PENDING",
+      "highVulnerabilities": null
+    }
+  },
+  "ci": {
+    "status": "PENDING",
+    "commit": null,
+    "runUrl": null
+  },
+  "namespacedSource": {
+    "status": "PENDING",
+    "orgShape": "NAMESPACED",
+    "sourceCommit": null,
+    "completedAt": null,
+    "evidenceUrl": null,
+    "orgId": null,
+    "dryRunJobId": null,
+    "apexTestRunId": null,
+    "testsPassed": null,
+    "testsFailed": null,
+    "packageCoverage": null,
+    "resultTriggerCoverage": null,
+    "setRunTriggerCoverage": null,
+    "platformEventAcceptance": false,
+    "permissionAcceptance": false
+  },
+  "noNamespaceSource": {
+    "status": "PENDING",
+    "orgShape": "NO_NAMESPACE",
+    "sourceCommit": null,
+    "completedAt": null,
+    "evidenceUrl": null,
+    "orgId": null,
+    "dryRunJobId": null,
+    "apexTestRunId": null,
+    "testsPassed": null,
+    "testsFailed": null,
+    "packageCoverage": null,
+    "resultTriggerCoverage": null,
+    "setRunTriggerCoverage": null,
+    "platformEventAcceptance": false,
+    "permissionAcceptance": false
+  }
+}

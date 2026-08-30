@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>RecoveryRate__c</fullName>
+    <formula>IF((RecoveryCount__c + RecurringFailureCount__c) = 0, 0, RecoveryCount__c / (RecoveryCount__c + RecurringFailureCount__c))</formula>
+    <formulaTreatBlanksAs>BlankAsZero</formulaTreatBlanksAs>
+    <label>Recovery Rate</label>
+    <precision>18</precision>
+    <scale>4</scale>
+    <type>Number</type>
+</CustomField>

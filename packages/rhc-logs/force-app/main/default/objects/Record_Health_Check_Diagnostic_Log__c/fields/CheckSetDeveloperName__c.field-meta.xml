@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>CheckSetDeveloperName__c</fullName>
+    <description>Exact Check Set developer-name string supplied by the canonical Log event.</description>
+    <inlineHelpText>Preserved exactly; this field is not reconstructed as a Qualified API Name.</inlineHelpText>
+    <label>Check Set Developer Name</label>
+    <length>120</length>
+    <type>Text</type>
+</CustomField>

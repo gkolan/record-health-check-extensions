@@ -1,0 +1,125 @@
+name: RHC Builder Salesforce gate
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: rhc-builder-salesforce-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check-dev-hub-secret:
+    runs-on: ubuntu-latest
+    steps:
+      - id: check
+        env:
+          SFDX_AUTH_URL: ${{ secrets.SFDX_AUTH_URL }}
+        run: |
+          if [ -z "${SFDX_AUTH_URL}" ]; then
+            echo "::error::SFDX_AUTH_URL is not configured; the required Builder org gate cannot run."
+            exit 1
+          fi
+
+  builder-source-tests:
+    needs: check-dev-hub-secret
+    name: Builder source tests (${{ matrix.mode }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - mode: namespaced
+            org_alias: rhc-builder-ci-ns
+            create_flags: ""
+          - mode: non-namespaced
+            org_alias: rhc-builder-ci-nons
+            create_flags: --no-namespace
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          package-manager-cache: false
+      - name: Install pinned Salesforce CLI
+        run: npm install --global @salesforce/cli@2.149.9
+      - name: Authenticate Dev Hub
+        env:
+          SFDX_AUTH_URL: ${{ secrets.SFDX_AUTH_URL }}
+        run: echo "$SFDX_AUTH_URL" | sf org login sfdx-url --sfdx-url-stdin --alias devhub --set-default-dev-hub
+      - name: Create disposable ${{ matrix.mode }} scratch org
+        working-directory: packages/rhc-builder
+        run: >-
+          sf org create scratch --definition-file config/project-scratch-def.json
+          --alias ${{ matrix.org_alias }} --set-default --duration-days 1 --wait 15
+          ${{ matrix.create_flags }}
+      - name: Verify scratch org namespace mode
+        env:
+          EXPECTED_MODE: ${{ matrix.mode }}
+          TARGET_ORG: ${{ matrix.org_alias }}
+        run: |
+          namespace="$(sf data query --target-org "$TARGET_ORG" --query "SELECT NamespacePrefix FROM Organization" --json | jq -r '.result.records[0].NamespacePrefix // ""')"
+          if [ "$EXPECTED_MODE" = "namespaced" ] && [ "$namespace" != "rhc" ]; then
+            echo "::error::Expected namespace rhc, found '${namespace:-none}'."
+            exit 1
+          fi
+          if [ "$EXPECTED_MODE" = "non-namespaced" ] && [ -n "$namespace" ]; then
+            echo "::error::Expected no namespace, found '$namespace'."
+            exit 1
+          fi
+      - name: Install pinned core dependency
+        run: sf package install --package 04tak000000cZBFAA2 --target-org ${{ matrix.org_alias }} --wait 30 --publish-wait 10 --no-prompt
+      - name: Dry-run Builder source with package-owned tests
+        working-directory: packages/rhc-builder
+        run: >-
+          sf project deploy start --source-dir force-app --target-org ${{ matrix.org_alias }}
+          --test-level RunSpecifiedTests
+          --tests RHCBuilderControllerTest
+          --tests RHCBuilderContractGatewayTest
+          --tests RecordHealthCheckBuilderContractTest
+          --tests RHCBuilderFieldMappingTest
+          --tests RHCBuilderMetadataServiceTest
+          --tests RHCBuilderQueryValidatorTest
+          --tests RHCBuilderValidationRulesTest
+          --dry-run --wait 30
+      - name: Deploy Builder source with package-owned tests
+        working-directory: packages/rhc-builder
+        run: >-
+          sf project deploy start --source-dir force-app --target-org ${{ matrix.org_alias }}
+          --test-level RunSpecifiedTests
+          --tests RHCBuilderControllerTest
+          --tests RHCBuilderContractGatewayTest
+          --tests RecordHealthCheckBuilderContractTest
+          --tests RHCBuilderFieldMappingTest
+          --tests RHCBuilderMetadataServiceTest
+          --tests RHCBuilderQueryValidatorTest
+          --tests RHCBuilderValidationRulesTest
+          --wait 30
+      - name: Run isolated Builder Apex tests with coverage
+        run: >-
+          sf apex run test --target-org ${{ matrix.org_alias }}
+          --tests RHCBuilderControllerTest
+          --tests RHCBuilderContractGatewayTest
+          --tests RecordHealthCheckBuilderContractTest
+          --tests RHCBuilderFieldMappingTest
+          --tests RHCBuilderMetadataServiceTest
+          --tests RHCBuilderQueryValidatorTest
+          --tests RHCBuilderValidationRulesTest
+          --code-coverage --wait 30 --result-format human
+      - name: Assign Builder runtime acceptance access
+        run: sf org assign permset --name RHC_Builder_Admin --target-org ${{ matrix.org_alias }}
+      - name: Run publication lifecycle acceptance
+        working-directory: packages/rhc-builder
+        run: scripts/verify-runtime-lifecycle.sh ${{ matrix.org_alias }}
+      - name: Delete disposable scratch org
+        if: always()
+        continue-on-error: true
+        run: |
+          if command -v sf >/dev/null 2>&1 && sf org display --target-org ${{ matrix.org_alias }} >/dev/null 2>&1; then
+            sf org delete scratch --target-org ${{ matrix.org_alias }} --no-prompt
+          fi

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>CleanupRunToken__c</fullName>
+    <description>Opaque package-generated token identifying the cleanup run holding the overlap guard.</description>
+    <inlineHelpText>Operational coordination value; contains no diagnostic data.</inlineHelpText>
+    <label>Cleanup Run Token</label>
+    <length>80</length>
+    <type>Text</type>
+</CustomField>

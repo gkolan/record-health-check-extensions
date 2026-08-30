@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>LastAggregationErrorType__c</fullName>
+    <description>Sanitized Apex exception type from the most recent failed aggregation attempt; no record data or stack trace is stored.</description>
+    <label>Last Aggregation Error Type</label>
+    <length>255</length>
+    <type>Text</type>
+</CustomField>

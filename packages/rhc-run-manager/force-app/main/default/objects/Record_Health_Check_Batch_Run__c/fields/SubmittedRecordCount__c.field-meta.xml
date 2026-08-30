@@ -1,0 +1,2 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata"><fullName>SubmittedRecordCount__c</fullName><label>Submitted Record Count</label><description>Records submitted to core across scopes.</description><inlineHelpText>Records submitted to core across scopes.</inlineHelpText><precision>9</precision><scale>0</scale><type>Number</type></CustomField>

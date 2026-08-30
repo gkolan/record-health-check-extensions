@@ -1,0 +1,2 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata"><fullName>Schedule__c</fullName><label>Schedule</label><description>Optional firing schedule.</description><inlineHelpText>Optional firing schedule.</inlineHelpText><deleteConstraint>SetNull</deleteConstraint><referenceTo>Record_Health_Check_Schedule__c</referenceTo><relationshipLabel>Batch Runs</relationshipLabel><relationshipName>BatchRuns</relationshipName><required>false</required><type>Lookup</type></CustomField>

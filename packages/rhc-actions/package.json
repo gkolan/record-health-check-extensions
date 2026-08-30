@@ -1,0 +1,16 @@
+{
+  "name": "rhc-actions",
+  "version": "0.1.0",
+  "license": "Apache-2.0",
+  "private": true,
+  "scripts": {
+    "validate": "node scripts/validate-source.mjs",
+    "validate:core-contract": "node scripts/validate-core-contract.mjs",
+    "validate:xml": "python3 -c \"import pathlib,xml.etree.ElementTree as ET; [ET.parse(path) for path in pathlib.Path('force-app').rglob('*.xml')]\"",
+    "test": "sfdx-lwc-jest -- --runInBand",
+    "test:coverage": "sfdx-lwc-jest --coverage -- --no-cache"
+  },
+  "devDependencies": {
+    "@salesforce/sfdx-lwc-jest": "^8.0.0"
+  }
+}

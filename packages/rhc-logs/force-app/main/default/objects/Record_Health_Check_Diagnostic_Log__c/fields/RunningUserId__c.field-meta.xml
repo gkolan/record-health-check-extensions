@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>RunningUserId__c</fullName>
+    <description>Restricted Salesforce user ID supplied by core for the running identity.</description>
+    <inlineHelpText>Restricted: identifies the user whose transaction ran core.</inlineHelpText>
+    <label>Running User ID</label>
+    <length>18</length>
+    <type>Text</type>
+</CustomField>

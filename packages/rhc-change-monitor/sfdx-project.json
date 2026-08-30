@@ -1,0 +1,21 @@
+{
+  "packageDirectories": [
+    {
+      "versionName": "RHC Change Monitor 0.1.0",
+      "versionNumber": "0.1.0.NEXT",
+      "path": "force-app",
+      "default": true,
+      "package": "RHC Change Monitor",
+      "versionDescription": "CDC intake, idempotent claims, bounded Record Health Check dispatch, and operational evidence.",
+      "dependencies": [{ "package": "Record Health Check@2.0.4-2" }]
+    }
+  ],
+  "name": "RHCChangeMonitor",
+  "namespace": "rhc",
+  "sfdcLoginUrl": "https://login.salesforce.com",
+  "sourceApiVersion": "66.0",
+  "packageAliases": {
+    "Record Health Check": "0Hoak0000004kKPCAY",
+    "Record Health Check@2.0.4-2": "04tak000000cZBFAA2"
+  }
+}

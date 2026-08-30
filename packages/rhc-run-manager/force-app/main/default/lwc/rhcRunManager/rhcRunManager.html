@@ -1,0 +1,51 @@
+<template>
+  <lightning-card title="RHC Run Manager" icon-name="standard:timesheet">
+    <template lwc:if={isLoading}><lightning-spinner alternative-text="Loading RHC Run Manager"></lightning-spinner></template>
+    <lightning-tabset>
+      <lightning-tab label="1. Run Definitions">
+        <div class="slds-var-p-horizontal_medium slds-var-p-top_small">Choose what to check, which records to include, and how much result history to retain.</div>
+        <lightning-layout multiple-rows>
+          <lightning-layout-item size="12" medium-device-size="6" padding="around-small"><lightning-input data-field="displayName" label="Name" field-level-help="Use a purpose-oriented name, such as Accounts affected by Contact changes." value={form.displayName} onchange={handleFormChange} required></lightning-input></lightning-layout-item>
+          <lightning-layout-item size="12" medium-device-size="3" padding="around-small"><lightning-combobox data-field="selectionType" label="Selection Type" value={form.selectionType} options={selectionTypeOptions} onchange={handleFormChange} required></lightning-combobox></lightning-layout-item>
+          <lightning-layout-item size="12" medium-device-size="3" padding="around-small"><lightning-combobox data-field="qualifiedApiName" label="Check Set or Check" value={form.qualifiedApiName} options={selectionOptions} onchange={handleFormChange} placeholder="Select active core metadata" required></lightning-combobox></lightning-layout-item>
+          <lightning-layout-item size="12" padding="horizontal-small"><lightning-formatted-text value={resolvedTarget}></lightning-formatted-text></lightning-layout-item>
+          <lightning-layout-item size="12" medium-device-size="4" padding="around-small"><lightning-combobox data-field="populationMode" label="Records to Check" value={form.populationMode} options={populationModeOptions} onchange={handleFormChange} required></lightning-combobox></lightning-layout-item>
+          <lightning-layout-item size="12" medium-device-size="4" padding="around-small"><lightning-input data-field="batchSize" type="number" label="Batch Size" field-level-help="Target records in each independently captured scope." min="1" max="200" step="1" value={form.batchSize} onchange={handleFormChange} required></lightning-input></lightning-layout-item>
+          <lightning-layout-item size="12" medium-device-size="4" padding="around-small"><lightning-combobox data-field="captureMode" label="Retain Results" field-level-help="Fail retains actionable results; Pass retains passing results; Both retains both. Skipped is counted only." value={form.captureMode} options={captureModeOptions} onchange={handleFormChange} required></lightning-combobox></lightning-layout-item>
+          <template lwc:if={isGuidedFiltered}>
+            <lightning-layout-item size="12" padding="horizontal-small"><div class="slds-text-title_bold">Guided filters</div><div class="slds-text-body_small">All filters are combined with AND. Raw SOQL is never accepted.</div></lightning-layout-item>
+            <lightning-layout-item size="12" medium-device-size="4" padding="around-small"><lightning-combobox data-filter-field="field" label="Field" value={newFilter.field} options={targetFieldOptions} onchange={handleFilterChange}></lightning-combobox></lightning-layout-item>
+            <lightning-layout-item size="12" medium-device-size="4" padding="around-small"><lightning-combobox data-filter-field="operator" label="Operator" value={newFilter.operator} options={operatorOptions} onchange={handleFilterChange}></lightning-combobox></lightning-layout-item>
+            <lightning-layout-item size="12" medium-device-size="4" padding="around-small"><lightning-input data-filter-field="value" label="Value" value={newFilter.value} onchange={handleFilterChange}></lightning-input></lightning-layout-item>
+            <lightning-layout-item size="12" padding="around-small"><lightning-button data-action="add-filter" label="Add Filter" onclick={handleAddFilter}></lightning-button><lightning-datatable key-field="key" data={filters} columns={filterColumns} onrowaction={handleFilterRowAction} hide-checkbox-column></lightning-datatable></lightning-layout-item>
+          </template>
+          <template lwc:if={isSuppliedIds}>
+            <lightning-layout-item size="12" padding="around-small"><lightning-formatted-rich-text value="Use the packaged &lt;strong&gt;Submit Record IDs&lt;/strong&gt; Flow action. Pass current and prior related IDs as a collection; Run Manager removes nulls and duplicates and consolidates requests across transactions."></lightning-formatted-rich-text></lightning-layout-item>
+            <lightning-layout-item size="12" medium-device-size="4" padding="around-small"><lightning-input data-field="coalesceDelayMinutes" type="number" label="Consolidation Window (minutes)" min="1" max="10" step="1" value={form.coalesceDelayMinutes} onchange={handleFormChange} required></lightning-input></lightning-layout-item>
+          </template>
+          <lightning-layout-item size="12" padding="around-small"><lightning-input data-field="active" type="checkbox" label="Active" checked={form.active} onchange={handleFormChange}></lightning-input><lightning-button data-action="save" variant="brand" label="Save Run Definition" onclick={handleSave}></lightning-button></lightning-layout-item>
+        </lightning-layout>
+        <lightning-datatable key-field="Id" data={definitions} columns={definitionColumns} onrowaction={handleDefinitionAction} hide-checkbox-column></lightning-datatable>
+      </lightning-tab>
+      <lightning-tab label="2. Schedules">
+        <div class="slds-var-p-horizontal_medium slds-var-p-top_small">Create a safe recurrence. Run Manager owns and validates the Salesforce scheduled job.</div>
+        <lightning-layout multiple-rows>
+          <lightning-layout-item size="12" medium-device-size="6" padding="around-small"><lightning-combobox data-schedule-field="runDefinitionId" label="Run Definition" value={schedule.runDefinitionId} options={definitionOptions} onchange={handleScheduleChange} required></lightning-combobox></lightning-layout-item>
+          <lightning-layout-item size="12" medium-device-size="6" padding="around-small"><lightning-combobox data-schedule-field="frequency" label="Frequency" value={schedule.frequency} options={frequencyOptions} onchange={handleScheduleChange} required></lightning-combobox></lightning-layout-item>
+          <lightning-layout-item size="12" medium-device-size="6" padding="around-small"><lightning-input data-schedule-field="preferredStartTime" type="time" label="Preferred Start Time" value={schedule.preferredStartTime} onchange={handleScheduleChange} required></lightning-input></lightning-layout-item>
+          <lightning-layout-item size="12" medium-device-size="3" padding="around-small"><lightning-input data-schedule-field="startDate" type="date" label="Start Date (optional)" value={schedule.startDate} onchange={handleScheduleChange}></lightning-input></lightning-layout-item>
+          <lightning-layout-item size="12" medium-device-size="3" padding="around-small"><lightning-input data-schedule-field="endDate" type="date" label="End Date (optional)" value={schedule.endDate} onchange={handleScheduleChange}></lightning-input></lightning-layout-item>
+          <template lwc:if={isWeekly}><lightning-layout-item size="12" medium-device-size="6" padding="around-small"><lightning-combobox data-schedule-field="dayOfWeek" label="Day of Week" value={schedule.dayOfWeek} options={dayOptions} onchange={handleScheduleChange} required></lightning-combobox></lightning-layout-item></template>
+          <lightning-layout-item size="12" padding="around-small"><lightning-input data-schedule-field="active" type="checkbox" label="Active" checked={schedule.active} onchange={handleScheduleChange}></lightning-input><lightning-button data-action="save-schedule" variant="brand" label="Save Schedule" onclick={handleSaveSchedule}></lightning-button></lightning-layout-item>
+        </lightning-layout>
+        <lightning-datatable key-field="Id" data={schedules} columns={scheduleColumns} onrowaction={handleScheduleAction} hide-checkbox-column></lightning-datatable>
+      </lightning-tab>
+      <lightning-tab label="3. Monitoring">
+        <div class="slds-var-p-around_small"><lightning-button-icon icon-name="utility:refresh" alternative-text="Refresh monitoring" title="Refresh monitoring" onclick={loadData}></lightning-button-icon></div>
+        <lightning-datatable key-field="Id" data={batchRuns} columns={batchRunColumns} onrowaction={handleBatchAction} hide-checkbox-column></lightning-datatable>
+        <template lwc:if={hasRuns}><div class="slds-var-p-around_small slds-text-heading_small">Scopes for {selectedBatchName}</div><lightning-datatable key-field="Id" data={runs} columns={runColumns} onrowaction={handleRunAction} hide-checkbox-column></lightning-datatable></template>
+        <template lwc:if={hasResults}><div class="slds-var-p-around_small slds-text-heading_small">Retained results for {selectedRunName}</div><lightning-datatable key-field="Id" data={results} columns={resultColumns} hide-checkbox-column></lightning-datatable></template>
+      </lightning-tab>
+    </lightning-tabset>
+  </lightning-card>
+</template>

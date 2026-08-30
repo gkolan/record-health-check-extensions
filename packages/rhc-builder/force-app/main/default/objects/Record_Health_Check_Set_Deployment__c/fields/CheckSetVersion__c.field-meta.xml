@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>CheckSetVersion__c</fullName>
+    <description>Version validated or deployed by this operation.</description>
+    <label>Check Set Version</label>
+    <referenceTo>Record_Health_Check_Set_Version__c</referenceTo>
+    <relationshipLabel>Deployments</relationshipLabel>
+    <relationshipName>Deployments</relationshipName>
+    <relationshipOrder>0</relationshipOrder>
+    <reparentableMasterDetail>false</reparentableMasterDetail>
+    <type>MasterDetail</type>
+    <writeRequiresMasterRead>false</writeRequiresMasterRead>
+</CustomField>

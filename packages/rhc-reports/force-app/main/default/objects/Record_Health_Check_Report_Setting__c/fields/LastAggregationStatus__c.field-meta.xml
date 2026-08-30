@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>LastAggregationStatus__c</fullName>
+    <description>Durable outcome recorded by the Queueable Finalizer for the most recent aggregation attempt.</description>
+    <label>Last Aggregation Status</label>
+    <length>20</length>
+    <required>false</required>
+    <type>Text</type>
+</CustomField>

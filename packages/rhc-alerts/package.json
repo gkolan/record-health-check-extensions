@@ -1,0 +1,28 @@
+{
+  "name": "rhc-alerts",
+  "version": "0.1.0",
+  "license": "Apache-2.0",
+  "private": true,
+  "scripts": {
+    "generate": "node generate_metadata.mjs",
+    "generate:check": "node generate_metadata.mjs --check",
+    "format": "prettier --write --no-error-on-unmatched-pattern \"force-app/main/default/**/*.{cls,css,html,js,trigger}\" \"demo/**/*.{apex,md}\" \"docs/**/*.md\" \"scripts/**/*.mjs\" \"*.{js,json,md,mjs}\" \"release-evidence/**/*.json\"",
+    "format:check": "prettier --check --no-error-on-unmatched-pattern \"force-app/main/default/**/*.{cls,css,html,js,trigger}\" \"demo/**/*.{apex,md}\" \"docs/**/*.md\" \"scripts/**/*.mjs\" \"*.{js,json,md,mjs}\" \"release-evidence/**/*.json\"",
+    "preflight:local": "node scripts/run-local-preflight.mjs",
+    "validate": "node validate-package.mjs",
+    "validate:core-contract": "node scripts/validate-core-contract.mjs",
+    "validate:slds": "slds-linter lint force-app/main/default/lwc",
+    "validate:xml": "python3 -c \"import pathlib,xml.etree.ElementTree as ET; [ET.parse(path) for path in pathlib.Path('force-app').rglob('*.xml')]\"",
+    "verify:prepackage": "node scripts/verify-prepackage-gates.mjs",
+    "test": "sfdx-lwc-jest -- --runInBand",
+    "test:coverage": "sfdx-lwc-jest --coverage -- --no-cache",
+    "test:prepackage-lock": "node scripts/test-prepackage-lock.mjs"
+  },
+  "devDependencies": {
+    "@prettier/plugin-xml": "3.4.2",
+    "@salesforce-ux/slds-linter": "1.2.1",
+    "@salesforce/sfdx-lwc-jest": "8.0.0",
+    "prettier": "3.8.4",
+    "prettier-plugin-apex": "2.2.6"
+  }
+}

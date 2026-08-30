@@ -1,0 +1,68 @@
+name: RHC Reports Salesforce gate
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: rhc-reports-salesforce-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check-dev-hub-secret:
+    runs-on: ubuntu-latest
+    outputs:
+      has-secret: ${{ steps.check.outputs.has-secret }}
+    steps:
+      - id: check
+        env:
+          SFDX_AUTH_URL: ${{ secrets.SFDX_AUTH_URL }}
+        run: |
+          if [ -z "${SFDX_AUTH_URL}" ]; then
+            echo "::warning::SFDX_AUTH_URL is not configured; RHC Reports org validation cannot run."
+            echo "has-secret=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "has-secret=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  reports-source-tests:
+    needs: check-dev-hub-secret
+    if: needs.check-dev-hub-secret.outputs.has-secret == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          package-manager-cache: false
+      - name: Install pinned Salesforce CLI
+        run: npm install --global @salesforce/cli@2.149.9
+      - name: Authenticate Dev Hub
+        env:
+          SFDX_AUTH_URL: ${{ secrets.SFDX_AUTH_URL }}
+        run: echo "$SFDX_AUTH_URL" | sf org login sfdx-url --sfdx-url-stdin --alias devhub --set-default-dev-hub
+      - name: Create disposable scratch org
+        working-directory: packages/rhc-reports
+        run: sf org create scratch --definition-file config/project-scratch-def.json --alias rhc-reports-ci --set-default --duration-days 1 --wait 15
+      - name: Install pinned core dependency
+        run: sf package install --package 04tak000000cZBFAA2 --target-org rhc-reports-ci --wait 30 --publish-wait 10 --no-prompt
+      - name: Dry-run Reports source with local tests
+        working-directory: packages/rhc-reports
+        run: sf project deploy start --source-dir force-app --target-org rhc-reports-ci --test-level RunLocalTests --dry-run --wait 30
+      - name: Deploy Reports source to disposable org
+        working-directory: packages/rhc-reports
+        run: sf project deploy start --source-dir force-app --target-org rhc-reports-ci --test-level NoTestRun --wait 30
+      - name: Run all local Apex tests with coverage
+        run: sf apex run test --target-org rhc-reports-ci --test-level RunLocalTests --code-coverage --wait 30 --result-format human
+      - name: Delete disposable scratch org
+        if: always()
+        continue-on-error: true
+        run: |
+          if command -v sf >/dev/null 2>&1 && sf org display --target-org rhc-reports-ci >/dev/null 2>&1; then
+            sf org delete scratch --target-org rhc-reports-ci --no-prompt
+          fi

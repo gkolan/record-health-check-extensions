@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Approved_By__c</fullName>
+    <description>Records the human who authorized execution.</description>
+    <deleteConstraint>SetNull</deleteConstraint>
+    <inlineHelpText>Populated only by the approval service.</inlineHelpText>
+    <label>Approved By</label>
+    <referenceTo>User</referenceTo>
+    <relationshipLabel>Approved Actions</relationshipLabel>
+    <relationshipName>Approved_Actions</relationshipName>
+    <type>Lookup</type>
+</CustomField>

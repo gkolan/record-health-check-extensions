@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <classAccesses><apexClass>RHCReportsCoverageController</apexClass><enabled>true</enabled></classAccesses>
+    <description>View reporting coverage and daily snapshot reports without raw Record IDs, Run IDs, event IDs, reason codes, or version fields.</description>
+    <fieldPermissions><editable>false</editable><field>Record_Health_Check_Report_Run__c.EvaluatedCheckCount__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>false</editable><field>Record_Health_Check_Report_Run__c.FailedCount__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>false</editable><field>Record_Health_Check_Report_Run__c.SystemErrorCount__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>false</editable><field>Record_Health_Check_Report_Run__c.UnableCount__c</field><readable>true</readable></fieldPermissions>
+    <hasActivationRequired>false</hasActivationRequired>
+    <label>RHC Reports Viewer</label>
+    <objectPermissions>
+        <allowCreate>false</allowCreate>
+        <allowDelete>false</allowDelete>
+        <allowEdit>false</allowEdit>
+        <allowRead>true</allowRead>
+        <modifyAllRecords>false</modifyAllRecords>
+        <object>Record_Health_Check_Report_Run__c</object>
+        <viewAllRecords>true</viewAllRecords>
+    </objectPermissions>
+    <objectPermissions>
+        <allowCreate>false</allowCreate>
+        <allowDelete>false</allowDelete>
+        <allowEdit>false</allowEdit>
+        <allowRead>true</allowRead>
+        <modifyAllRecords>false</modifyAllRecords>
+        <object>Record_Health_Check_Report_Result__c</object>
+        <viewAllRecords>true</viewAllRecords>
+    </objectPermissions>
+    <objectPermissions>
+        <allowCreate>false</allowCreate>
+        <allowDelete>false</allowDelete>
+        <allowEdit>false</allowEdit>
+        <allowRead>true</allowRead>
+        <modifyAllRecords>false</modifyAllRecords>
+        <object>Record_Health_Check_Daily_Snapshot__c</object>
+        <viewAllFields>true</viewAllFields>
+        <viewAllRecords>true</viewAllRecords>
+    </objectPermissions>
+    <tabSettings><tab>RHC_Reporting_Coverage</tab><visibility>Visible</visibility></tabSettings>
+    <tabSettings><tab>RHC_Reports_Setup</tab><visibility>None</visibility></tabSettings>
+    <userPermissions><enabled>true</enabled><name>RunReports</name></userPermissions>
+</PermissionSet>

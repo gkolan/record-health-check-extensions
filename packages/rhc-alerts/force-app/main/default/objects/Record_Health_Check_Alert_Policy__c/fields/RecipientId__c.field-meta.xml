@@ -1,0 +1,2 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata"><fullName>RecipientId__c</fullName><label>Recipient ID</label><description>Exact User or public Group ID selected by the administrator.</description><inlineHelpText>Exact User or public Group ID selected by the administrator.</inlineHelpText><length>18</length><type>Text</type></CustomField>

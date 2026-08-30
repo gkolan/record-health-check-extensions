@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "sourceDigest": "sha256:0451aa1e6761f1611203c79bfc03264fca71c51f060742d7a37f7a561a69bca1",
+  "coreCommit": "74fe1d6022f819397fc879c076f4f4dd2093cfab",
+  "shape": "no-namespace",
+  "environment": {
+    "scratchOrgAlias": "rhc-change-monitor-nons-shared-20260830",
+    "orgId": "00DRL00000UKhkO2AT",
+    "orgNamespace": null,
+    "extensionNamespace": null,
+    "corePackageVersion": "2.0.4.2",
+    "corePackageVersionId": "04tak000000cZBFAA2"
+  },
+  "deploy": {
+    "status": "Succeeded",
+    "jobId": "0AfRL00000hDCH80AO",
+    "dryRunJobId": "0AfRL00000hD2jD0AS",
+    "components": 56
+  },
+  "tests": {
+    "outcome": "Passed",
+    "methods": 32,
+    "coveragePercent": 95,
+    "coveredLines": 429,
+    "totalLines": 450,
+    "runId": "707RL00001eGvoZ"
+  },
+  "scenarios": {
+    "platformEventBulk": true,
+    "duplicateIdempotency": true,
+    "malformedEvent": true,
+    "unsupportedContract": true,
+    "restrictedPersonas": true,
+    "scheduleLifecycle": true,
+    "cleanupBoundary": true,
+    "cleanupOverlap": true
+  }
+}

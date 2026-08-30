@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>CleanupLockAcquiredAt__c</fullName>
+    <description>Timestamp when the current cleanup overlap guard was acquired.</description>
+    <inlineHelpText>Used only for stale-lock recovery.</inlineHelpText>
+    <label>Cleanup Lock Acquired At</label>
+    <type>DateTime</type>
+</CustomField>

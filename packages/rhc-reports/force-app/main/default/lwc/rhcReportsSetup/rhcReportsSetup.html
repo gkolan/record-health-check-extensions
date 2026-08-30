@@ -1,0 +1,98 @@
+<template>
+    <lightning-card title="RHC Reports Setup Assistant" icon-name="standard:report">
+        <div class="slds-var-p-around_medium">
+            <template lwc:if={loading}>
+                <lightning-spinner alternative-text="Loading reporting settings"></lightning-spinner>
+            </template>
+            <template lwc:else>
+                <div class="slds-box slds-theme_default slds-var-m-bottom_medium">
+                    <h2 class="slds-text-heading_small">Choose publication coverage deliberately</h2>
+                    <dl class="slds-list_horizontal slds-wrap slds-var-m-top_small">
+                        <dt class="slds-item_label slds-truncate">NONE</dt>
+                        <dd class="slds-item_detail">No reporting coverage.</dd>
+                        <dt class="slds-item_label slds-truncate">ACTIONABLE</dt>
+                        <dd class="slds-item_detail">Run summaries and actionable result details.</dd>
+                        <dt class="slds-item_label slds-truncate">ALL</dt>
+                        <dd class="slds-item_detail">All published Check-result details.</dd>
+                    </dl>
+                    <p class="slds-var-m-top_small">
+                        Historical and unpublished outcomes cannot be reconstructed. Run summaries and
+                        Result details arrive asynchronously and can become consistent at different times.
+                    </p>
+                </div>
+                <div class="slds-grid slds-wrap slds-gutters">
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                        <lightning-input type="number" name="detailedRetentionDays"
+                            label="Detailed retention days" min="1" max="3650"
+                            value={settings.detailedRetentionDays} onchange={handleChange}>
+                        </lightning-input>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                        <lightning-input type="number" name="snapshotRetentionDays"
+                            label="Snapshot retention days" min="1" max="36500"
+                            value={settings.snapshotRetentionDays} onchange={handleChange}>
+                        </lightning-input>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1">
+                        <lightning-input type="text" name="aggregationTimeZone"
+                            label="Aggregation time zone" value={settings.aggregationTimeZone}
+                            field-level-help="Use a Salesforce time-zone ID such as America/Chicago."
+                            onchange={handleChange}>
+                        </lightning-input>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2 slds-var-m-top_small">
+                        <lightning-input type="toggle" name="dailyAggregationEnabled"
+                            label="Daily snapshots" checked={settings.dailyAggregationEnabled}
+                            onchange={handleChange}>
+                        </lightning-input>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2 slds-var-m-top_small">
+                        <lightning-input type="toggle" name="retentionCleanupEnabled"
+                            label="Retention cleanup" checked={settings.retentionCleanupEnabled}
+                            onchange={handleChange}>
+                        </lightning-input>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1 slds-var-m-top_small">
+                        <lightning-input type="toggle" name="scheduled"
+                            label="Schedule daily maintenance" checked={settings.scheduled}
+                            onchange={handleChange}>
+                        </lightning-input>
+                    </div>
+                </div>
+                <div class="slds-notify slds-notify_alert slds-alert_warning slds-var-m-vertical_medium" role="alert">
+                    <span class="slds-assistive-text">Warning</span>
+                    Retention deletion is irreversible. Export or back up facts before shortening retention.
+                </div>
+                <div class="slds-box slds-theme_default slds-var-m-bottom_medium">
+                    <h2 class="slds-text-heading_small">Latest aggregation outcome</h2>
+                    <dl class="slds-list_horizontal slds-wrap slds-var-m-top_small">
+                        <dt class="slds-item_label">Status</dt>
+                        <dd class="slds-item_detail">{settings.lastAggregationStatus}</dd>
+                        <dt class="slds-item_label">Last completed date</dt>
+                        <dd class="slds-item_detail">{settings.lastAggregatedDate}</dd>
+                        <dt class="slds-item_label">Last attempt</dt>
+                        <dd class="slds-item_detail">{settings.lastAggregationAttemptAt}</dd>
+                        <dt class="slds-item_label">Failure type</dt>
+                        <dd class="slds-item_detail">{settings.lastAggregationErrorType}</dd>
+                    </dl>
+                </div>
+                <div class="slds-box slds-theme_shade slds-var-m-bottom_medium">
+                    <h2 class="slds-text-heading_small">Opportunity Close Readiness example</h2>
+                    <p class="slds-var-m-top_x-small">
+                        Start with 90-day detailed retention and daily snapshots. Use the packaged dashboard
+                        for weekly failure-rate trends, recurring failures, ERROR and
+                        UNABLE_TO_EVALUATE hotspots, recovery rate, and volume by execution source.
+                    </p>
+                </div>
+                <p class="slds-text-body_small slds-var-m-bottom_medium">
+                    Data storage, Platform Event allocation, report-row, dashboard, and scheduled-job
+                    limits apply. Deleted source records can leave historical facts containing only their
+                    former Record ID.
+                </p>
+                <lightning-button variant="brand" label="Save and Apply"
+                    onclick={save} disabled={saving}>
+                </lightning-button>
+            </template>
+        </div>
+    </lightning-card>
+</template>

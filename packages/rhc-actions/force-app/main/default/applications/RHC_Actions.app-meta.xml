@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomApplication xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description
+  >Configure, review, execute, and audit Record Health Check corrective actions.</description>
+    <formFactors>Large</formFactors>
+    <label>RHC Actions</label>
+    <navType>Standard</navType>
+    <tabs>RHC_Actions</tabs>
+    <tabs>RHC_Action_Policy__c</tabs>
+    <tabs>RHC_Pending_Action__c</tabs>
+    <tabs>RHC_Action_History__c</tabs>
+    <uiType>Lightning</uiType>
+</CustomApplication>

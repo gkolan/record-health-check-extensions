@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>RunMode__c</fullName>
+    <description
+  >Denormalized core CardRunMode value for list views. The authoritative value remains in the canonical version.</description>
+    <label>Run Mode</label>
+    <length>80</length>
+    <type>Text</type>
+</CustomField>

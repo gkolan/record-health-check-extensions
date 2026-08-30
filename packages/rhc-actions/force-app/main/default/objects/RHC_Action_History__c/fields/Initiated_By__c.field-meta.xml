@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Initiated_By__c</fullName>
+    <description>Records the identity that initiated this attempt.</description>
+    <deleteConstraint>SetNull</deleteConstraint>
+    <inlineHelpText
+  >Automatic attempts use the runtime identity.</inlineHelpText>
+    <label>Initiated By</label>
+    <referenceTo>User</referenceTo>
+    <relationshipLabel>Initiated Action History</relationshipLabel>
+    <relationshipName>Initiated_Action_History</relationshipName>
+    <type>Lookup</type>
+</CustomField>

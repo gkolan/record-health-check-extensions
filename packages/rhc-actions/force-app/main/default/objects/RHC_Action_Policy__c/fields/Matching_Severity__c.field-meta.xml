@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Matching_Severity__c</fullName>
+    <description>Optionally requires one exact core severity.</description>
+    <inlineHelpText>Leave blank to match any severity.</inlineHelpText>
+    <label>Matching Severity</label>
+    <length>20</length>
+    <type>Text</type>
+</CustomField>

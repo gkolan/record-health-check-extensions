@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>CleanupInProgress__c</fullName>
+    <defaultValue>false</defaultValue>
+    <description>Overlap guard held while a bounded cleanup transaction is active.</description>
+    <inlineHelpText>Stale guards can be recovered after the documented timeout.</inlineHelpText>
+    <label>Cleanup In Progress</label>
+    <type>Checkbox</type>
+</CustomField>

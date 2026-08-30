@@ -1,0 +1,23 @@
+{
+  "packageDirectories": [
+    {
+      "versionName": "RHC Run Manager 0.1.0",
+      "versionNumber": "0.1.0.NEXT",
+      "path": "force-app",
+      "default": true,
+      "package": "RHC Run Manager",
+      "uninstallScript": "RHCRunManagerUninstallHandler",
+      "versionDescription": "Owned Batch execution, scheduling, supplied-ID coalescing, capture, and monitoring extension for Record Health Check.",
+      "dependencies": [{ "package": "Record Health Check@2.0.4-2" }]
+    }
+  ],
+  "name": "RHCRunManager",
+  "namespace": "rhc",
+  "sfdcLoginUrl": "https://login.salesforce.com",
+  "sourceApiVersion": "66.0",
+  "packageAliases": {
+    "Record Health Check": "0Hoak0000004kKPCAY",
+    "Record Health Check@2.0.4-2": "04tak000000cZBFAA2",
+    "RHC Run Manager": "0Hoak0000005FhZCAU"
+  }
+}

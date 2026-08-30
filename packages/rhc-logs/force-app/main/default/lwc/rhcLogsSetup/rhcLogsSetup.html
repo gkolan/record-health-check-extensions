@@ -1,0 +1,81 @@
+<template>
+    <lightning-card title="RHC Logs Setup Assistant" icon-name="utility:setup">
+        <lightning-spinner if:true={loading} alternative-text="Loading RHC Logs setup"></lightning-spinner>
+        <div class="slds-p-around_medium">
+            <div if:true={errorMessage} class="slds-notify slds-notify_alert slds-alert_error error-message" role="alert">
+                <span class="slds-assistive-text">Error</span>{errorMessage}
+            </div>
+            <template if:true={status}>
+                <lightning-badge label="Core contract"></lightning-badge>
+                <p class="slds-m-top_small">Minimum compatible promoted core: {status.minimumCoreVersion}</p>
+                <p>Core Log event installed: {status.coreLogEventInstalled}</p>
+                <p>Canonical field contract compatible: {status.coreContractCompatible}</p>
+                <p>Current administrator can read the event: {status.currentUserCanReadCoreEvent}</p>
+                <p>Current administrator can publish the event: {status.currentUserCanPublishCoreEvent}</p>
+                <div class="slds-box slds-theme_warning slds-m-vertical_medium">
+                    Error-log publication is disabled by default in core. Each enabled Check Set's
+                    actual running identity also needs the separate Record Health Check Error Log
+                    Publisher permission. This assistant cannot prove permission coverage for every
+                    Flow, user, Queueable, or integration identity.
+                </div>
+
+                <h2 class="slds-text-heading_small slds-m-bottom_small">Visible Check Sets</h2>
+                <p>{publicationSummary}</p>
+                <table class="slds-table slds-table_cell-buffer slds-table_bordered slds-m-bottom_large">
+                    <thead><tr><th scope="col">Exact Developer Name</th><th scope="col">Publishes Logs</th></tr></thead>
+                    <tbody>
+                        <template for:each={status.checkSets} for:item="checkSet">
+                            <tr key={checkSet.developerName}>
+                                <td>{checkSet.developerName}</td>
+                                <td>{checkSet.publishesLogEvents}</td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+
+                <h2 class="slds-text-heading_small">Bounded retention</h2>
+                <div class="slds-grid slds-wrap slds-gutters">
+                    <lightning-input class="slds-col slds-size_1-of-2" type="number" min="1" max="365"
+                        label="Retention Days" value={retentionDays} onchange={handleRetentionChange} required>
+                    </lightning-input>
+                    <lightning-input class="slds-col slds-size_1-of-2" type="number" min="1" max="9998"
+                        label="Cleanup Batch Size" value={cleanupBatchSize} onchange={handleBatchChange} required>
+                    </lightning-input>
+                </div>
+                <lightning-input type="toggle" label="Enable automated daily cleanup"
+                    checked={automatedCleanupEnabled} onchange={handleAutomationChange}>
+                </lightning-input>
+                <div class="slds-m-vertical_medium">
+                    <lightning-button variant="brand" label="Save Settings" onclick={handleSave}></lightning-button>
+                    <lightning-button class="slds-m-left_small" label="Run One Bounded Cleanup"
+                        onclick={handleCleanup}></lightning-button>
+                </div>
+
+                <h2 class="slds-text-heading_small">Operations snapshot</h2>
+                <p>Cleanup scheduled: {status.cleanupScheduled}</p>
+                <p>Retained logs: {status.retainedCount}</p>
+                <p>Unsupported retained contract versions: {status.unsupportedContractCount}</p>
+                <p>Oldest event: {status.oldestOccurredAt}</p>
+                <p>Newest event: {status.newestOccurredAt}</p>
+                <p class="slds-m-top_small">Last ingestion: {status.settings.LastIngestionAt__c}</p>
+                <p>Rows ingested in last batch: {status.settings.LastIngestionCount__c}</p>
+                <p>Duplicates ignored in last batch: {status.settings.LastDuplicateCount__c}</p>
+                <p>Failures in last ingestion batch: {status.settings.LastIngestionFailureCount__c}</p>
+                <p>Last ingestion status: {status.settings.LastIngestionStatus__c}</p>
+                <p>Last ingestion error categories: {status.settings.LastIngestionErrorCodes__c}</p>
+                <p class="slds-m-top_small">Last cleanup: {status.settings.LastCleanupAt__c}</p>
+                <p>Last cleanup status: {status.settings.LastCleanupStatus__c}</p>
+                <p>Rows deleted in last cleanup: {status.settings.LastCleanupDeletedCount__c}</p>
+                <p>Failures in last cleanup: {status.settings.LastCleanupFailureCount__c}</p>
+                <p>Cleanup lease active: {status.settings.CleanupInProgress__c}</p>
+                <p>Cleanup lease acquired: {status.settings.CleanupLockAcquiredAt__c}</p>
+                <p class="slds-m-top_small">
+                    Platform Event allocation and at-least-once delivery, Automated Process,
+                    Apex CPU/heap/SOQL/DML, scheduled Apex, query selectivity, deletion, recycle bin,
+                    and custom-object data storage limits apply. Counters are best-effort snapshots,
+                    not an audit ledger.
+                </p>
+            </template>
+        </div>
+    </lightning-card>
+</template>

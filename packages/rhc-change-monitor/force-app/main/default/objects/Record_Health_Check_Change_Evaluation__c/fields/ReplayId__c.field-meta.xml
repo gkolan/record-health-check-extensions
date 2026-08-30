@@ -1,0 +1,2 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata"><fullName>ReplayId__c</fullName><label>Replay ID</label><description>Opaque stream-position evidence; never used as a business record ID.</description><inlineHelpText>Opaque stream-position evidence; never used as a business record ID.</inlineHelpText><length>80</length><type>Text</type></CustomField>

@@ -1,0 +1,1016 @@
+<template>
+  <lightning-card title="RHC Builder" icon-name="utility:setup">
+    <div class="slds-p-around_medium">
+      <template lwc:if={showPermissionBlock}>
+        <div
+          class="slds-notify slds-notify_alert slds-alert_error"
+          role="alert"
+        >
+          <div>
+            <strong>Builder authoring access is required.</strong>
+            Ask a Salesforce administrator to assign the Record Health Check
+            Builder Admin permission set, then reload this page.
+          </div>
+        </div>
+      </template>
+
+      <template lwc:if={isLoading}>
+        <lightning-spinner
+          alternative-text="Loading RHC Builder"
+        ></lightning-spinner>
+        <p class="slds-assistive-text" role="status">
+          Loading Builder permissions, supported fields, and saved versions.
+          Nothing is being changed in Salesforce.
+        </p>
+      </template>
+
+      <template lwc:if={errorMessage}>
+        <div
+          class="slds-notify slds-notify_alert slds-alert_error slds-m-bottom_medium"
+          role="alert"
+        >
+          {errorMessage}
+        </div>
+      </template>
+      <template lwc:if={successMessage}>
+        <div
+          class="slds-notify slds-notify_alert slds-alert_success slds-m-bottom_medium"
+          role="status"
+        >
+          {successMessage}
+        </div>
+      </template>
+
+      <template lwc:if={isReady}>
+        <lightning-progress-indicator
+          current-step={currentStep}
+          type="path"
+          variant="base"
+          class="slds-m-bottom_large"
+        >
+          <lightning-progress-step
+            label="1. Design"
+            value="design"
+            onclick={navigateStep}
+          ></lightning-progress-step>
+          <lightning-progress-step
+            label="2. Validate and save"
+            value="review"
+            onclick={navigateStep}
+          ></lightning-progress-step>
+          <lightning-progress-step
+            label="3. Publish and monitor"
+            value="versions"
+            onclick={navigateStep}
+          ></lightning-progress-step>
+        </lightning-progress-indicator>
+
+        <template lwc:if={isDesignStep}>
+          <section aria-labelledby="set-heading">
+            <h2
+              id="set-heading"
+              class="slds-text-heading_medium slds-m-bottom_x-small"
+            >
+              Design the Check Set
+            </h2>
+            <p class="slds-text-color_weak slds-m-bottom_small">
+              Start with the business outcome. Builder keeps the Check Set and
+              every Check together as one version.
+            </p>
+            <div class="form-grid">
+              <lightning-input
+                label="Check Set name"
+                value={draft.checkSetLabel}
+                data-field="checkSetLabel"
+                onchange={handleSetChange}
+                required
+              ></lightning-input>
+              <lightning-input
+                label="Qualified API Name"
+                value={draft.checkSetQualifiedApiName}
+                data-field="checkSetQualifiedApiName"
+                onchange={handleSetChange}
+                field-level-help="Generated from the name. Edit only when you need an exact subscriber or namespaced identity; Builder never rewrites it."
+                required
+              ></lightning-input>
+              <lightning-combobox
+                label="Target Salesforce object"
+                value={draft.objectApiName}
+                data-field="objectApiName"
+                options={objectOptions}
+                onchange={handleSetChange}
+                disabled={hasChecks}
+                field-level-help="Remove all Checks before changing the target object; generated fields and relationships belong to this object."
+                required
+              ></lightning-combobox>
+            </div>
+            <lightning-textarea
+              label="Short explanation"
+              value={draft.checkSetValues.CardSubtitle__c}
+              data-field="CardSubtitle__c"
+              onchange={handleSetChange}
+              field-level-help="Tell record-page users when or why to run the checks. Keep it to one sentence."
+            ></lightning-textarea>
+          </section>
+
+          <section
+            class="slds-m-top_large"
+            aria-labelledby="card-experience-heading"
+          >
+            <h2
+              id="card-experience-heading"
+              class="slds-text-heading_medium slds-m-bottom_x-small"
+            >
+              How should the health-check card work?
+            </h2>
+            <p
+              id="card-experience-intro"
+              class="slds-text-color_weak slds-m-bottom_medium"
+            >
+              Choose the experience that matches the record-page task. This
+              changes when results run and how they appear, not what a Check
+              evaluates or whether it passes.
+            </p>
+            <fieldset
+              class="slds-form-element"
+              aria-describedby="card-experience-intro"
+            >
+              <legend class="slds-assistive-text">
+                Choose one card experience
+              </legend>
+              <div class="rhc-builder-experience-grid">
+                <template for:each={cardExperienceOptions} for:item="option">
+                  <div
+                    key={option.value}
+                    class="slds-visual-picker slds-visual-picker_vertical slds-size_full rhc-builder-experience-option"
+                  >
+                    <input
+                      type="radio"
+                      id={option.inputId}
+                      name="card-experience"
+                      value={option.value}
+                      checked={option.checked}
+                      aria-describedby={option.descriptionId}
+                      onchange={handleCardExperienceChange}
+                    />
+                    <label class="slds-size_full" for={option.inputId}>
+                      <span
+                        class="slds-visual-picker__figure slds-visual-picker__text slds-size_full rhc-builder-experience-figure"
+                      >
+                        <span>
+                          <span class="slds-text-heading_small">
+                            {option.label}
+                          </span>
+                          <template lwc:if={option.recommendation}>
+                            <span
+                              class="slds-badge slds-theme_success slds-m-left_x-small"
+                            >
+                              {option.recommendation}
+                            </span>
+                          </template>
+                          <span
+                            id={option.descriptionId}
+                            class="slds-text-body_regular slds-m-top_x-small rhc-builder-experience-copy"
+                          >
+                            {option.summary}
+                          </span>
+                        </span>
+                      </span>
+                      <span class="slds-visual-picker__body">
+                        <span class="rhc-builder-experience-copy">
+                          <span class="slds-text-title_bold">Best for</span>
+                          <span class="slds-m-left_xx-small">
+                            {option.bestFor}
+                          </span>
+                        </span>
+                        <span
+                          class="rhc-builder-experience-copy slds-m-top_xx-small"
+                        >
+                          <span class="slds-text-title_bold">Consider</span>
+                          <span class="slds-m-left_xx-small">
+                            {option.tradeoff}
+                          </span>
+                        </span>
+                      </span>
+                    </label>
+                  </div>
+                </template>
+              </div>
+            </fieldset>
+
+            <div
+              class="guidance slds-m-top_medium"
+              aria-live="polite"
+              role="status"
+            >
+              <strong>Your selection: {selectedCardExperienceLabel}.</strong>
+              {cardExperienceExplanation}
+            </div>
+
+            <section
+              class="rhc-builder-preview slds-m-top_medium"
+              aria-label="Preview — example results"
+              aria-live="polite"
+            >
+              <div class="section-heading slds-m-bottom_small">
+                <div>
+                  <h3 class="slds-text-heading_small">
+                    Preview — example results
+                  </h3>
+                  <p class="slds-text-color_weak">
+                    This is sample content, not a real record evaluation.
+                  </p>
+                </div>
+                <lightning-button-group>
+                  <template
+                    for:each={previewStateOptions}
+                    for:item="state"
+                  >
+                    <lightning-button
+                      key={state.value}
+                      label={state.label}
+                      variant={state.variant}
+                      data-state={state.value}
+                      onclick={handlePreviewStateChange}
+                    ></lightning-button>
+                  </template>
+                </lightning-button-group>
+              </div>
+
+              <article class="rhc-builder-preview-card">
+                <div class="section-heading">
+                  <div>
+                    <h4 class="slds-text-heading_small">{previewTitle}</h4>
+                    <p class="slds-text-color_weak">{previewSubtitle}</p>
+                  </div>
+                  <template lwc:if={previewShowAction}>
+                    <span
+                      class="slds-button slds-button_neutral"
+                      aria-label={previewActionLabel}
+                    >
+                      <template lwc:if={previewShowActionLabel}>
+                        <span>{previewActionLabel}</span>
+                      </template>
+                      <template lwc:if={previewShowActionIcon}>
+                        <lightning-icon
+                          class="slds-m-left_xx-small"
+                          icon-name={previewIconName}
+                          size="xx-small"
+                          alternative-text=""
+                        ></lightning-icon>
+                      </template>
+                    </span>
+                  </template>
+                </div>
+
+                <p class="slds-assistive-text" role="status">
+                  {previewStatusText}
+                </p>
+                <template lwc:if={previewShowPreRunHint}>
+                  <p class="slds-m-top_small">
+                    Select {previewActionLabel} to evaluate three example
+                    Checks.
+                  </p>
+                </template>
+
+                <template lwc:if={previewShowSummaryAbove}>
+                  <div
+                    class="rhc-builder-preview-summary slds-m-top_small"
+                    aria-label="Example summary: one passed, one failed, one skipped"
+                  >
+                    <span class="slds-badge">1 Passed</span>
+                    <span class="slds-badge">1 Failed</span>
+                    <span class="slds-badge">1 Skipped</span>
+                  </div>
+                </template>
+
+                <template lwc:if={previewVisibleRows.length}>
+                  <ul
+                    class="rhc-builder-preview-list slds-m-top_small"
+                    aria-label="Example Check results"
+                  >
+                    <template for:each={previewVisibleRows} for:item="row">
+                      <li key={row.key} class="rhc-builder-preview-row">
+                        <div class="section-heading">
+                          <strong>{row.label}</strong>
+                          <span>{row.status}</span>
+                        </div>
+                        <p>{row.detail}</p>
+                        <template lwc:if={row.comparison}>
+                          <p class="slds-text-color_weak slds-m-top_xx-small">
+                            {row.comparison}
+                          </p>
+                        </template>
+                      </li>
+                    </template>
+                  </ul>
+                </template>
+
+                <template lwc:if={previewShowsHiddenResultsNotice}>
+                  <p class="slds-text-color_weak slds-m-top_small">
+                    Passed and skipped details are hidden; their counts remain
+                    in the summary.
+                  </p>
+                </template>
+
+                <template lwc:if={previewShowSummaryBelow}>
+                  <div
+                    class="rhc-builder-preview-summary slds-m-top_small"
+                    aria-label="Example summary: one passed, one failed, one skipped"
+                  >
+                    <span class="slds-badge">1 Passed</span>
+                    <span class="slds-badge">1 Failed</span>
+                    <span class="slds-badge">1 Skipped</span>
+                  </div>
+                </template>
+              </article>
+            </section>
+
+            <template lwc:if={isCustomCardExperience}>
+              <div class="rhc-builder-custom-card-settings slds-m-top_medium">
+                <h3 class="slds-text-heading_small slds-m-bottom_x-small">
+                  Custom card behavior
+                </h3>
+                <p class="slds-text-color_weak slds-m-bottom_small">
+                  Choose each behavior intentionally. Essential consequences
+                  appear beside the affected controls.
+                </p>
+                <div class="form-grid">
+                  <lightning-combobox
+                    label="When checks run"
+                    value={draft.checkSetValues.CardRunMode__c}
+                    data-field="CardRunMode__c"
+                    options={runModeOptions}
+                    onchange={handleCustomCardChange}
+                    field-level-help="Page open provides an immediate result but evaluates on every visit. User request avoids automatic work but requires a visible Run action."
+                  ></lightning-combobox>
+                  <lightning-combobox
+                    label="Run action"
+                    value={draft.checkSetValues.RunButtonDisplay__c}
+                    data-field="RunButtonDisplay__c"
+                    options={runButtonDisplayOptions}
+                    onchange={handleCustomCardChange}
+                    field-level-help="Label and icon is most discoverable. Hide is valid only for page-open runs and removes the in-card Rerun action."
+                  ></lightning-combobox>
+                  <lightning-input
+                    label="Run label"
+                    value={draft.checkSetValues.RunButtonLabel__c}
+                    data-field="RunButtonLabel__c"
+                    onchange={handleCustomCardChange}
+                    field-level-help="Use a short action phrase. This remains the accessible name in icon-only mode."
+                  ></lightning-input>
+                  <lightning-input
+                    label="Rerun label"
+                    value={draft.checkSetValues.RerunButtonLabel__c}
+                    data-field="RerunButtonLabel__c"
+                    onchange={handleCustomCardChange}
+                    field-level-help="Use a short phrase that makes it clear the result will be refreshed."
+                  ></lightning-input>
+                  <lightning-input
+                    label="Run icon"
+                    value={draft.checkSetValues.RunButtonIcon__c}
+                    data-field="RunButtonIcon__c"
+                    onchange={handleCustomCardChange}
+                    field-level-help="Enter an SLDS icon such as utility:refresh. The same icon is used for Run and Rerun."
+                  ></lightning-input>
+                  <lightning-combobox
+                    label="Reveal results"
+                    value={draft.checkSetValues.CardRevealMode__c}
+                    data-field="CardRevealMode__c"
+                    options={revealModeOptions}
+                    onchange={handleCustomCardChange}
+                    field-level-help="Presentation only. It does not change which Checks run, their order, or their outcomes."
+                  ></lightning-combobox>
+                  <lightning-combobox
+                    label="Found and expected values"
+                    value={draft.checkSetValues.FoundExpectedDisplay__c}
+                    data-field="FoundExpectedDisplay__c"
+                    options={foundExpectedDisplayOptions}
+                    onchange={handleCustomCardChange}
+                    field-level-help="Show only information every card user is allowed to see. A setting cannot show a value the Check did not return."
+                  ></lightning-combobox>
+                  <lightning-combobox
+                    label="Passed checks"
+                    value={draft.checkSetValues.PassedChecksDisplay__c}
+                    data-field="PassedChecksDisplay__c"
+                    options={passedChecksDisplayOptions}
+                    onchange={handleCustomCardChange}
+                    field-level-help="Show count only removes passed rows after resolution while keeping their total in the summary."
+                  ></lightning-combobox>
+                  <lightning-combobox
+                    label="Skipped checks"
+                    value={draft.checkSetValues.SkippedChecksDisplay__c}
+                    data-field="SkippedChecksDisplay__c"
+                    options={skippedChecksDisplayOptions}
+                    onchange={handleCustomCardChange}
+                    field-level-help="A skipped Check may not apply or may have an unmet prerequisite. Count only hides its row while keeping the total."
+                  ></lightning-combobox>
+                  <lightning-combobox
+                    label="Summary position"
+                    value={draft.checkSetValues.SummaryDisplay__c}
+                    data-field="SummaryDisplay__c"
+                    options={summaryDisplayOptions}
+                    onchange={handleCustomCardChange}
+                    field-level-help="Above supports at-a-glance status. Below lets users read the evidence before the totals."
+                  ></lightning-combobox>
+                </div>
+                <template lwc:if={showHiddenManualActionError}>
+                  <div
+                    class="slds-notify slds-notify_alert slds-alert_error slds-m-top_small"
+                    role="alert"
+                  >
+                    <strong>Keep a Run action visible.</strong>&nbsp;This Check
+                    Set waits for the user, so Run action cannot be Hide.
+                  </div>
+                </template>
+                <template lwc:if={showHiddenAutomaticActionWarning}>
+                  <div
+                    class="slds-notify slds-notify_alert slds-alert_warning slds-m-top_small"
+                    role="status"
+                  >
+                    <strong>Users cannot rerun from this card.</strong>&nbsp;The
+                    checks run when the page opens, but hiding the action
+                    removes the in-card Run and Rerun control.
+                  </div>
+                </template>
+              </div>
+            </template>
+          </section>
+
+          <section class="slds-m-top_large" aria-labelledby="checks-heading">
+            <div class="section-heading">
+              <div>
+                <h2 id="checks-heading" class="slds-text-heading_medium">
+                  Checks
+                </h2>
+                <p class="slds-text-color_weak">
+                  Add the conditions that make this record healthy.
+                </p>
+              </div>
+              <lightning-button
+                label="Add Check"
+                icon-name="utility:add"
+                onclick={addCheck}
+              ></lightning-button>
+            </div>
+            <template for:each={decoratedChecks} for:item="check">
+              <article
+                key={check.clientKey}
+                class="check-card slds-m-top_medium"
+              >
+                <div class="section-heading">
+                  <h3 class="slds-text-heading_small">Check {check.number}</h3>
+                  <lightning-button-icon
+                    icon-name="utility:delete"
+                    alternative-text={check.removeAlternativeText}
+                    title={check.removeAlternativeText}
+                    data-index={check.index}
+                    onclick={removeCheck}
+                  ></lightning-button-icon>
+                </div>
+                <div class="form-grid">
+                  <lightning-input
+                    label="What should be true?"
+                    value={check.label}
+                    data-index={check.index}
+                    data-field="label"
+                    onchange={handleCheckChange}
+                    field-level-help="Write a positive, testable statement such as Account has a primary Contact. Users see this in the result row."
+                    required
+                  ></lightning-input>
+                  <lightning-input
+                    label="Qualified API Name"
+                    value={check.qualifiedApiName}
+                    data-index={check.index}
+                    data-field="qualifiedApiName"
+                    onchange={handleCheckChange}
+                    field-level-help="This stable identity is generated from the statement. Change it only for an approved integration or migration requirement."
+                    required
+                  ></lightning-input>
+                  <lightning-combobox
+                    label="Evaluation type"
+                    value={check.evaluationType}
+                    options={evaluationTypeOptions}
+                    data-index={check.index}
+                    data-field="EvaluationType__c"
+                    onchange={handleCheckChange}
+                    field-level-help="Formula checks current-record fields; Related records uses bounded SOQL; Compare two queries evaluates two datasets; Apex uses an existing approved plugin."
+                    required
+                  ></lightning-combobox>
+                  <lightning-combobox
+                    label="Failure severity"
+                    value={check.values.FailureSeverity__c}
+                    options={severityOptions}
+                    data-index={check.index}
+                    data-field="FailureSeverity__c"
+                    onchange={handleCheckChange}
+                    field-level-help="Critical means work must stop or data is unsafe. Warning requires action but permits work to continue. Info suggests an improvement."
+                  ></lightning-combobox>
+                </div>
+
+                <template lwc:if={check.showTypeChangedNotice}>
+                  <div class="guidance" role="status">
+                    Only the selected evaluation type's settings will be saved.
+                    Values entered for other types remain in this browser draft
+                    so you can switch back before saving.
+                  </div>
+                </template>
+
+                <template lwc:if={check.isFormula}>
+                  <div class="guidance">
+                    Complete the sentence. Builder generates the Boolean formula
+                    against the selected record field.
+                  </div>
+                  <div class="form-grid">
+                    <lightning-combobox
+                      label="Field"
+                      value={check.formulaFieldApiName}
+                      options={guidedFieldOptions}
+                      data-index={check.index}
+                      data-field="formulaFieldApiName"
+                      onchange={handleCheckChange}
+                      required
+                    ></lightning-combobox>
+                    <lightning-radio-group
+                      label="Pass when the field"
+                      name={check.clientKey}
+                      value={check.formulaRule}
+                      options={formulaRuleOptions}
+                      type="radio"
+                      data-index={check.index}
+                      data-field="formulaRule"
+                      onchange={handleCheckChange}
+                    ></lightning-radio-group>
+                  </div>
+                  <template lwc:if={fieldError}>
+                    <div
+                      class="slds-text-color_error slds-m-top_x-small"
+                      role="alert"
+                    >
+                      {fieldError}
+                    </div>
+                  </template>
+                  <details class="slds-m-top_small">
+                    <summary>Advanced Formula — reviewed syntax required</summary>
+                    <lightning-textarea
+                      label="Pass condition formula"
+                      value={check.values.PassConditionFormula__c}
+                      data-index={check.index}
+                      data-field="PassConditionFormula__c"
+                      onchange={handleCheckChange}
+                      required
+                    ></lightning-textarea>
+                  </details>
+                </template>
+                <template lwc:if={check.isQuery}>
+                  <div class="guidance">
+                    Choose related records in business terms. Builder generates
+                    a bounded query that passes when at least one related record
+                    exists.
+                  </div>
+                  <lightning-combobox
+                    label="Related records"
+                    value={check.relationshipSelection}
+                    options={relationshipOptions}
+                    data-index={check.index}
+                    data-field="relationshipSelection"
+                    onchange={handleCheckChange}
+                    disabled={isRelationshipLoading}
+                    required
+                  ></lightning-combobox>
+                  <template lwc:if={relationshipError}>
+                    <div
+                      class="slds-text-color_error slds-m-top_x-small"
+                      role="alert"
+                    >
+                      {relationshipError}
+                    </div>
+                  </template>
+                  <details class="slds-m-top_small">
+                    <summary>
+                      Advanced query settings — bounded SOQL required
+                    </summary>
+                    <lightning-textarea
+                      label="Source query"
+                      value={check.values.SourceQuery__c}
+                      data-index={check.index}
+                      data-field="SourceQuery__c"
+                      onchange={handleCheckChange}
+                      required
+                    ></lightning-textarea>
+                    <div class="form-grid">
+                      <lightning-input
+                        label="Source query field"
+                        value={check.values.SourceQueryField__c}
+                        data-index={check.index}
+                        data-field="SourceQueryField__c"
+                        onchange={handleCheckChange}
+                      ></lightning-input>
+                      <lightning-combobox
+                        label="Comparison operator"
+                        value={check.values.ComparisonOperator__c}
+                        options={comparisonOperatorOptions}
+                        data-index={check.index}
+                        data-field="ComparisonOperator__c"
+                        onchange={handleCheckChange}
+                      ></lightning-combobox>
+                      <lightning-combobox
+                        label="Expected value source"
+                        value={check.values.ExpectedValueSource__c}
+                        options={expectedValueSourceOptions}
+                        data-index={check.index}
+                        data-field="ExpectedValueSource__c"
+                        onchange={handleCheckChange}
+                      ></lightning-combobox>
+                      <lightning-input
+                        label="Expected fixed value"
+                        value={check.values.ExpectedFixedValue__c}
+                        data-index={check.index}
+                        data-field="ExpectedFixedValue__c"
+                        onchange={handleCheckChange}
+                      ></lightning-input>
+                    </div>
+                  </details>
+                </template>
+                <template lwc:if={check.isCompare}>
+                  <div class="guidance">
+                    Compare Two Queries is one Check with two datasets; neither
+                    side is versioned independently.
+                  </div>
+                  <lightning-textarea
+                    label="Source query"
+                    value={check.values.SourceQuery__c}
+                    data-index={check.index}
+                    data-field="SourceQuery__c"
+                    onchange={handleCheckChange}
+                    required
+                  ></lightning-textarea>
+                  <lightning-textarea
+                    label="Comparison query"
+                    value={check.values.ComparisonQuery__c}
+                    data-index={check.index}
+                    data-field="ComparisonQuery__c"
+                    onchange={handleCheckChange}
+                    required
+                  ></lightning-textarea>
+                  <div class="form-grid">
+                    <lightning-input
+                      label="Source field"
+                      value={check.values.SourceQueryField__c}
+                      data-index={check.index}
+                      data-field="SourceQueryField__c"
+                      onchange={handleCheckChange}
+                    ></lightning-input>
+                    <lightning-input
+                      label="Comparison field"
+                      value={check.values.ComparisonQueryField__c}
+                      data-index={check.index}
+                      data-field="ComparisonQueryField__c"
+                      onchange={handleCheckChange}
+                    ></lightning-input>
+                    <lightning-combobox
+                      label="Comparison operator"
+                      value={check.values.ComparisonOperator__c}
+                      options={comparisonOperatorOptions}
+                      data-index={check.index}
+                      data-field="ComparisonOperator__c"
+                      onchange={handleCheckChange}
+                    ></lightning-combobox>
+                  </div>
+                </template>
+                <template lwc:if={check.isApex}>
+                  <div class="guidance">
+                    Developer option: select an existing core-compatible plugin.
+                    Builder never authors Apex.
+                  </div>
+                  <div class="form-grid">
+                    <lightning-input
+                      label="Plugin class Qualified API Name"
+                      value={check.values.ApexClass__c}
+                      data-index={check.index}
+                      data-field="ApexClass__c"
+                      onchange={handleCheckChange}
+                      field-level-help="Confirm the exact qualified class name, parameter contract, sharing, security, bulk behavior, and core compatibility with a developer."
+                      required
+                    ></lightning-input>
+                    <lightning-textarea
+                      label="Parameters JSON object"
+                      value={check.values.ApexParametersJson__c}
+                      data-index={check.index}
+                      data-field="ApexParametersJson__c"
+                      onchange={handleCheckChange}
+                    ></lightning-textarea>
+                  </div>
+                </template>
+
+                <lightning-textarea
+                  label="Failure message"
+                  value={check.values.FailureMessage__c}
+                  data-index={check.index}
+                  data-field="FailureMessage__c"
+                  onchange={handleCheckChange}
+                  field-level-help="State what is wrong in plain language. Do not repeat technical Formula or query text."
+                  required
+                ></lightning-textarea>
+                <lightning-textarea
+                  label="How to fix it"
+                  value={check.values.FixMessage__c}
+                  data-index={check.index}
+                  data-field="FixMessage__c"
+                  onchange={handleCheckChange}
+                  field-level-help="Give a concrete next step and name the field, related record, or team that can resolve it. Do not promise edit access."
+                ></lightning-textarea>
+              </article>
+            </template>
+            <div class="step-actions slds-m-top_large">
+              <lightning-button
+                variant="brand"
+                label="Continue to validation"
+                onclick={goToReview}
+              ></lightning-button>
+            </div>
+          </section>
+        </template>
+
+        <template lwc:if={isReviewStep}>
+          <section class="slds-m-top_large" aria-labelledby="review-heading">
+            <h2 id="review-heading" class="slds-text-heading_medium">
+              Validate and review the complete version
+            </h2>
+            <p class="slds-m-vertical_small">
+              Validation always covers the complete Check Set Version. Checks
+              cannot be saved or published independently.
+            </p>
+            <div class="review-panel slds-m-bottom_medium">
+              <h3 class="slds-text-heading_small">Purpose</h3>
+              <dl class="slds-list_horizontal slds-wrap slds-m-top_x-small">
+                <dt class="slds-item_label slds-truncate" title="Check Set">
+                  Check Set
+                </dt>
+                <dd class="slds-item_detail">{draft.checkSetLabel}</dd>
+                <dt class="slds-item_label slds-truncate" title="Target object">
+                  Target object
+                </dt>
+                <dd class="slds-item_detail">{draft.objectApiName}</dd>
+                <dt
+                  class="slds-item_label slds-truncate"
+                  title="Qualified API Name"
+                >
+                  Qualified API Name
+                </dt>
+                <dd class="slds-item_detail">
+                  {draft.checkSetQualifiedApiName}
+                </dd>
+              </dl>
+            </div>
+            <div class="review-panel slds-m-bottom_medium">
+              <h3 class="slds-text-heading_small">Card experience</h3>
+              <p class="slds-m-top_x-small">
+                <strong>{selectedCardExperienceLabel}.</strong>
+                {cardExperienceExplanation}
+              </p>
+              <p class="slds-text-color_weak slds-m-top_x-small">
+                Saving creates an immutable version. It does not publish or
+                activate this Check Set.
+              </p>
+            </div>
+            <div class="review-panel slds-m-bottom_medium">
+              <h3 class="slds-text-heading_small">Checks</h3>
+              <ol class="slds-list_ordered slds-m-top_x-small">
+                <template for:each={reviewCheckSummaries} for:item="check">
+                  <li key={check.key} class="slds-m-bottom_small">
+                    <strong>{check.label}</strong>
+                    <div>{check.evaluationType} · {check.severity}</div>
+                    <div>Failure: {check.failureMessage}</div>
+                    <div>Fix: {check.fixMessage}</div>
+                    <div class="slds-text-color_weak">
+                      Qualified API Name: {check.qualifiedApiName}
+                    </div>
+                  </li>
+                </template>
+              </ol>
+            </div>
+            <template lwc:if={draftChangedAfterValidation}>
+              <div
+                class="slds-notify slds-notify_alert slds-alert_warning slds-m-bottom_medium"
+                role="status"
+              >
+                The design changed after the last validation. Validate the
+                complete version again.
+              </div>
+            </template>
+            <template lwc:if={hasValidationIssues}>
+              <div
+                class="slds-notify slds-notify_alert slds-alert_error"
+                role="alert"
+              >
+                <ul class="slds-list_dotted error-list">
+                  <template
+                    for:each={decoratedValidationIssues}
+                    for:item="issue"
+                  >
+                    <li key={issue.key}>
+                      <strong>{issue.path}</strong>: {issue.userMessage}
+                    </li>
+                  </template>
+                </ul>
+              </div>
+            </template>
+            <details class="slds-m-vertical_medium">
+              <summary>
+                Advanced: exact complete-version metadata JSON — read-only
+              </summary>
+              <pre>{reviewJson}</pre>
+            </details>
+            <div class="step-actions">
+              <lightning-button-group>
+                <lightning-button
+                  label="Refresh status"
+                  icon-name="utility:refresh"
+                  onclick={refreshOperationStatus}
+                  disabled={isWorking}
+                ></lightning-button>
+                <lightning-button
+                  label="Back to design"
+                  onclick={goToDesign}
+                ></lightning-button>
+              </lightning-button-group>
+              <lightning-button
+                label="Validate complete version"
+                onclick={validateVersion}
+                disabled={isWorking}
+                title="Checks the complete metadata contract and current-org references; it does not prove the business rule is correct."
+              ></lightning-button>
+              <lightning-button
+                variant="brand"
+                label="Save validated version"
+                onclick={saveVersion}
+                disabled={saveDisabled}
+                title="Saving records an immutable snapshot. Changes require a new version."
+              ></lightning-button>
+            </div>
+          </section>
+        </template>
+
+        <template lwc:if={isVersionsStep}>
+          <section class="slds-m-top_large" aria-labelledby="versions-heading">
+            <div class="section-heading">
+              <div>
+                <h2 id="versions-heading" class="slds-text-heading_medium">
+                  Publish and monitor
+                </h2>
+                <p class="slds-text-color_weak">
+                  Publication always includes the complete saved Check Set
+                  Version. Publish inactive first so you can verify it before
+                  users depend on it.
+                </p>
+              </div>
+              <lightning-button-group>
+                <lightning-button
+                  label="Refresh status"
+                  icon-name="utility:refresh"
+                  onclick={refreshOperationStatus}
+                  disabled={isWorking}
+                ></lightning-button>
+                <lightning-button
+                  label="Back to design"
+                  onclick={goToDesign}
+                ></lightning-button>
+              </lightning-button-group>
+            </div>
+            <template lwc:if={hasVersions}>
+              <div class="version-list">
+                <template for:each={home.versions} for:item="version">
+                  <article key={version.versionId} class="version-row">
+                    <div>
+                      <strong
+                        >{version.label} — Version
+                        {version.versionNumber}</strong
+                      >
+                      <div>
+                        {version.checkSetQualifiedApiName} · {version.status} ·
+                        {version.checkCount} Checks
+                      </div>
+                    </div>
+                    <lightning-button-group>
+                      <lightning-button
+                        label="Review"
+                        data-version-id={version.versionId}
+                        onclick={reviewSavedVersion}
+                        disabled={isWorking}
+                        title="Compare the fingerprint and complete snapshot with the approved release ticket."
+                      ></lightning-button>
+                      <lightning-button
+                        label="Copy as new draft"
+                        data-version-id={version.versionId}
+                        onclick={cloneSavedVersion}
+                        disabled={isWorking}
+                      ></lightning-button>
+                      <lightning-button
+                        label="Publish inactive"
+                        data-version-id={version.versionId}
+                        onclick={publishVersion}
+                        disabled={isWorking}
+                        title="Recommended first release step: publish the complete version without making it runnable from the record-page card."
+                      ></lightning-button>
+                      <lightning-button
+                        label="Activate"
+                        data-version-id={version.versionId}
+                        onclick={activateVersion}
+                        disabled={isWorking}
+                        title="Make this complete version available after sandbox verification and approval."
+                      ></lightning-button>
+                      <lightning-button
+                        label="Roll back to this version"
+                        data-version-id={version.versionId}
+                        onclick={rollbackVersion}
+                        disabled={isWorking}
+                        title="Republish this previously saved complete version; this is not a partial merge or database undo."
+                      ></lightning-button>
+                    </lightning-button-group>
+                  </article>
+                </template>
+              </div>
+            </template>
+            <template lwc:else>
+              <div class="empty-state slds-m-top_medium">
+                No saved versions yet. Return to Design, add at least one Check,
+                then validate and save.
+              </div>
+            </template>
+
+            <template lwc:if={selectedVersion}>
+              <section
+                class="review-panel slds-m-top_large"
+                aria-labelledby="saved-review-heading"
+              >
+                <h3 id="saved-review-heading" class="slds-text-heading_small">
+                  Version {selectedVersion.versionNumber} review
+                </h3>
+                <p>
+                  Status: {selectedVersion.status} · Fingerprint:
+                  {selectedVersion.fingerprint}
+                </p>
+                <pre>{selectedVersionJson}</pre>
+              </section>
+            </template>
+
+            <template lwc:if={hasOperations}>
+              <section
+                class="slds-m-top_large"
+                aria-labelledby="operations-heading"
+              >
+                <h3 id="operations-heading" class="slds-text-heading_small">
+                  Recent operations
+                </h3>
+                <div class="version-list">
+                  <template
+                    for:each={decoratedOperations}
+                    for:item="operation"
+                  >
+                    <article
+                      key={operation.operationToken}
+                      class="operation-row"
+                    >
+                      <lightning-badge
+                        label={operation.status}
+                      ></lightning-badge>
+                      <div>
+                        <strong>{operation.operationKind}</strong>
+                        <div>{operation.resultSummary}</div>
+                        <div class="slds-text-color_weak slds-m-top_xx-small">
+                          {operation.guidance}
+                        </div>
+                        <div class="slds-text-body_small">
+                          Operation: {operation.operationToken}
+                        </div>
+                        <template lwc:if={operation.metadataRequestId}>
+                          <div class="slds-text-body_small">
+                            Metadata request: {operation.metadataRequestId}
+                          </div>
+                        </template>
+                        <template lwc:if={operation.requestedFingerprint}>
+                          <div class="slds-text-body_small">
+                            Fingerprint: {operation.requestedFingerprint}
+                          </div>
+                        </template>
+                        <div class="slds-text-body_small">
+                          Requested: {operation.requestedAt}
+                        </div>
+                        <template lwc:if={operation.completedAt}>
+                          <div class="slds-text-body_small">
+                            Completed: {operation.completedAt}
+                          </div>
+                        </template>
+                      </div>
+                    </article>
+                  </template>
+                </div>
+              </section>
+            </template>
+          </section>
+        </template>
+      </template>
+    </div>
+  </lightning-card>
+</template>

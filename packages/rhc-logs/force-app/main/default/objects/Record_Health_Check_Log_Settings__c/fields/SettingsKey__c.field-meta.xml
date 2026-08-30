@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>SettingsKey__c</fullName>
+    <description>Fixed unique singleton key used to prevent duplicate settings records.</description>
+    <externalId>true</externalId>
+    <inlineHelpText>Package-managed value; the only supported value is Default.</inlineHelpText>
+    <label>Settings Key</label>
+    <length>40</length>
+    <required>true</required>
+    <type>Text</type>
+    <unique>true</unique>
+</CustomField>

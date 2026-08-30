@@ -1,0 +1,45 @@
+# Subscriber-owned CDC adapter contract
+
+RHC Change Monitor deliberately does not package an object-specific change-event trigger. Salesforce
+binds each trigger to one concrete `*ChangeEvent` type, while subscriber custom objects and CDC
+selection differ by organization. A subscriber adapter is lifecycle-owned source that must be
+reviewed and deployed by the subscribing organization.
+
+## Required trigger shape
+
+An Account adapter contains routing only:
+
+```apex
+trigger RHCAccountChangeMonitor on AccountChangeEvent (after insert) {
+  rhc.RHCChangeMonitorIntake.accept(Trigger.new);
+}
+```
+
+For a custom source object such as `Shipment__c`, bind the trigger to
+`Shipment__ChangeEvent`. Do not copy fields, evaluate values, query records, perform DML, enqueue
+additional work, catch and suppress package exceptions, or invoke core directly from the adapter.
+
+## Deployment prerequisites
+
+Before deploying an adapter:
+
+1. Confirm the source object is supported by Salesforce CDC.
+2. Select the source entity explicitly in Salesforce Setup under Change Data Capture.
+3. Confirm the package has an active policy for the exact durable source API name.
+4. Run the effective-principal probe and verify the core Run custom permission and expected source
+   sharing, CRUD, and FLS behavior.
+5. Deploy the trigger and its organization-owned CDC contract test through the normal lifecycle.
+
+The package validates that every input is a ChangeEvent sObject, its serialized header entity
+matches the concrete event type, stable transaction and sequence identity exist, and every record
+ID is syntactically valid. It ignores all payload values.
+
+## Adapter test expectations
+
+Each subscriber adapter must prove CREATE, matching UPDATE, nonmatching UPDATE, UNDELETE, DELETE,
+bulk delivery, and malformed/wrong-type rejection. Use `Test.enableChangeDataCapture()` and deliver
+the event bus after the source DML. Duplicate replay and gap evidence require the feasibility harness
+because ordinary Apex tests cannot manufacture a genuine redelivery guarantee.
+
+Removing the adapter is a subscriber source change. Uninstalling Change Monitor does not remove the
+trigger and does not disable CDC for the entity.

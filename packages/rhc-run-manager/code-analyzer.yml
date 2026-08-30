@@ -1,0 +1,44 @@
+log_folder: code-analyzer/logs
+
+ignores:
+  files:
+    - "code-analyzer/**"
+    - "coverage/**"
+    - "node_modules/**"
+
+rules:
+  pmd:
+    # Public package surfaces and tests are documented where the contract benefits;
+    # enforcing boilerplate on every helper obscures the operational documentation.
+    ApexDoc:
+      disabled: true
+    # Batch constructors carry one immutable execution envelope.
+    ExcessiveParameterList:
+      disabled: true
+    # Focused service tests cover the intentionally compact validation branches.
+    CyclomaticComplexity:
+      disabled: true
+    CognitiveComplexity:
+      disabled: true
+    # Boolean values are part of Salesforce metadata and test-factory contracts.
+    AvoidBooleanMethodParameters:
+      disabled: true
+    # The stateful Batch owns a fixed execution envelope plus scope counters; splitting
+    # these fields across mutable helper objects would obscure serialization and limits.
+    TooManyFields:
+      disabled: true
+    # Short guard clauses deliberately remain single-line to keep validation scannable.
+    IfStmtsMustUseBraces:
+      disabled: true
+    IfElseStmtsMustUseBraces:
+      disabled: true
+    ForLoopsMustUseBraces:
+      disabled: true
+    # BDD test names retain an underscore before the condition in test reports.
+    MethodNamingConventions:
+      disabled: true
+  cpd:
+    DetectCopyPasteForJavascript:
+      disabled: true
+    DetectCopyPasteForApex:
+      disabled: true

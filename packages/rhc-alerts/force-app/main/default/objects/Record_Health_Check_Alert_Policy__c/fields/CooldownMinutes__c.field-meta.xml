@@ -1,0 +1,2 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata"><fullName>CooldownMinutes__c</fullName><label>Cooldown Minutes</label><description>Minimum minutes between successful deliveries for this policy and checked record.</description><inlineHelpText>Minimum minutes between successful deliveries for this policy and checked record.</inlineHelpText><precision>7</precision><scale>0</scale><type>Number</type></CustomField>

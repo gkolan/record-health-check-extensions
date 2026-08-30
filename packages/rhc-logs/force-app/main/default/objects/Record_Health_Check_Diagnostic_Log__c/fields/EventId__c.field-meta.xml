@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>EventId__c</fullName>
+    <description>Canonical core Event ID used as the durable idempotency key.</description>
+    <externalId>true</externalId>
+    <inlineHelpText>Unique canonical Event ID from Record Health Check core.</inlineHelpText>
+    <label>Event ID</label>
+    <length>80</length>
+    <required>true</required>
+    <type>Text</type>
+    <unique>true</unique>
+</CustomField>

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Input_Contract_Version__c</fullName>
+    <description>Pins the versioned Flow input interface.</description>
+    <inlineHelpText>Use 1.0 for the Day-1 contract.</inlineHelpText>
+    <label>Input Contract Version</label>
+    <length>10</length>
+    <type>Text</type>
+</CustomField>

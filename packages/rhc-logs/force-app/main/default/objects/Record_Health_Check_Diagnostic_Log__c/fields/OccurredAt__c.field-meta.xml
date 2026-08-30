@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>OccurredAt__c</fullName>
+    <description>Canonical date and time when core created the diagnostic event.</description>
+    <inlineHelpText>Event occurrence time; retention is calculated from this value.</inlineHelpText>
+    <label>Occurred At</label>
+    <required>true</required>
+    <type>DateTime</type>
+</CustomField>

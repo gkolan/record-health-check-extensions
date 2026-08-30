@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Route__c</fullName>
+    <deleteConstraint>Restrict</deleteConstraint>
+    <description>Route that accepted the canonical event.</description>
+    <label>Route</label>
+    <referenceTo>Record_Health_Check_Integration_Route__c</referenceTo>
+    <relationshipLabel>Deliveries</relationshipLabel>
+    <relationshipName>Deliveries</relationshipName>
+    <required>true</required>
+    <type>Lookup</type>
+</CustomField>

@@ -1,0 +1,2 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata"><fullName>TransactionKey__c</fullName><label>Transaction Key</label><description>Bounded CDC transaction correlation.</description><inlineHelpText>Bounded CDC transaction correlation.</inlineHelpText><length>80</length><type>Text</type></CustomField>

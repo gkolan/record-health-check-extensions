@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <classAccesses><apexClass>RHCReportsAggregationService</apexClass><enabled>true</enabled></classAccesses>
+    <classAccesses><apexClass>RHCReportsCoverageController</apexClass><enabled>true</enabled></classAccesses>
+    <classAccesses><apexClass>RHCReportsDailyAggregationQueueable</apexClass><enabled>true</enabled></classAccesses>
+    <classAccesses><apexClass>RHCReportsIngestionService</apexClass><enabled>true</enabled></classAccesses>
+    <classAccesses><apexClass>RHCReportsMaintenanceScheduled</apexClass><enabled>true</enabled></classAccesses>
+    <classAccesses><apexClass>RHCReportsRetentionBatch</apexClass><enabled>true</enabled></classAccesses>
+    <classAccesses><apexClass>RHCReportsSetupController</apexClass><enabled>true</enabled></classAccesses>
+    <customPermissions><enabled>true</enabled><name>Manage_RHC_Reports</name></customPermissions>
+    <description>Configure RHC Reports and view all package-owned analytical facts, snapshots, reports, and dashboards. No restricted diagnostic fields exist in this package.</description>
+    <hasActivationRequired>false</hasActivationRequired>
+    <label>RHC Reports Admin</label>
+    <objectPermissions>
+        <allowCreate>false</allowCreate>
+        <allowDelete>false</allowDelete>
+        <allowEdit>false</allowEdit>
+        <allowRead>true</allowRead>
+        <modifyAllRecords>false</modifyAllRecords>
+        <object>Record_Health_Check_Report_Run__c</object>
+        <viewAllFields>true</viewAllFields>
+        <viewAllRecords>true</viewAllRecords>
+    </objectPermissions>
+    <objectPermissions>
+        <allowCreate>false</allowCreate>
+        <allowDelete>false</allowDelete>
+        <allowEdit>false</allowEdit>
+        <allowRead>true</allowRead>
+        <modifyAllRecords>false</modifyAllRecords>
+        <object>Record_Health_Check_Report_Result__c</object>
+        <viewAllFields>true</viewAllFields>
+        <viewAllRecords>true</viewAllRecords>
+    </objectPermissions>
+    <objectPermissions>
+        <allowCreate>false</allowCreate>
+        <allowDelete>false</allowDelete>
+        <allowEdit>false</allowEdit>
+        <allowRead>true</allowRead>
+        <modifyAllRecords>false</modifyAllRecords>
+        <object>Record_Health_Check_Daily_Snapshot__c</object>
+        <viewAllFields>true</viewAllFields>
+        <viewAllRecords>true</viewAllRecords>
+    </objectPermissions>
+    <tabSettings><tab>RHC_Reporting_Coverage</tab><visibility>Visible</visibility></tabSettings>
+    <tabSettings><tab>RHC_Reports_Setup</tab><visibility>Visible</visibility></tabSettings>
+    <userPermissions><enabled>true</enabled><name>CreateCustomizeReports</name></userPermissions>
+    <userPermissions><enabled>true</enabled><name>RunReports</name></userPermissions>
+</PermissionSet>

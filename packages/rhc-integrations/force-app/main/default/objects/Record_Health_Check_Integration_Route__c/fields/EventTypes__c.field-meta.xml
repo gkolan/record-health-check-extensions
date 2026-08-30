@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>EventTypes__c</fullName>
+    <description>Canonical core event types eligible for this route.</description>
+    <label>Event Types</label>
+    <required>true</required>
+    <type>MultiselectPicklist</type>
+    <valueSet>
+        <restricted>true</restricted>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value><fullName>RUN</fullName><default>false</default><label>Run</label></value>
+            <value><fullName>RESULT</fullName><default>true</default><label>Result</label></value>
+            <value><fullName>LOG</fullName><default>false</default><label>Log</label></value>
+        </valueSetDefinition>
+    </valueSet>
+    <visibleLines>3</visibleLines>
+</CustomField>

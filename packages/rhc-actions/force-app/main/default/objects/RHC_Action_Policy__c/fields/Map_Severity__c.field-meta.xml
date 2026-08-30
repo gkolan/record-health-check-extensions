@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Map_Severity__c</fullName>
+    <description>Maps severity into rhcSeverityV1.</description>
+    <defaultValue>false</defaultValue>
+    <inlineHelpText
+  >Select only when the Flow declares the matching Text input.</inlineHelpText>
+    <label>Map Severity</label>
+    <type>Checkbox</type>
+</CustomField>

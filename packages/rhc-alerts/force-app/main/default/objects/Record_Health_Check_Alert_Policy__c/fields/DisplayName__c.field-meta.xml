@@ -1,0 +1,2 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata"><fullName>DisplayName__c</fullName><label>Name</label><description>Administrator-facing policy name.</description><inlineHelpText>Administrator-facing policy name.</inlineHelpText><length>80</length><type>Text</type></CustomField>

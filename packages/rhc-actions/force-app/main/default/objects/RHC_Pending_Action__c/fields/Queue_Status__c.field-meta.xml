@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Queue_Status__c</fullName>
+    <description>Tracks the guarded action lifecycle.</description>
+    <inlineHelpText
+  >Only pending-review actions can be manually approved.</inlineHelpText>
+    <label>Queue Status</label>
+    <type>Picklist</type>
+    <valueSet>
+        <restricted>true</restricted>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>PENDING_REVIEW</fullName>
+                <default>true</default>
+                <label>PENDING REVIEW</label>
+            </value>
+            <value>
+                <fullName>QUEUED</fullName>
+                <default>false</default>
+                <label>QUEUED</label>
+            </value>
+            <value>
+                <fullName>RUNNING</fullName>
+                <default>false</default>
+                <label>RUNNING</label>
+            </value>
+            <value>
+                <fullName>SUCCEEDED</fullName>
+                <default>false</default>
+                <label>SUCCEEDED</label>
+            </value>
+            <value>
+                <fullName>RETRY_WAIT</fullName>
+                <default>false</default>
+                <label>RETRY WAIT</label>
+            </value>
+            <value>
+                <fullName>FAILED</fullName>
+                <default>false</default>
+                <label>FAILED</label>
+            </value>
+            <value>
+                <fullName>SUPPRESSED</fullName>
+                <default>false</default>
+                <label>SUPPRESSED</label>
+            </value>
+            <value>
+                <fullName>REJECTED</fullName>
+                <default>false</default>
+                <label>REJECTED</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

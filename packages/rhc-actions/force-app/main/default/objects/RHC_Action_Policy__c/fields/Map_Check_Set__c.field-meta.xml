@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Map_Check_Set__c</fullName>
+    <description
+  >Maps the Check Set Qualified API Name into rhcCheckSetQualifiedApiNameV1.</description>
+    <defaultValue>false</defaultValue>
+    <inlineHelpText
+  >Select only when the Flow declares the matching Text input.</inlineHelpText>
+    <label>Map Check Set</label>
+    <type>Checkbox</type>
+</CustomField>

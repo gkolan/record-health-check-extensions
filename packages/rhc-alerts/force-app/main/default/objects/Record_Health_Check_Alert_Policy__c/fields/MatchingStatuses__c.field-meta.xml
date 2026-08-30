@@ -1,0 +1,2 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata"><fullName>MatchingStatuses__c</fullName><label>Matching Statuses</label><description>Semicolon-delimited canonical statuses selected by the administrator.</description><inlineHelpText>Semicolon-delimited canonical statuses selected by the administrator.</inlineHelpText><length>255</length><type>Text</type></CustomField>

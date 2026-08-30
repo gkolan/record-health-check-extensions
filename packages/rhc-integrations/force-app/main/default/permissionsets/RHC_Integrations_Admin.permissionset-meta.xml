@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <classAccesses><apexClass>RHCIntegrationDeadLetterController</apexClass><enabled>true</enabled></classAccesses>
+    <classAccesses><apexClass>RHCIntegrationDeliveryQueueable</apexClass><enabled>true</enabled></classAccesses>
+    <classAccesses><apexClass>RHCIntegrationEventDTO</apexClass><enabled>true</enabled></classAccesses>
+    <classAccesses><apexClass>RHCIntegrationEventHandler</apexClass><enabled>true</enabled></classAccesses>
+    <classAccesses><apexClass>RHCIntegrationPayloadBuilder</apexClass><enabled>true</enabled></classAccesses>
+    <classAccesses><apexClass>RHCIntegrationRouteSelector</apexClass><enabled>true</enabled></classAccesses>
+    <customPermissions><enabled>true</enabled><name>RHC_Integration_Replay</name></customPermissions>
+    <description>Configure routes, inspect delivery operations, and replay dead letters after correcting external configuration. Named Credential principals remain administrator-owned and separately assigned.</description>
+    <applicationVisibilities><application>RHC_Integrations</application><visible>true</visible></applicationVisibilities>
+    <fieldPermissions><editable>true</editable><field>Record_Health_Check_Integration_Route__c.Active__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>true</editable><field>Record_Health_Check_Integration_Route__c.MinimumSeverity__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>true</editable><field>Record_Health_Check_Integration_Delivery__c.Payload__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>true</editable><field>Record_Health_Check_Integration_Delivery__c.AttemptCount__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>true</editable><field>Record_Health_Check_Integration_Delivery__c.ReplayCount__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>true</editable><field>Record_Health_Check_Integration_Delivery__c.LastAttemptAt__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>true</editable><field>Record_Health_Check_Integration_Delivery__c.NextAttemptAt__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>true</editable><field>Record_Health_Check_Integration_Delivery__c.CompletedAt__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>true</editable><field>Record_Health_Check_Integration_Delivery__c.HttpStatus__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>true</editable><field>Record_Health_Check_Integration_Delivery__c.HttpClassification__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>true</editable><field>Record_Health_Check_Integration_Delivery__c.ErrorCode__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>true</editable><field>Record_Health_Check_Integration_Delivery__c.ErrorDetail__c</field><readable>true</readable></fieldPermissions>
+    <hasActivationRequired>false</hasActivationRequired>
+    <label>RHC Integrations Admin</label>
+    <objectPermissions><allowCreate>true</allowCreate><allowDelete>true</allowDelete><allowEdit>true</allowEdit><allowRead>true</allowRead><modifyAllRecords>true</modifyAllRecords><object>Record_Health_Check_Integration_Route__c</object><viewAllRecords>true</viewAllRecords></objectPermissions>
+    <objectPermissions><allowCreate>true</allowCreate><allowDelete>true</allowDelete><allowEdit>true</allowEdit><allowRead>true</allowRead><modifyAllRecords>true</modifyAllRecords><object>Record_Health_Check_Integration_Delivery__c</object><viewAllRecords>true</viewAllRecords></objectPermissions>
+    <tabSettings><tab>Record_Health_Check_Integration_Route__c</tab><visibility>Visible</visibility></tabSettings>
+    <tabSettings><tab>RHC_Integration_Dead_Letters</tab><visibility>Visible</visibility></tabSettings>
+</PermissionSet>

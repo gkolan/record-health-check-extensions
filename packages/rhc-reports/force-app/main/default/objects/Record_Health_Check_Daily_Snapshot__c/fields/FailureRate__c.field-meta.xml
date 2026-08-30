@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>FailureRate__c</fullName>
+    <formula>IF((PassedCount__c + FailedCount__c + SkippedCount__c + UnableCount__c + SystemErrorCount__c) = 0, 0, (FailedCount__c + UnableCount__c + SystemErrorCount__c) / (PassedCount__c + FailedCount__c + SkippedCount__c + UnableCount__c + SystemErrorCount__c))</formula>
+    <formulaTreatBlanksAs>BlankAsZero</formulaTreatBlanksAs>
+    <label>Failure Rate</label>
+    <precision>18</precision>
+    <scale>4</scale>
+    <type>Number</type>
+</CustomField>

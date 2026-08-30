@@ -1,0 +1,68 @@
+name: RHC Actions Salesforce gate
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: rhc-actions-salesforce-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check-dev-hub-secret:
+    runs-on: ubuntu-latest
+    outputs:
+      has-secret: ${{ steps.check.outputs.has-secret }}
+    steps:
+      - id: check
+        env:
+          SFDX_AUTH_URL: ${{ secrets.SFDX_AUTH_URL }}
+        run: |
+          if [ -z "${SFDX_AUTH_URL}" ]; then
+            echo "::warning::SFDX_AUTH_URL is not configured; Actions org validation cannot run."
+            echo "has-secret=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "has-secret=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  actions-source-tests:
+    needs: check-dev-hub-secret
+    if: needs.check-dev-hub-secret.outputs.has-secret == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          package-manager-cache: false
+      - name: Install pinned Salesforce CLI
+        run: npm install --global @salesforce/cli@2.149.9
+      - name: Authenticate Dev Hub
+        env:
+          SFDX_AUTH_URL: ${{ secrets.SFDX_AUTH_URL }}
+        run: echo "$SFDX_AUTH_URL" | sf org login sfdx-url --sfdx-url-stdin --alias devhub --set-default-dev-hub
+      - name: Create disposable namespaced scratch org
+        working-directory: packages/rhc-actions
+        run: sf org create scratch --definition-file config/project-scratch-def.json --alias rhc-actions-ci --set-default --duration-days 1 --wait 15
+      - name: Install pinned core dependency
+        run: sf package install --package 04tak000000cZBFAA2 --target-org rhc-actions-ci --wait 30 --publish-wait 10 --no-prompt
+      - name: Dry-run Actions source compilation
+        working-directory: packages/rhc-actions
+        run: sf project deploy start --source-dir force-app --target-org rhc-actions-ci --test-level NoTestRun --dry-run --wait 30
+      - name: Deploy Actions source
+        working-directory: packages/rhc-actions
+        run: sf project deploy start --source-dir force-app --target-org rhc-actions-ci --test-level NoTestRun --wait 30
+      - name: Run RHC Actions Apex tests with package coverage
+        run: sf apex run test --target-org rhc-actions-ci --class-names RHCActionPolicyServiceTest,RHCActionCaptureServiceTest,RHCActionExecutionServiceTest,RHCActionReviewControllerTest --code-coverage --wait 30 --result-format human
+      - name: Delete disposable scratch org
+        if: always()
+        continue-on-error: true
+        run: |
+          if command -v sf >/dev/null 2>&1 && sf org display --target-org rhc-actions-ci >/dev/null 2>&1; then
+            sf org delete scratch --target-org rhc-actions-ci --no-prompt
+          fi

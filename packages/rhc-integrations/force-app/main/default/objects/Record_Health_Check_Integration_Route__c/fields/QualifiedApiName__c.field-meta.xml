@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>QualifiedApiName__c</fullName>
+    <description>Exact Qualified API Name copied from core configuration.</description>
+    <label>Qualified API Name</label>
+    <length>120</length>
+    <required>true</required>
+    <trackHistory>true</trackHistory>
+    <type>Text</type>
+</CustomField>

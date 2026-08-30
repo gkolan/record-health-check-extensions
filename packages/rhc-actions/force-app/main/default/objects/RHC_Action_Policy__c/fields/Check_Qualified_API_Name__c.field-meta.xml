@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Check_Qualified_API_Name__c</fullName>
+    <description>Matches the exact core Check identity.</description>
+    <inlineHelpText
+  >Enter the exact qualified API name, such as Account_Has_Primary_Contact.</inlineHelpText>
+    <label>Check Qualified API Name</label>
+    <length>80</length>
+    <type>Text</type>
+</CustomField>

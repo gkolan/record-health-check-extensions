@@ -1,0 +1,2 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata"><fullName>BatchSize__c</fullName><label>Batch Size</label><description>Batch execute scope from 1 through 200.</description><inlineHelpText>Batch execute scope from 1 through 200.</inlineHelpText><precision>3</precision><scale>0</scale><type>Number</type></CustomField>

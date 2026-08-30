@@ -1,0 +1,45 @@
+<template>
+  <lightning-card
+    title="RHC Alerts delivery history"
+    icon-name="utility:notification"
+  >
+    <lightning-button
+      disabled={loading}
+      slot="actions"
+      label="Refresh"
+      onclick={refresh}
+    ></lightning-button>
+    <template lwc:if={loading}
+      ><lightning-spinner
+        alternative-text="Loading delivery history"
+      ></lightning-spinner
+    ></template>
+    <div class="slds-var-p-around_medium">
+      <p class="slds-var-m-bottom_medium">
+        Operational evidence only. Restricted values, raw payloads, and stack
+        traces are never stored here.
+      </p>
+      <template lwc:if={errorMessage}
+        ><div
+          class="slds-notify slds-notify_alert slds-alert_error"
+          role="alert"
+        >
+          {errorMessage}
+        </div></template
+      >
+      <template lwc:if={isEmpty}
+        ><div class="slds-illustration slds-illustration_small" role="status">
+          <p>No delivery attempts yet.</p>
+        </div></template
+      >
+      <template lwc:else
+        ><lightning-datatable
+          key-field="Id"
+          data={deliveries}
+          columns={columns}
+          hide-checkbox-column
+        ></lightning-datatable
+      ></template>
+    </div>
+  </lightning-card>
+</template>

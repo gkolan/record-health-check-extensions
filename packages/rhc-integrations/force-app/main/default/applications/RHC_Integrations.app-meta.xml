@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomApplication xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>Configure secure outbound routes and operate the bounded dead-letter queue.</description>
+    <formFactors>Large</formFactors>
+    <isNavAutoTempTabsDisabled>false</isNavAutoTempTabsDisabled>
+    <isNavPersonalizationDisabled>true</isNavPersonalizationDisabled>
+    <label>RHC Integrations</label>
+    <navType>Standard</navType>
+    <tabs>Record_Health_Check_Integration_Route__c</tabs>
+    <tabs>RHC_Integration_Dead_Letters</tabs>
+    <uiType>Lightning</uiType>
+</CustomApplication>

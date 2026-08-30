@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ReportType xmlns="http://soap.sforce.com/2006/04/metadata">
+    <baseObject>Record_Health_Check_Daily_Snapshot__c</baseObject>
+    <category>other</category>
+    <deployed>true</deployed>
+    <description>Daily run and result aggregates assigned in an explicit reporting time zone.</description>
+    <label>RHC Daily Snapshots</label>
+    <sections>
+        <columns><checkedByDefault>true</checkedByDefault><field>Name</field><table>Record_Health_Check_Daily_Snapshot__c</table></columns>
+        <columns><checkedByDefault>true</checkedByDefault><field>SnapshotDate__c</field><table>Record_Health_Check_Daily_Snapshot__c</table></columns>
+        <columns><checkedByDefault>true</checkedByDefault><field>AggregationTimeZone__c</field><table>Record_Health_Check_Daily_Snapshot__c</table></columns>
+        <columns><checkedByDefault>true</checkedByDefault><field>Grain__c</field><table>Record_Health_Check_Daily_Snapshot__c</table></columns>
+        <columns><checkedByDefault>true</checkedByDefault><field>CheckSetQualifiedApiName__c</field><table>Record_Health_Check_Daily_Snapshot__c</table></columns>
+        <columns><checkedByDefault>true</checkedByDefault><field>CheckQualifiedApiName__c</field><table>Record_Health_Check_Daily_Snapshot__c</table></columns>
+        <columns><checkedByDefault>true</checkedByDefault><field>Status__c</field><table>Record_Health_Check_Daily_Snapshot__c</table></columns>
+        <columns><checkedByDefault>true</checkedByDefault><field>Severity__c</field><table>Record_Health_Check_Daily_Snapshot__c</table></columns>
+        <columns><checkedByDefault>true</checkedByDefault><field>Source__c</field><table>Record_Health_Check_Daily_Snapshot__c</table></columns>
+        <columns><checkedByDefault>true</checkedByDefault><field>RunCount__c</field><table>Record_Health_Check_Daily_Snapshot__c</table></columns>
+        <columns><checkedByDefault>true</checkedByDefault><field>ResultCount__c</field><table>Record_Health_Check_Daily_Snapshot__c</table></columns>
+        <columns><checkedByDefault>true</checkedByDefault><field>RecordCount__c</field><table>Record_Health_Check_Daily_Snapshot__c</table></columns>
+        <columns><checkedByDefault>true</checkedByDefault><field>PassedCount__c</field><table>Record_Health_Check_Daily_Snapshot__c</table></columns>
+        <columns><checkedByDefault>true</checkedByDefault><field>FailedCount__c</field><table>Record_Health_Check_Daily_Snapshot__c</table></columns>
+        <columns><checkedByDefault>true</checkedByDefault><field>SkippedCount__c</field><table>Record_Health_Check_Daily_Snapshot__c</table></columns>
+        <columns><checkedByDefault>true</checkedByDefault><field>UnableCount__c</field><table>Record_Health_Check_Daily_Snapshot__c</table></columns>
+        <columns><checkedByDefault>true</checkedByDefault><field>SystemErrorCount__c</field><table>Record_Health_Check_Daily_Snapshot__c</table></columns>
+        <columns><checkedByDefault>true</checkedByDefault><field>RecurringFailureCount__c</field><table>Record_Health_Check_Daily_Snapshot__c</table></columns>
+        <columns><checkedByDefault>true</checkedByDefault><field>RecoveryCount__c</field><table>Record_Health_Check_Daily_Snapshot__c</table></columns>
+        <columns><checkedByDefault>true</checkedByDefault><field>FailureRate__c</field><table>Record_Health_Check_Daily_Snapshot__c</table></columns>
+        <columns><checkedByDefault>true</checkedByDefault><field>RecoveryRate__c</field><table>Record_Health_Check_Daily_Snapshot__c</table></columns>
+        <masterLabel>RHC Daily Snapshots</masterLabel>
+    </sections>
+</ReportType>

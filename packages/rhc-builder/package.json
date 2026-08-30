@@ -1,0 +1,14 @@
+{
+  "name": "@record-health-check/rhc-builder",
+  "version": "0.2.0",
+  "license": "Apache-2.0",
+  "private": true,
+  "scripts": {
+    "test": "sfdx-lwc-jest",
+    "test:coverage": "sfdx-lwc-jest --coverage -- --no-cache",
+    "test:ci": "sfdx-lwc-jest -- --runInBand"
+  },
+  "devDependencies": {
+    "@salesforce/sfdx-lwc-jest": "^8.0.0"
+  }
+}

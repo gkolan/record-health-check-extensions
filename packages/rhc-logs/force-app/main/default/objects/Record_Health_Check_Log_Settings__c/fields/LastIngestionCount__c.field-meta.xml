@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>LastIngestionCount__c</fullName>
+    <defaultValue>0</defaultValue>
+    <description>Number of logs retained in the most recent ingestion transaction.</description>
+    <inlineHelpText>Operational snapshot, not a lifetime total.</inlineHelpText>
+    <label>Last Ingestion Count</label>
+    <precision>5</precision>
+    <scale>0</scale>
+    <type>Number</type>
+</CustomField>

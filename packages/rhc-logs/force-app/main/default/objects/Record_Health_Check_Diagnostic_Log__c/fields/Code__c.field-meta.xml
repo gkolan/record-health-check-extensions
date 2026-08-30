@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Code__c</fullName>
+    <description>Technical diagnostic code from core; not a stable business reason code.</description>
+    <inlineHelpText>Use for troubleshooting and route unknown values to investigation.</inlineHelpText>
+    <label>Code</label>
+    <length>120</length>
+    <type>Text</type>
+</CustomField>

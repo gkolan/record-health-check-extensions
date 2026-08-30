@@ -1,0 +1,2 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata"><fullName>RecipientLabel__c</fullName><label>Recipient</label><description>Non-authoritative recipient label shown in administration views.</description><inlineHelpText>Non-authoritative recipient label shown in administration views.</inlineHelpText><length>255</length><type>Text</type></CustomField>

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Cooldown_Minutes__c</fullName>
+    <description
+  >Blocks repeated execution for the same policy and record.</description>
+    <defaultValue>60</defaultValue>
+    <inlineHelpText
+  >Use at least one minute to prevent evaluate-correct loops.</inlineHelpText>
+    <label>Cooldown Minutes</label>
+    <precision>18</precision>
+    <scale>0</scale>
+    <type>Number</type>
+</CustomField>

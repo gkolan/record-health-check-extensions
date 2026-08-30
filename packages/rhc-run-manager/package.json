@@ -1,0 +1,14 @@
+{
+  "name": "rhc-run-manager",
+  "version": "0.1.0",
+  "license": "Apache-2.0",
+  "private": true,
+  "scripts": {
+    "metadata:check": "node generate_metadata.mjs --check",
+    "test": "sfdx-lwc-jest -- --runInBand",
+    "test:coverage": "sfdx-lwc-jest --coverage -- --no-cache"
+  },
+  "devDependencies": {
+    "@salesforce/sfdx-lwc-jest": "^8.0.0"
+  }
+}

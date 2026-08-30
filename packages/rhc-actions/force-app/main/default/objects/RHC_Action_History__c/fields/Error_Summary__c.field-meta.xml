@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Error_Summary__c</fullName>
+    <description>Stores a sanitized bounded failure explanation.</description>
+    <inlineHelpText
+  >This field never stores stack traces, raw payloads, or unrestricted Flow output.</inlineHelpText>
+    <label>Error Summary</label>
+    <type>TextArea</type>
+</CustomField>

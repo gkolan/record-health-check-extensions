@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<LightningComponentBundle xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiVersion>66.0</apiVersion>
+    <description>Security-enforced review and filtering for retained RHC diagnostic Logs.</description>
+    <isExposed>true</isExposed>
+    <masterLabel>RHC Logs Review</masterLabel>
+    <targets><target>lightning__Tab</target><target>lightning__AppPage</target></targets>
+</LightningComponentBundle>

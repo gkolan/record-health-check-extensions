@@ -1,0 +1,2 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata"><fullName>RecipientCount__c</fullName><label>Recipient Count</label><description>Resolved human recipients for the attempt.</description><inlineHelpText>Resolved human recipients for the attempt.</inlineHelpText><precision>5</precision><scale>0</scale><type>Number</type></CustomField>

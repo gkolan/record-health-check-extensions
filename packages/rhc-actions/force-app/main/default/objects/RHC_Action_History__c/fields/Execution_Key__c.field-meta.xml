@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Execution_Key__c</fullName>
+    <description>Uniquely identifies a pending action attempt.</description>
+    <externalId>true</externalId>
+    <inlineHelpText
+  >System managed; prevents duplicate history writes.</inlineHelpText>
+    <label>Execution Key</label>
+    <length>255</length>
+    <type>Text</type>
+    <unique>true</unique>
+</CustomField>

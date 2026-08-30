@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <deploymentStatus>Deployed</deploymentStatus>
+    <description
+  >The Corrective Action Policy object defines approved Check outcome matches, same-org autolaunched Flow contracts, manual or explicitly authorized automatic execution, cooldowns, retries, and allow-listed inputs. Commonly used to govern auditable data stewardship corrections.</description>
+    <enableHistory>true</enableHistory>
+    <enableReports>true</enableReports>
+    <enableSearch>true</enableSearch>
+    <label>Corrective Action Policy</label>
+    <nameField>
+        <displayFormat>RHC-POL-{000000}</displayFormat>
+        <label>Corrective Action Policy Number</label>
+        <startingNumber>1</startingNumber>
+        <type>AutoNumber</type>
+    </nameField>
+    <pluralLabel>Corrective Action Policies</pluralLabel>
+    <sharingModel>Private</sharingModel>
+    <visibility>Public</visibility>
+</CustomObject>

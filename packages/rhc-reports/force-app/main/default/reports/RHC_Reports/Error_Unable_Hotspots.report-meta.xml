@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Report xmlns="http://soap.sforce.com/2006/04/metadata">
+    <chart>
+        <backgroundColor1>#FFFFFF</backgroundColor1>
+        <backgroundColor2>#FFFFFF</backgroundColor2>
+        <backgroundFadeDir>Diagonal</backgroundFadeDir>
+        <chartSummaries><aggregate>Sum</aggregate><axisBinding>y</axisBinding><column>Record_Health_Check_Daily_Snapshot__c$ResultCount__c</column></chartSummaries>
+        <chartType>VerticalColumn</chartType>
+        <groupingColumn>Record_Health_Check_Daily_Snapshot__c$CheckQualifiedApiName__c</groupingColumn>
+        <location>CHART_TOP</location>
+        <size>Medium</size>
+        <summaryAxisRange>Auto</summaryAxisRange>
+        <textColor>#000000</textColor><textSize>12</textSize><titleColor>#000000</titleColor><titleSize>14</titleSize>
+    </chart>
+    <columns><field>Record_Health_Check_Daily_Snapshot__c$CheckSetQualifiedApiName__c</field></columns>
+    <columns><field>Record_Health_Check_Daily_Snapshot__c$Severity__c</field></columns>
+    <columns><aggregateTypes>Sum</aggregateTypes><field>Record_Health_Check_Daily_Snapshot__c$ResultCount__c</field></columns>
+    <filter>
+        <booleanFilter>1 AND (2 OR 3)</booleanFilter>
+        <criteriaItems><column>Record_Health_Check_Daily_Snapshot__c$Grain__c</column><operator>equals</operator><value>RESULT</value></criteriaItems>
+        <criteriaItems><column>Record_Health_Check_Daily_Snapshot__c$Status__c</column><operator>equals</operator><value>ERROR</value></criteriaItems>
+        <criteriaItems><column>Record_Health_Check_Daily_Snapshot__c$Status__c</column><operator>equals</operator><value>UNABLE_TO_EVALUATE</value></criteriaItems>
+    </filter>
+    <groupingsDown><field>Record_Health_Check_Daily_Snapshot__c$CheckQualifiedApiName__c</field><sortOrder>Asc</sortOrder></groupingsDown>
+    <description>ERROR and UNABLE_TO_EVALUATE volume by Check.</description>
+    <format>Matrix</format>
+    <groupingsAcross><field>Record_Health_Check_Daily_Snapshot__c$Status__c</field><sortOrder>Asc</sortOrder></groupingsAcross>
+    <name>Error and Unable Hotspots</name>
+    <reportType>RHC_Daily_Snapshots__c</reportType>
+    <scope>organization</scope>
+    <showDetails>false</showDetails>
+    <showGrandTotal>true</showGrandTotal>
+    <showSubTotals>true</showSubTotals>
+</Report>

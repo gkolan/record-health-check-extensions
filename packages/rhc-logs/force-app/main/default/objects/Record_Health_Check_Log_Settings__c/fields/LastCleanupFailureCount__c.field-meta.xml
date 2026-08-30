@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>LastCleanupFailureCount__c</fullName>
+    <defaultValue>0</defaultValue>
+    <description>Number of Log deletions that failed in the most recent cleanup attempt.</description>
+    <inlineHelpText>Partial failures remain eligible for retry.</inlineHelpText>
+    <label>Last Cleanup Failure Count</label>
+    <precision>5</precision>
+    <scale>0</scale>
+    <type>Number</type>
+</CustomField>

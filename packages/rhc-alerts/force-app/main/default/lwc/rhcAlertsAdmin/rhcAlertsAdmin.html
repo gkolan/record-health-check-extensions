@@ -1,0 +1,198 @@
+<template>
+  <lightning-card
+    title="RHC Alerts administration"
+    icon-name="utility:notification"
+  >
+    <template lwc:if={loading}
+      ><lightning-spinner
+        alternative-text="Loading RHC Alerts"
+      ></lightning-spinner
+    ></template>
+    <div class="slds-var-p-around_medium">
+      <p class="slds-text-body_regular">
+        Create human-only alert policies from exact core identities. RHC Alerts
+        never changes checked records or stores result payloads.
+      </p>
+      <template lwc:if={limits}>
+        <div
+          class="slds-notify slds-notify_alert slds-alert_warning slds-var-m-vertical_medium"
+          role="status"
+        >
+          <span class="slds-assistive-text">Limits</span>
+          Custom notifications: {limits.customNotificationRecipientsPerSend}
+          recipients per send. Email: {limits.emailRecipientsPerAttempt}
+          recipients per attempt. Retries: {limits.maxAttempts}. {limits.note}
+        </div>
+      </template>
+      <div class="slds-grid slds-wrap slds-gutters">
+        <div class="slds-col slds-size_1-of-1 slds-large-size_1-of-2">
+          <lightning-input
+            disabled={loading}
+            required
+            label="Policy name"
+            data-field="DisplayName__c"
+            value={policy.DisplayName__c}
+            onchange={handleChange}
+          ></lightning-input>
+        </div>
+        <div
+          class="slds-col slds-size_1-of-1 slds-large-size_1-of-2 slds-var-p-top_large"
+        >
+          <lightning-input
+            disabled={loading}
+            type="toggle"
+            label="Active"
+            data-field="Active__c"
+            checked={policy.Active__c}
+            onchange={handleChange}
+          ></lightning-input>
+        </div>
+        <div class="slds-col slds-size_1-of-1 slds-large-size_1-of-2">
+          <lightning-combobox
+            disabled={loading}
+            required
+            label="Selection type"
+            data-field="SelectionType__c"
+            value={policy.SelectionType__c}
+            options={selectionTypes}
+            onchange={handleSelectionType}
+          ></lightning-combobox>
+        </div>
+        <div class="slds-col slds-size_1-of-1 slds-large-size_1-of-2">
+          <lightning-combobox
+            disabled={loading}
+            required
+            label="Qualified API name"
+            data-field="QualifiedApiName__c"
+            value={policy.QualifiedApiName__c}
+            options={selectionOptions}
+            onchange={handleChange}
+          ></lightning-combobox>
+        </div>
+        <div class="slds-col slds-size_1-of-1">
+          <lightning-dual-listbox
+            disabled={loading}
+            required
+            label="Matching statuses"
+            source-label="Available"
+            selected-label="Selected"
+            options={statuses}
+            value={selectedStatuses}
+            onchange={handleStatuses}
+          ></lightning-dual-listbox>
+        </div>
+        <div class="slds-col slds-size_1-of-1 slds-large-size_1-of-2">
+          <lightning-combobox
+            disabled={loading}
+            required
+            label="Minimum severity"
+            data-field="MinimumSeverity__c"
+            value={policy.MinimumSeverity__c}
+            options={severities}
+            onchange={handleChange}
+          ></lightning-combobox>
+        </div>
+        <div class="slds-col slds-size_1-of-1 slds-large-size_1-of-2">
+          <lightning-combobox
+            disabled={loading}
+            required
+            label="Notification channel"
+            data-field="NotificationChannel__c"
+            value={policy.NotificationChannel__c}
+            options={channels}
+            onchange={handleChange}
+          ></lightning-combobox>
+        </div>
+        <div class="slds-col slds-size_1-of-1 slds-large-size_1-of-2">
+          <lightning-combobox
+            disabled={loading}
+            required
+            label="Recipient type"
+            data-field="RecipientType__c"
+            value={policy.RecipientType__c}
+            options={recipientTypes}
+            onchange={handleRecipientType}
+          ></lightning-combobox>
+        </div>
+        <div class="slds-col slds-size_1-of-1 slds-large-size_1-of-2">
+          <lightning-combobox
+            disabled={loading}
+            required
+            label="Recipient"
+            data-field="RecipientId__c"
+            value={policy.RecipientId__c}
+            options={recipientOptions}
+            onchange={handleRecipient}
+          ></lightning-combobox>
+        </div>
+        <div class="slds-col slds-size_1-of-1 slds-large-size_1-of-2">
+          <lightning-input
+            disabled={loading}
+            required
+            min="0"
+            step="1"
+            type="number"
+            label="Cooldown minutes"
+            data-field="CooldownMinutes__c"
+            value={policy.CooldownMinutes__c}
+            onchange={handleChange}
+          ></lightning-input>
+        </div>
+      </div>
+      <div class="slds-var-m-top_medium">
+        <lightning-button
+          disabled={loading}
+          variant="brand"
+          label="Save policy"
+          onclick={handleSave}
+        ></lightning-button
+        ><lightning-button
+          disabled={loading}
+          class="slds-var-m-left_small"
+          label="Analyze publication coverage"
+          onclick={handleAnalyze}
+        ></lightning-button>
+      </div>
+      <template lwc:if={hasGaps}
+        ><section
+          aria-label="Publication coverage findings"
+          class="slds-var-m-top_large"
+        >
+          <h2 class="slds-text-heading_small">Setup assistant</h2>
+          <ul class="slds-list_dotted">
+            <template for:each={gaps} for:item="gap"
+              ><li key={gap.code}>
+                <strong>{gap.severity}: {gap.code}</strong> — {gap.message}
+              </li></template
+            >
+          </ul>
+        </section></template
+      >
+      <template lwc:if={coverageComplete}
+        ><div
+          class="slds-notify slds-notify_alert slds-alert_success slds-var-m-top_large"
+          role="status"
+        >
+          Publication coverage analysis found no gaps.
+        </div></template
+      >
+      <template lwc:if={hasPolicies}
+        ><section aria-label="Existing policies" class="slds-var-m-top_large">
+          <h2 class="slds-text-heading_small slds-var-m-bottom_small">
+            Existing policies
+          </h2>
+          <lightning-datatable
+            key-field="Id"
+            data={policies}
+            columns={policyColumns}
+            hide-checkbox-column
+          ></lightning-datatable></section
+      ></template>
+      <template lwc:else
+        ><div class="slds-var-m-top_large" role="status">
+          No alert policies have been created yet.
+        </div></template
+      >
+    </div>
+  </lightning-card>
+</template>

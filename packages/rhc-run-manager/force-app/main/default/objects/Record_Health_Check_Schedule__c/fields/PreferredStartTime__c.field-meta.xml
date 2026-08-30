@@ -1,0 +1,2 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata"><fullName>PreferredStartTime__c</fullName><label>Preferred Start Time</label><description>Preferred local start time in HH:mm format.</description><inlineHelpText>Preferred local start time in HH:mm format.</inlineHelpText><length>5</length><type>Text</type></CustomField>

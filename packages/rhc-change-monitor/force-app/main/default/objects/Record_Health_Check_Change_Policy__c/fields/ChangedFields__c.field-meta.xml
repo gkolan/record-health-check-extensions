@@ -1,0 +1,2 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata"><fullName>ChangedFields__c</fullName><label>Changed Fields</label><description>Optional newline-delimited exact field API names used only for UPDATE routing.</description><inlineHelpText>Optional newline-delimited exact field API names used only for UPDATE routing.</inlineHelpText><length>32768</length><visibleLines>5</visibleLines><type>LongTextArea</type></CustomField>

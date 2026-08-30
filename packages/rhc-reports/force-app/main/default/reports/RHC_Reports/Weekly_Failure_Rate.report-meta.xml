@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Report xmlns="http://soap.sforce.com/2006/04/metadata">
+    <aggregates>
+        <calculatedFormula>IF((Record_Health_Check_Daily_Snapshot__c.PassedCount__c:SUM + Record_Health_Check_Daily_Snapshot__c.FailedCount__c:SUM + Record_Health_Check_Daily_Snapshot__c.SkippedCount__c:SUM + Record_Health_Check_Daily_Snapshot__c.UnableCount__c:SUM + Record_Health_Check_Daily_Snapshot__c.SystemErrorCount__c:SUM) = 0, 0, (Record_Health_Check_Daily_Snapshot__c.FailedCount__c:SUM + Record_Health_Check_Daily_Snapshot__c.UnableCount__c:SUM + Record_Health_Check_Daily_Snapshot__c.SystemErrorCount__c:SUM) / (Record_Health_Check_Daily_Snapshot__c.PassedCount__c:SUM + Record_Health_Check_Daily_Snapshot__c.FailedCount__c:SUM + Record_Health_Check_Daily_Snapshot__c.SkippedCount__c:SUM + Record_Health_Check_Daily_Snapshot__c.UnableCount__c:SUM + Record_Health_Check_Daily_Snapshot__c.SystemErrorCount__c:SUM))</calculatedFormula>
+        <datatype>percent</datatype>
+        <developerName>FORMULA1</developerName>
+        <isActive>true</isActive>
+        <isCrossBlock>false</isCrossBlock>
+        <masterLabel>Weighted Failure Rate</masterLabel>
+        <scale>2</scale>
+    </aggregates>
+    <chart>
+        <backgroundColor1>#FFFFFF</backgroundColor1>
+        <backgroundColor2>#FFFFFF</backgroundColor2>
+        <backgroundFadeDir>Diagonal</backgroundFadeDir>
+        <chartSummaries><axisBinding>y</axisBinding><column>FORMULA1</column></chartSummaries>
+        <chartType>Line</chartType>
+        <groupingColumn>Record_Health_Check_Daily_Snapshot__c$SnapshotDate__c</groupingColumn>
+        <location>CHART_TOP</location>
+        <size>Medium</size>
+        <summaryAxisRange>Auto</summaryAxisRange>
+        <textColor>#000000</textColor><textSize>12</textSize><titleColor>#000000</titleColor><titleSize>14</titleSize>
+    </chart>
+    <columns><field>Record_Health_Check_Daily_Snapshot__c$CheckSetQualifiedApiName__c</field></columns>
+    <columns><aggregateTypes>Sum</aggregateTypes><field>Record_Health_Check_Daily_Snapshot__c$PassedCount__c</field></columns>
+    <columns><aggregateTypes>Sum</aggregateTypes><field>Record_Health_Check_Daily_Snapshot__c$FailedCount__c</field></columns>
+    <columns><aggregateTypes>Sum</aggregateTypes><field>Record_Health_Check_Daily_Snapshot__c$UnableCount__c</field></columns>
+    <columns><aggregateTypes>Sum</aggregateTypes><field>Record_Health_Check_Daily_Snapshot__c$SystemErrorCount__c</field></columns>
+    <filter><criteriaItems><column>Record_Health_Check_Daily_Snapshot__c$Grain__c</column><operator>equals</operator><value>RUN</value></criteriaItems></filter>
+    <groupingsDown><dateGranularity>Week</dateGranularity><field>Record_Health_Check_Daily_Snapshot__c$SnapshotDate__c</field><sortOrder>Asc</sortOrder></groupingsDown>
+    <description>Weekly Check Set failure trend from received Set Run summaries.</description>
+    <format>Summary</format>
+    <name>Weekly Failure Rate</name>
+    <reportType>RHC_Daily_Snapshots__c</reportType>
+    <scope>organization</scope>
+    <showDetails>false</showDetails>
+    <showGrandTotal>true</showGrandTotal>
+    <showSubTotals>true</showSubTotals>
+</Report>

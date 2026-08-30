@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Approved_By__c</fullName>
+    <description>Records the manual approver when applicable.</description>
+    <deleteConstraint>SetNull</deleteConstraint>
+    <inlineHelpText>Blank for automatic execution.</inlineHelpText>
+    <label>Approved By</label>
+    <referenceTo>User</referenceTo>
+    <relationshipLabel>Approved Action History</relationshipLabel>
+    <relationshipName>Approved_Action_History</relationshipName>
+    <type>Lookup</type>
+</CustomField>

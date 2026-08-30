@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <deploymentStatus>Deployed</deploymentStatus>
+    <description>Stores retry-safe daily aggregates in an explicit reporting time zone. It summarizes run and result volume, five canonical statuses, unique records, recurring failures, and recoveries by Check Set, Check, status, severity, and execution source.</description>
+    <enableReports>true</enableReports>
+    <label>Record Health Check Daily Snapshot</label>
+    <nameField><displayFormat>RHS-{0000000}</displayFormat><label>Snapshot Number</label><startingNumber>1</startingNumber><type>AutoNumber</type></nameField>
+    <pluralLabel>Record Health Check Daily Snapshots</pluralLabel>
+    <sharingModel>ReadWrite</sharingModel>
+    <visibility>Public</visibility>
+</CustomObject>

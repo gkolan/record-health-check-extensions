@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>AutomatedCleanupEnabled__c</fullName>
+    <defaultValue>false</defaultValue>
+    <description>Allows the package-owned daily cleanup schedule after retention is deliberately configured.</description>
+    <inlineHelpText>Disabled by default.</inlineHelpText>
+    <label>Automated Cleanup Enabled</label>
+    <type>Checkbox</type>
+</CustomField>

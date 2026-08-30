@@ -1,0 +1,2 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata"><fullName>RHC_Policy_Statuses_Canonical</fullName><active>true</active><errorConditionFormula>AND(NOT(ISBLANK(MatchingStatuses__c)), NOT(REGEX(MatchingStatuses__c, "^(PASS|FAIL|SKIPPED|UNABLE_TO_EVALUATE|ERROR)(;(PASS|FAIL|SKIPPED|UNABLE_TO_EVALUATE|ERROR))*$")))</errorConditionFormula><errorMessage>Matching Statuses must be a semicolon-delimited list of canonical status values without spaces.</errorMessage></ValidationRule>

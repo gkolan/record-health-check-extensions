@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ListView xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Requires_Investigation</fullName>
+    <columns>NAME</columns>
+    <columns>OccurredAt__c</columns>
+    <columns>ContractVersion__c</columns>
+    <columns>Code__c</columns>
+    <columns>ExceptionType__c</columns>
+    <columns>RunId__c</columns>
+    <filterScope>Everything</filterScope>
+    <filters>
+        <field>ContractVersion__c</field>
+        <operation>notEqual</operation>
+        <value>1.0</value>
+    </filters>
+    <label>Requires Investigation</label>
+</ListView>

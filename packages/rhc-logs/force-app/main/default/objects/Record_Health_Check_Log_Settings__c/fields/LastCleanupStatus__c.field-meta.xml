@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>LastCleanupStatus__c</fullName>
+    <description>Bounded status of the most recent cleanup attempt.</description>
+    <inlineHelpText>Examples: SUCCESS, PARTIAL_FAILURE, SKIPPED_OVERLAP, or DISABLED.</inlineHelpText>
+    <label>Last Cleanup Status</label>
+    <length>80</length>
+    <type>Text</type>
+</CustomField>

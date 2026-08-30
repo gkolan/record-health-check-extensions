@@ -1,0 +1,2 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata"><fullName>FilterJson__c</fullName><label>Guided Filter</label><description>Structured filter JSON produced by packaged guided controls; never SOQL.</description><inlineHelpText>Structured filter JSON produced by packaged guided controls; never SOQL.</inlineHelpText><length>32768</length><visibleLines>5</visibleLines><type>LongTextArea</type></CustomField>

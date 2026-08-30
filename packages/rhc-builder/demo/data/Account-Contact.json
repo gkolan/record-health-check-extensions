@@ -1,0 +1,68 @@
+{
+  "records": [
+    {
+      "attributes": {
+        "type": "Account",
+        "referenceId": "BuilderDemoHealthy"
+      },
+      "Name": "RHC Builder Demo - Healthy",
+      "AccountNumber": "RHC-BUILDER-DEMO-HEALTHY",
+      "Website": "https://healthy.rhc-builder.example",
+      "Description": "Expected to pass Website and Contact demo Checks.",
+      "Contacts": {
+        "records": [
+          {
+            "attributes": {
+              "type": "Contact",
+              "referenceId": "BuilderDemoHealthyContact"
+            },
+            "FirstName": "Harper",
+            "LastName": "Healthy",
+            "Email": "harper.healthy@rhc-builder.example"
+          }
+        ]
+      }
+    },
+    {
+      "attributes": {
+        "type": "Account",
+        "referenceId": "BuilderDemoMissingWebsite"
+      },
+      "Name": "RHC Builder Demo - Missing Website",
+      "AccountNumber": "RHC-BUILDER-DEMO-NO-WEBSITE",
+      "Description": "Expected to fail Website and pass Contact demo Checks.",
+      "Contacts": {
+        "records": [
+          {
+            "attributes": {
+              "type": "Contact",
+              "referenceId": "BuilderDemoMissingWebsiteContact"
+            },
+            "FirstName": "Quinn",
+            "LastName": "Contact",
+            "Email": "quinn.contact@rhc-builder.example"
+          }
+        ]
+      }
+    },
+    {
+      "attributes": {
+        "type": "Account",
+        "referenceId": "BuilderDemoMissingContact"
+      },
+      "Name": "RHC Builder Demo - Missing Contact",
+      "AccountNumber": "RHC-BUILDER-DEMO-NO-CONTACT",
+      "Website": "https://no-contact.rhc-builder.example",
+      "Description": "Expected to pass Website and fail Contact demo Checks."
+    },
+    {
+      "attributes": {
+        "type": "Account",
+        "referenceId": "BuilderDemoMissingBoth"
+      },
+      "Name": "RHC Builder Demo - Missing Both",
+      "AccountNumber": "RHC-BUILDER-DEMO-MISSING-BOTH",
+      "Description": "Expected to fail both guided demo Checks."
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>FrameworkVersion__c</fullName>
+    <description>Exact Record Health Check framework version that published the event.</description>
+    <inlineHelpText>Correlates diagnostics with the publishing core release.</inlineHelpText>
+    <label>Framework Version</label>
+    <length>20</length>
+    <type>Text</type>
+</CustomField>

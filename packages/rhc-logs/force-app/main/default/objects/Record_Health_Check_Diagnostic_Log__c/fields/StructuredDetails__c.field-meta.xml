@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>StructuredDetails__c</fullName>
+    <description>Bounded opaque copy of canonical structured diagnostic details; not a package-defined contract.</description>
+    <inlineHelpText>Restricted: review only in approved operational contexts.</inlineHelpText>
+    <label>Structured Diagnostic Details</label>
+    <length>8000</length>
+    <type>LongTextArea</type>
+    <visibleLines>5</visibleLines>
+</CustomField>

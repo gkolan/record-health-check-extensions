@@ -1,0 +1,2 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata"><fullName>OccurredAt__c</fullName><label>Occurred At</label><description>CDC commit or event time when available.</description><inlineHelpText>CDC commit or event time when available.</inlineHelpText><type>DateTime</type></CustomField>

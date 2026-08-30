@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Map_Reason_Code__c</fullName>
+    <description
+  >Maps the bounded reason code into rhcReasonCodeV1.</description>
+    <defaultValue>false</defaultValue>
+    <inlineHelpText
+  >Select only when the Flow declares the matching Text input.</inlineHelpText>
+    <label>Map Reason Code</label>
+    <type>Checkbox</type>
+</CustomField>

@@ -1,0 +1,2 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata"><fullName>QualifiedApiName__c</fullName><label>Qualified API Name</label><description>Exact opaque core Qualified API Name; namespace text is never rewritten.</description><inlineHelpText>Exact opaque core Qualified API Name; namespace text is never rewritten.</inlineHelpText><length>120</length><type>Text</type></CustomField>

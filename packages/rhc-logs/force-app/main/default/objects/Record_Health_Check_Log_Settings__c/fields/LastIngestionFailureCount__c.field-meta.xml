@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>LastIngestionFailureCount__c</fullName>
+    <defaultValue>0</defaultValue>
+    <description>Number of malformed or failed rows in the most recent ingestion transaction.</description>
+    <inlineHelpText>No failed event payload is retained.</inlineHelpText>
+    <label>Last Ingestion Failure Count</label>
+    <precision>5</precision>
+    <scale>0</scale>
+    <type>Number</type>
+</CustomField>

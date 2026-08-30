@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Relative_Endpoint_Safe</fullName>
+    <active>true</active>
+    <errorConditionFormula>OR(NOT(BEGINS(RelativeEndpoint__c, "/")), BEGINS(RelativeEndpoint__c, "//"), CONTAINS(RelativeEndpoint__c, "://"), CONTAINS(RelativeEndpoint__c, "\\"), CONTAINS(RelativeEndpoint__c, "?"), CONTAINS(RelativeEndpoint__c, "#"), CONTAINS(RelativeEndpoint__c, ".."))</errorConditionFormula>
+    <errorDisplayField>RelativeEndpoint__c</errorDisplayField>
+    <errorMessage>Enter a relative path beginning with /. Schemes, hosts, backslashes, query strings, fragments, and parent traversal are not allowed.</errorMessage>
+</ValidationRule>

@@ -1,0 +1,2 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata"><fullName>ChangeTypes__c</fullName><label>Change Types</label><description>Closed set of CREATE, UPDATE, and UNDELETE values.</description><inlineHelpText>Closed set of CREATE, UPDATE, and UNDELETE values.</inlineHelpText><length>255</length><type>Text</type></CustomField>

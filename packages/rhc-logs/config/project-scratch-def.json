@@ -1,0 +1,8 @@
+{
+  "orgName": "RHC Logs Package Validation",
+  "edition": "Enterprise",
+  "features": ["EnableSetPasswordInApi"],
+  "settings": {
+    "lightningExperienceSettings": { "enableS1DesktopEnabled": true }
+  }
+}

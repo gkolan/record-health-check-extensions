@@ -1,0 +1,2 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata"><fullName>CooldownKey__c</fullName><label>Cooldown Key</label><description>SHA-256 policy and checked-record key used for cooldown queries.</description><inlineHelpText>SHA-256 policy and checked-record key used for cooldown queries.</inlineHelpText><length>64</length><externalId>true</externalId><type>Text</type></CustomField>

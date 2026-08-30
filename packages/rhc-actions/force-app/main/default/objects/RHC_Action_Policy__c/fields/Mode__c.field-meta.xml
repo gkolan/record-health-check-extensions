@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Mode__c</fullName>
+    <description>Determines whether a human approval is required.</description>
+    <inlineHelpText>Manual approval is the safe default.</inlineHelpText>
+    <label>Mode</label>
+    <type>Picklist</type>
+    <valueSet>
+        <restricted>true</restricted>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>MANUAL_APPROVAL</fullName>
+                <default>true</default>
+                <label>MANUAL APPROVAL</label>
+            </value>
+            <value>
+                <fullName>AUTOMATIC</fullName>
+                <default>false</default>
+                <label>AUTOMATIC</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

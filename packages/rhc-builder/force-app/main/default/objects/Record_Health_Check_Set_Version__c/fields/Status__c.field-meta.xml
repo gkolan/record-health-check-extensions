@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Status__c</fullName>
+    <description>Controlled version lifecycle.</description>
+    <label>Status</label>
+    <type>Picklist</type>
+    <valueSet><restricted>true</restricted><valueSetDefinition><sorted
+      >false</sorted><value><fullName>DRAFT</fullName><default
+        >true</default><label>DRAFT</label></value><value><fullName
+        >VALIDATED</fullName><default>false</default><label
+        >VALIDATED</label></value><value><fullName>DEPLOYING</fullName><default
+        >false</default><label>DEPLOYING</label></value><value><fullName
+        >DEPLOYED</fullName><default>false</default><label
+        >DEPLOYED</label></value><value><fullName>SUPERSEDED</fullName><default
+        >false</default><label>SUPERSEDED</label></value><value><fullName
+        >FAILED</fullName><default>false</default><label
+        >FAILED</label></value></valueSetDefinition></valueSet>
+</CustomField>

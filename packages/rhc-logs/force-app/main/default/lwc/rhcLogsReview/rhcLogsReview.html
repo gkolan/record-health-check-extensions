@@ -1,0 +1,43 @@
+<template>
+    <lightning-card title="Restricted Diagnostic Log Review" icon-name="utility:search">
+        <lightning-spinner if:true={loading} alternative-text="Loading diagnostic logs"></lightning-spinner>
+        <div class="slds-p-around_medium">
+            <div class="slds-box slds-theme_info slds-m-bottom_medium">
+                Execution Source filtering is unavailable because canonical core Log contract 1.0
+                does not publish a source field. Check and Check Set values are preserved exactly as
+                developer names; namespace prefixes are never reconstructed or rewritten.
+            </div>
+            <div class="slds-grid slds-wrap slds-gutters">
+                <lightning-input class="slds-col slds-size_1-of-4" type="datetime" name="occurredFrom"
+                    label="Occurred From" onchange={handleFilter}></lightning-input>
+                <lightning-input class="slds-col slds-size_1-of-4" type="datetime" name="occurredTo"
+                    label="Occurred To" onchange={handleFilter}></lightning-input>
+                <lightning-input class="slds-col slds-size_1-of-4" name="severity"
+                    label="Severity" onchange={handleFilter}></lightning-input>
+                <lightning-input class="slds-col slds-size_1-of-4" name="code"
+                    label="Code" onchange={handleFilter}></lightning-input>
+                <lightning-input class="slds-col slds-size_1-of-4" name="runId"
+                    label="Run ID" onchange={handleFilter}></lightning-input>
+                <lightning-input class="slds-col slds-size_1-of-4" name="checkSetDeveloperName"
+                    label="Check Set Developer Name" onchange={handleFilter}></lightning-input>
+                <lightning-input class="slds-col slds-size_1-of-4" name="checkDeveloperName"
+                    label="Check Developer Name" onchange={handleFilter}></lightning-input>
+                <lightning-input class="slds-col slds-size_1-of-4" name="recordId"
+                    label="Record ID" onchange={handleFilter}></lightning-input>
+            </div>
+            <lightning-button class="slds-m-vertical_medium" variant="brand" label="Apply Filters"
+                onclick={applyFilters}></lightning-button>
+            <div if:true={errorMessage} class="slds-notify slds-notify_alert slds-alert_error error-message" role="alert">
+                <span class="slds-assistive-text">Error</span>{errorMessage}
+            </div>
+            <p if:true={showEmptyState} class="empty-state">No retained logs match the current filters.</p>
+            <lightning-datatable if:true={rows.length} key-field="Id" data={rows} columns={columns}
+                hide-checkbox-column onrowaction={handleRowAction}>
+            </lightning-datatable>
+            <div if:true={hasMore} class="slds-align_absolute-center slds-m-top_medium">
+                <lightning-button label="Load More Logs" onclick={loadMore} disabled={loading}>
+                </lightning-button>
+            </div>
+        </div>
+    </lightning-card>
+</template>

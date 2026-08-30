@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>CheckSetVersion__c</fullName>
+    <description
+  >Complete Check Set Version that owns this ordered Check snapshot.</description>
+    <label>Check Set Version</label>
+    <referenceTo>Record_Health_Check_Set_Version__c</referenceTo>
+    <relationshipLabel>Checks</relationshipLabel>
+    <relationshipName>Checks</relationshipName>
+    <relationshipOrder>0</relationshipOrder>
+    <reparentableMasterDetail>false</reparentableMasterDetail>
+    <type>MasterDetail</type>
+    <writeRequiresMasterRead>false</writeRequiresMasterRead>
+</CustomField>

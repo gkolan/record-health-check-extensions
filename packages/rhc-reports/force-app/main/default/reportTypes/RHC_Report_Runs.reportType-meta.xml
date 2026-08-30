@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ReportType xmlns="http://soap.sforce.com/2006/04/metadata">
+    <baseObject>Record_Health_Check_Report_Run__c</baseObject>
+    <category>other</category>
+    <deployed>true</deployed>
+    <description>Minimal Check Set completion facts retained from canonical core events.</description>
+    <label>RHC Report Runs</label>
+    <sections>
+        <columns><checkedByDefault>true</checkedByDefault><field>Name</field><table>Record_Health_Check_Report_Run__c</table></columns>
+        <columns><checkedByDefault>true</checkedByDefault><field>OccurredAt__c</field><table>Record_Health_Check_Report_Run__c</table></columns>
+        <columns><checkedByDefault>true</checkedByDefault><field>CheckSetQualifiedApiName__c</field><table>Record_Health_Check_Report_Run__c</table></columns>
+        <columns><checkedByDefault>true</checkedByDefault><field>RecordId__c</field><table>Record_Health_Check_Report_Run__c</table></columns>
+        <columns><checkedByDefault>true</checkedByDefault><field>Source__c</field><table>Record_Health_Check_Report_Run__c</table></columns>
+        <columns><checkedByDefault>true</checkedByDefault><field>RunId__c</field><table>Record_Health_Check_Report_Run__c</table></columns>
+        <columns><checkedByDefault>true</checkedByDefault><field>Phase__c</field><table>Record_Health_Check_Report_Run__c</table></columns>
+        <columns><checkedByDefault>true</checkedByDefault><field>EligibleCheckCount__c</field><table>Record_Health_Check_Report_Run__c</table></columns>
+        <columns><checkedByDefault>true</checkedByDefault><field>EvaluatedCheckCount__c</field><table>Record_Health_Check_Report_Run__c</table></columns>
+        <columns><checkedByDefault>true</checkedByDefault><field>PassedCount__c</field><table>Record_Health_Check_Report_Run__c</table></columns>
+        <columns><checkedByDefault>true</checkedByDefault><field>FailedCount__c</field><table>Record_Health_Check_Report_Run__c</table></columns>
+        <columns><checkedByDefault>true</checkedByDefault><field>SkippedCount__c</field><table>Record_Health_Check_Report_Run__c</table></columns>
+        <columns><checkedByDefault>true</checkedByDefault><field>UnableCount__c</field><table>Record_Health_Check_Report_Run__c</table></columns>
+        <columns><checkedByDefault>true</checkedByDefault><field>SystemErrorCount__c</field><table>Record_Health_Check_Report_Run__c</table></columns>
+        <columns><checkedByDefault>true</checkedByDefault><field>ContractVersion__c</field><table>Record_Health_Check_Report_Run__c</table></columns>
+        <columns><checkedByDefault>true</checkedByDefault><field>FrameworkVersion__c</field><table>Record_Health_Check_Report_Run__c</table></columns>
+        <masterLabel>RHC Report Runs</masterLabel>
+    </sections>
+</ReportType>

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Status__c</fullName><label>Status</label><required>true</required><type>Picklist</type>
+    <valueSet><restricted>true</restricted><valueSetDefinition><sorted>false</sorted>
+        <value><fullName>PENDING</fullName><default>true</default><label>Pending</label></value>
+        <value><fullName>DELIVERING</fullName><default>false</default><label>Delivering</label></value>
+        <value><fullName>RETRY_WAIT</fullName><default>false</default><label>Retry Wait</label></value>
+        <value><fullName>SUCCEEDED</fullName><default>false</default><label>Succeeded</label></value>
+        <value><fullName>DEAD_LETTER</fullName><default>false</default><label>Dead Letter</label></value>
+    </valueSetDefinition></valueSet>
+</CustomField>
