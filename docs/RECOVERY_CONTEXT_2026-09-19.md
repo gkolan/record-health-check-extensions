@@ -104,6 +104,36 @@ Because it is not a normal branch or commit, it may eventually be garbage-collec
 commit `d4c11a790ce98b44a90c8912071c6833d4f6156b` is only an index snapshot based on the initial
 commit and does not replace preservation of the current working tree or untracked files.
 
+## Recovery execution results
+
+The non-generated working tree was preserved on 2026-09-19 as commit `a4f8384` and pushed to
+`origin/codex/recovery-icloud-2026-09-19`. A clean reconstruction checkout was created at
+`/Users/gkolan/GitHub/record-health-check-extensions-reconstruction` from `origin/main`.
+
+The active scratch org was retrieved twice into isolated projects. The full recovery-branch
+retrieval returned 72 package files and 6 subscriber files without warnings. All retrieved Apex
+classes and triggers were semantically identical to the pushed recovery branch. The subscriber
+configuration differed intentionally: the org contained its concrete runtime username and
+Salesforce-managed partition settings, while source control retained the distributable placeholder
+template.
+
+Fresh validation against the recovered September source produced:
+
+| Check | Result |
+| --- | --- |
+| Recommended Code Analyzer | 6 findings: 0 Critical, 0 High, 3 Moderate, 3 Low |
+| Focused Apex suite | 28/28 passed, run `707RL00001hsh9w` |
+| Complete `RunLocalTests` | 980/980 passed, run `707RL00001hsm2P`, 95% org-wide and run coverage |
+| LWC Jest | 5/5 passed |
+| LWC coverage | 100% statements, lines, and functions; 81.81% branches |
+| Dependency audit | 0 vulnerabilities |
+| Metadata regeneration | No tracked diff |
+| Repository validation | 9 packages, 153 Markdown files, 397 local links; API 66.0 and core 2.0.4-2 |
+
+The six analyzer findings are new September review work and must not be confused with the verified
+zero-finding August baseline. Generated reports are retained locally under
+`packages/rhc-change-monitor/.release-evidence/recovery-20260919/` and remain ignored by Git.
+
 ## Safe recovery options
 
 1. **Preserve first:** create a local recovery branch and commit the complete non-generated working
