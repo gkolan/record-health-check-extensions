@@ -11,6 +11,26 @@ public class RHCChangeMonitorDispatchSupport {
   }
 
   /**
+   * Starts one dispatcher chain unless one is already queued, so a burst of dispatch events
+   * does not fan out into parallel workers competing for the same pending claims.
+   */
+  public static void enqueueDispatcher() {
+    if (Limits.getQueueableJobs() >= Limits.getLimitQueueableJobs()) {
+      return;
+    }
+    List<AsyncApexJob> queued = [
+      SELECT Id FROM AsyncApexJob
+      WHERE ApexClass.Name = 'RHCChangeMonitorDispatcherQueueable'
+        AND JobType = 'Queueable' AND Status IN ('Queued', 'Holding', 'Preparing')
+      WITH USER_MODE
+      LIMIT 1
+    ];
+    if (queued.isEmpty()) {
+      System.enqueueJob(new RHCChangeMonitorDispatcherQueueable(0));
+    }
+  }
+
+  /**
    * Builds one policy-homogeneous core request.
    * @param claims Validated pending claims for one policy.
    * @param runId Safe caller correlation.

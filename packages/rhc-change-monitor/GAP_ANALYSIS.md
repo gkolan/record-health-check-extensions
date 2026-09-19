@@ -81,16 +81,25 @@ dispatcher but failed closed with `RUNTIME_PERMISSION_MISSING`. A valid
 next real delivery still ran as Automated Process. Therefore that platform-event subscriber
 control is not a principal solution for this CDC trigger.
 
-Gate 3 is blocked. Do not remove the custom-permission check and do not assign an administrator
-permission set to Automated Process as a shortcut. The next design review must either prove a
+Gate 3 was blocked at this point. Do not remove the custom-permission check and do not assign an
+administrator permission set to Automated Process as a shortcut. The next design review must either prove a
 least-privilege permission model for Automated Process or select the separately authenticated
 Pub/Sub worker boundary described above.
 
-The source now includes `RHC_Change_Monitor_Runtime`, which grants only policy reads, evaluation
-create/read/edit, and runtime Apex access. It validated and deployed unassigned in the shared org.
-The narrowest remaining on-platform experiment is pairing it with core's
-`Record_Health_Check_User` permission set on Automated Process. That is still a persistent security
-change and is not authorized merely by deploying the source.
+### Gate 3 resolution — 2026-09-18
+
+The narrowest experiment was run: `RHC_Change_Monitor_Runtime` and core `Record_Health_Check_User`
+were assigned to Automated Process (the insert succeeds). Real CREATE and UPDATE deliveries still
+failed with `RUNTIME_PERMISSION_MISSING`; `FeatureManagement.checkPermission` does not honor
+permission sets on that user. The assignments were reverted.
+
+The supported design was then implemented and proven: the CDC trigger persists claims and publishes
+`Record_Health_Check_Change_Dispatch__e`; its trigger `RHCChangeMonitorDispatchSubscriber` runs
+under a subscriber-owned `PlatformEventSubscriberConfig` naming a least-privilege runtime user. With
+that config in place, a real Account UPDATE reached `EVALUATED / ACCEPTED` with run ID
+`cm-v1-d60fed50…` and dispatcher job created by the configured user; **Retry failed claims** then
+re-dispatched the seven historical `RUNTIME_PERMISSION_MISSING` rows to `EVALUATED`. Gate 3 is
+passed for the on-platform runtime; the Pub/Sub worker alternative is no longer required.
 
 ## Gate 4: transaction and limit behavior
 

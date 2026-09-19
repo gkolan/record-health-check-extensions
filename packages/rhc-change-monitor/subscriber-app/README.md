@@ -11,3 +11,9 @@ demonstrated that it does not change the principal of this CDC trigger.
 
 Deploy only to the canonical shared no-namespace feasibility org. Removing the trigger and channel
 membership must be coordinated with every subscriber that uses Account CDC.
+
+## Dispatch runtime user
+
+`platformEventSubscriberConfigs/RHC_Change_Monitor_Dispatch` is a template for the org-owned
+configuration that makes the package's dispatch trigger run as a named runtime user. Replace the
+`user` element before deploying; never commit a real username.

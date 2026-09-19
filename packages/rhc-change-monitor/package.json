@@ -1,0 +1,14 @@
+{
+  "name": "rhc-change-monitor",
+  "private": true,
+  "version": "0.1.0",
+  "license": "Apache-2.0",
+  "scripts": {
+    "metadata:generate": "node generate_metadata.mjs",
+    "test": "sfdx-lwc-jest -- --runInBand",
+    "test:coverage": "sfdx-lwc-jest --coverage -- --no-cache"
+  },
+  "devDependencies": {
+    "@salesforce/sfdx-lwc-jest": "^8.0.0"
+  }
+}

@@ -45,7 +45,23 @@ normal lifecycle. An administrator cannot manufacture this Apex from a text fiel
 
 ### 3. Establish the runtime principal
 
-Run the setup identity probe. It must show:
+Change-event triggers, and any Queueable they start, always run as **Automated Process**. Assigning
+permission sets to that user does not grant it custom permissions (verified 2026-09-18), so the
+intake trigger only records claims and publishes the package's `Record Health Check Change
+Dispatch` event. The dispatch event's trigger, `RHCChangeMonitorDispatchSubscriber`, is where the
+principal is chosen:
+
+1. Create a dedicated integration user (no interactive login needed) and assign
+   **RHC Change Monitor Runtime** plus core **Record Health Check User**.
+2. Deploy a `PlatformEventSubscriberConfig` for `RHCChangeMonitorDispatchSubscriber` naming that
+   user (template: `subscriber-app/main/default/platformEventSubscriberConfigs/`). Never put a
+   username in package metadata.
+3. If the trigger was already active before the config existed, deactivate and reactivate it once
+   so the subscription restarts under the configured user.
+4. Open the **RHC Change Monitor** app. The console shows a warning while claims fail with
+   `RUNTIME_PERMISSION_MISSING`; after the config is in place, use **Retry failed claims**.
+
+Then confirm in the console or the setup identity probe:
 
 - effective User ID and user type;
 - core Apex access;

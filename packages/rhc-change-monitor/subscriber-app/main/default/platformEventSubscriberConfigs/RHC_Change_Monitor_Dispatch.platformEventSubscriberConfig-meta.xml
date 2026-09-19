@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Subscriber-owned: replace the user with the org's dedicated Change Monitor runtime user, who
+     holds RHC_Change_Monitor_Runtime plus core Record_Health_Check_User. Never ship a username in a package. -->
+<PlatformEventSubscriberConfig xmlns="http://soap.sforce.com/2006/04/metadata">
+    <platformEventConsumer>RHCChangeMonitorDispatchSubscriber</platformEventConsumer>
+    <batchSize>200</batchSize>
+    <masterLabel>RHC Change Monitor Dispatch</masterLabel>
+    <user>runtime.user@example.com</user>
+</PlatformEventSubscriberConfig>
