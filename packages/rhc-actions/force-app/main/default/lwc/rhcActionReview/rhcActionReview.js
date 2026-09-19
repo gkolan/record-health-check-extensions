@@ -4,12 +4,15 @@ import getPendingActions from "@salesforce/apex/RHCActionReviewController.getPen
 import validatePolicy from "@salesforce/apex/RHCActionReviewController.validatePolicy";
 import runAction from "@salesforce/apex/RHCActionReviewController.runAction";
 import rejectAction from "@salesforce/apex/RHCActionReviewController.rejectAction";
+import runActions from "@salesforce/apex/RHCActionReviewController.runActions";
+import rejectActions from "@salesforce/apex/RHCActionReviewController.rejectActions";
 
 const ROW_ACTIONS = [{ label: "Review", name: "review" }];
 
 export default class RhcActionReview extends LightningElement {
   actions = [];
   selectedAction;
+  selectedIds = [];
   loading = true;
   submitting = false;
   errorMessage;
@@ -29,6 +32,12 @@ export default class RhcActionReview extends LightningElement {
     this.loadActions();
   }
 
+  // Row actions stay disabled while a request is in flight so a second record cannot be
+  // opened and submitted before the first approve/reject call returns.
+  get tableBusy() {
+    return this.loading || this.submitting;
+  }
+
   async loadActions() {
     this.loading = true;
     this.errorMessage = undefined;
@@ -46,6 +55,50 @@ export default class RhcActionReview extends LightningElement {
       this.errorMessage = this.messageFrom(error);
     } finally {
       this.loading = false;
+    }
+  }
+
+  handleRowSelection(event) {
+    this.selectedIds = event.detail.selectedRows.map((row) => row.Id);
+  }
+
+  get hasSelection() {
+    return this.selectedIds.length > 0;
+  }
+
+  get bulkDisabled() {
+    return this.submitting || !this.hasSelection;
+  }
+
+  // Bulk decisions skip the per-action Flow contract dialog; the execution service re-validates
+  // each policy at run time and fails an invalid one closed.
+  async runSelectedRows() {
+    await this.decide(runActions, "queued");
+  }
+
+  async rejectSelectedRows() {
+    await this.decide(rejectActions, "rejected");
+  }
+
+  async decide(operation, verb) {
+    this.submitting = true;
+    this.errorMessage = undefined;
+    try {
+      const outcome = await operation({ pendingActionIds: this.selectedIds });
+      this.dispatchEvent(
+        new ShowToastEvent({
+          title: `${outcome.processed} action(s) ${verb}`,
+          message: outcome.skipped ? `${outcome.skipped} no longer pending review were skipped.` : undefined,
+          variant: "success",
+        }),
+      );
+      this.selectedIds = [];
+      this.selectedAction = undefined;
+      await this.loadActions();
+    } catch (error) {
+      this.errorMessage = this.messageFrom(error);
+    } finally {
+      this.submitting = false;
     }
   }
 

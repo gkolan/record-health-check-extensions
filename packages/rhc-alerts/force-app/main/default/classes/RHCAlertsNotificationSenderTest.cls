@@ -35,6 +35,23 @@ private class RHCAlertsNotificationSenderTest {
   }
 
   @IsTest
+  static void shouldTargetRecordWhenIdIsWellFormedOtherwiseDeliveryHistory() {
+    Assert.areEqual(
+      UserInfo.getUserId(),
+      RHCAlertsNotificationSender.resolveTarget(
+        new Record_Health_Check_Alert_Delivery__c(RecordId__c = UserInfo.getUserId())
+      ),
+      'A well-formed record ID becomes the target.'
+    );
+    Assert.isTrue(
+      RHCAlertsNotificationSender.resolveTarget(
+        new Record_Health_Check_Alert_Delivery__c(RecordId__c = 'not-an-id')
+      ).contains('"apiName":"RHC_Alerts_Delivery_History"'),
+      'A malformed ID falls back to the packaged Delivery History navigation item.'
+    );
+  }
+
+  @IsTest
   static void shouldUseCheckSetIdentityAndOmitBlankSeverity() {
     Record_Health_Check_Alert_Delivery__c row = new Record_Health_Check_Alert_Delivery__c(
       CheckSetQualifiedApiName__c = 'pkg__Safe_Set',

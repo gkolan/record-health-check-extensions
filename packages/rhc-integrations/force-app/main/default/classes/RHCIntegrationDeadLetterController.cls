@@ -7,7 +7,7 @@ public with sharing class RHCIntegrationDeadLetterController {
     /**
      * @return Up to 200 recent dead-letter rows without payload content.
      */
-    @AuraEnabled(cacheable=true)
+    @AuraEnabled
     public static List<DeadLetterRow> getDeadLetters() {
         List<DeadLetterRow> rows = new List<DeadLetterRow>();
         for (Record_Health_Check_Integration_Delivery__c delivery : [
@@ -33,42 +33,57 @@ public with sharing class RHCIntegrationDeadLetterController {
     */
     @AuraEnabled
     public static void replay(Id deliveryId) {
-        validateReplayRequest(deliveryId);
-        Record_Health_Check_Integration_Delivery__c delivery = lockReplayableDelivery(deliveryId);
-        resetForReplay(delivery);
-        // User-mode DML is the explicit CRUD/FLS and sharing sanitizer for the Aura entry point.
-        update as user delivery;
-        System.enqueueJob(new RHCIntegrationDeliveryQueueable(new List<Id>{ delivery.Id }));
-    }
-
-    private static void validateReplayRequest(Id deliveryId) {
-        if (!FeatureManagement.checkPermission(REPLAY_PERMISSION)) {
-            throw new AuraHandledException('You do not have permission to replay deliveries.');
-        }
         if (deliveryId == null) {
             throw new AuraHandledException('Select a delivery to replay.');
         }
+        replayAll(new List<Id>{ deliveryId });
     }
 
-    private static Record_Health_Check_Integration_Delivery__c lockReplayableDelivery(Id deliveryId) {
+    /**
+     * Requeues up to 50 dead letters whose routes are active, in one delivery chain. Rows that are
+     * no longer dead letters are skipped; an inactive route in the selection rejects the whole
+     * request so nothing is half-replayed against an unfixed endpoint.
+     * @param deliveryIds Delivery ledger rows to replay.
+     * @return number of deliveries requeued
+     */
+    @AuraEnabled
+    public static Integer replayAll(List<Id> deliveryIds) {
+        if (!FeatureManagement.checkPermission(REPLAY_PERMISSION)) {
+            throw new AuraHandledException('You do not have permission to replay deliveries.');
+        }
+        if (deliveryIds == null || deliveryIds.isEmpty() || deliveryIds.contains(null)) {
+            throw new AuraHandledException('Select a delivery to replay.');
+        }
+        if (deliveryIds.size() > MAX_BULK_REPLAY) {
+            throw new AuraHandledException('Replay at most ' + MAX_BULK_REPLAY + ' deliveries at once.');
+        }
         List<Record_Health_Check_Integration_Delivery__c> deliveries = [
             SELECT Id, Route__c, Route__r.Active__c, Status__c, AttemptCount__c, ReplayCount__c,
                 NextAttemptAt__c, CompletedAt__c, HttpStatus__c,
                 HttpClassification__c, ErrorCode__c, ErrorDetail__c
             FROM Record_Health_Check_Integration_Delivery__c
-            WHERE Id = :deliveryId
+            WHERE Id IN :deliveryIds AND Status__c = 'DEAD_LETTER'
             WITH USER_MODE
-            LIMIT 1
             FOR UPDATE
         ];
-        if (deliveries.isEmpty() || deliveries[0].Status__c != 'DEAD_LETTER') {
+        if (deliveries.isEmpty()) {
             throw new AuraHandledException('Only an accessible dead-letter delivery can be replayed.');
         }
-        if (!deliveries[0].Route__r.Active__c) {
-            throw new AuraHandledException('Activate and correct the route before replay.');
+        List<Id> replayIds = new List<Id>();
+        for (Record_Health_Check_Integration_Delivery__c delivery : deliveries) {
+            if (!delivery.Route__r.Active__c) {
+                throw new AuraHandledException('Activate and correct the route before replay.');
+            }
+            resetForReplay(delivery);
+            replayIds.add(delivery.Id);
         }
-        return deliveries[0];
+        // User-mode DML is the explicit CRUD/FLS and sharing sanitizer for the Aura entry point.
+        update as user deliveries;
+        System.enqueueJob(new RHCIntegrationDeliveryQueueable(replayIds));
+        return replayIds.size();
     }
+
+    private static final Integer MAX_BULK_REPLAY = 50;
 
     private static void resetForReplay(Record_Health_Check_Integration_Delivery__c delivery) {
         delivery.Status__c = 'PENDING';

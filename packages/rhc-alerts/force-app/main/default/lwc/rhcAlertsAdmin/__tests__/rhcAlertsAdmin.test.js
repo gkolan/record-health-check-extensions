@@ -6,7 +6,9 @@ import listRecipients from "@salesforce/apex/RHCAlertsAdminController.listRecipi
 import savePolicy from "@salesforce/apex/RHCAlertsAdminController.savePolicy";
 import getLimitInfo from "@salesforce/apex/RHCAlertsAdminController.getLimitInfo";
 import analyzeCoverage from "@salesforce/apex/RHCAlertsAdminController.analyzeCoverage";
+import sendTestAlert from "@salesforce/apex/RHCAlertsAdminController.sendTestAlert";
 
+jest.mock("@salesforce/apex/RHCAlertsAdminController.sendTestAlert", () => ({ default: jest.fn() }), { virtual: true });
 jest.mock(
   "@salesforce/apex/RHCAlertsAdminController.listPolicies",
   () => ({ default: jest.fn() }),
@@ -270,5 +272,45 @@ describe("c-rhc-alerts-admin", () => {
         variant: "error"
       })
     );
+  });
+
+  it("sends a test alert for a policy row to the current user", async () => {
+    listPolicies.mockResolvedValue([
+      { Id: "a01000000000001AAA", DisplayName__c: "Ops", NotificationChannel__c: "EMAIL", Active__c: true }
+    ]);
+    sendTestAlert.mockResolvedValue();
+    const element = createElement("c-rhc-alerts-admin", { is: RhcAlertsAdmin });
+    document.body.appendChild(element);
+    await flush();
+    const table = [...element.shadowRoot.querySelectorAll("lightning-datatable")].find((t) =>
+      t.columns.some((c) => c.fieldName === "DisplayName__c")
+    );
+    table.dispatchEvent(new CustomEvent("rowaction", {
+      detail: { action: { name: "test" }, row: { Id: "a01000000000001AAA", NotificationChannel__c: "EMAIL" } }
+    }));
+    await flush();
+    expect(sendTestAlert).toHaveBeenCalledWith({ policyId: "a01000000000001AAA" });
+  });
+
+  it("shows a bounded error when the test alert is rejected and ignores other row actions", async () => {
+    listPolicies.mockResolvedValue([
+      { Id: "a01000000000001AAA", DisplayName__c: "Ops", NotificationChannel__c: "CUSTOM_NOTIFICATION", Active__c: true }
+    ]);
+    sendTestAlert.mockRejectedValue({ body: { message: "Test alert could not be sent: NOTIFICATION_TYPE_UNAVAILABLE" } });
+    const element = createElement("c-rhc-alerts-admin", { is: RhcAlertsAdmin });
+    const toastHandler = jest.fn();
+    element.addEventListener("lightning__showtoast", toastHandler);
+    document.body.appendChild(element);
+    await flush();
+    const table = [...element.shadowRoot.querySelectorAll("lightning-datatable")].find((t) =>
+      t.columns.some((c) => c.fieldName === "DisplayName__c")
+    );
+    table.dispatchEvent(new CustomEvent("rowaction", { detail: { action: { name: "other" }, row: {} } }));
+    table.dispatchEvent(new CustomEvent("rowaction", {
+      detail: { action: { name: "test" }, row: { Id: "a01000000000001AAA", NotificationChannel__c: "CUSTOM_NOTIFICATION" } }
+    }));
+    await flush();
+    expect(sendTestAlert).toHaveBeenCalledTimes(1);
+    expect(toastHandler).toHaveBeenCalled();
   });
 });

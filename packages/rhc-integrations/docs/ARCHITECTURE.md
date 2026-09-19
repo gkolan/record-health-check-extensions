@@ -91,7 +91,7 @@ Core Run / Result / Log events
 | `RHCIntegrationDeliveryFactory` | Exact-match canonical event DTOs to routes and construct bounded, versioned delivery rows | Query, perform DML, or enqueue work |
 | `RHCIntegrationRouteSelector` | Load at most 2,000 active routes needed at runtime | Accept executable behavior from records |
 | `RHCIntegrationPayloadBuilder` | Build one of four compiled profile contracts at version 1.0 | Interpret customer templates or add absent fields |
-| `RHCIntegrationDeliveryQueueable` | Claim one retained delivery under a row lock, chain bounded retry/work, and finalize unhandled failures | Read/store response bodies or raw exceptions |
+| `RHCIntegrationDeliveryQueueable` | Lock a slice of up to ten retained deliveries, perform their callouts, persist the slice with one update, chain bounded retry/work, and finalize unhandled failures | Read/store response bodies or raw exceptions |
 | `RHCIntegrationDeliveryPolicy` | Validate route safety, POST the retained payload, classify only status code, and apply explicit system-mode ledger transitions | Accept arbitrary URLs, read response bodies, or retain raw exceptions |
 | `RHCIntegrationDeadLetterController` | Return a payload-free user-mode projection and permission-gated replay | Expose payload or bypass record access |
 | `rhcIntegrationDeadLetters` LWC | Display the sanitized dead-letter projection and Replay action when authorized | Query objects directly or expose secrets |

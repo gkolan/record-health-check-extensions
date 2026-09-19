@@ -12,8 +12,10 @@ import saveDefinition from "@salesforce/apex/RHCRunManagerAdminController.saveDe
 import runNow from "@salesforce/apex/RHCRunManagerAdminController.runNow";
 import saveSchedule from "@salesforce/apex/RHCRunManagerAdminController.saveSchedule";
 import pauseSchedule from "@salesforce/apex/RHCRunManagerAdminController.pauseSchedule";
+import cancelBatchRun from "@salesforce/apex/RHCRunManagerAdminController.cancelBatchRun";
 
 jest.mock("@salesforce/apex/RHCRunManagerAdminController.getDefinitions", () => ({ default: jest.fn() }), { virtual: true });
+jest.mock("@salesforce/apex/RHCRunManagerAdminController.cancelBatchRun", () => ({ default: jest.fn() }), { virtual: true });
 jest.mock("@salesforce/apex/RHCRunManagerAdminController.getSelections", () => ({ default: jest.fn() }), { virtual: true });
 jest.mock("@salesforce/apex/RHCRunManagerAdminController.getSchedules", () => ({ default: jest.fn() }), { virtual: true });
 jest.mock("@salesforce/apex/RHCRunManagerAdminController.getBatchRuns", () => ({ default: jest.fn() }), { virtual: true });
@@ -67,6 +69,7 @@ describe("c-rhc-run-manager", () => {
     runNow.mockResolvedValue("a01000000000001AAA");
     saveSchedule.mockResolvedValue("a03000000000001AAA");
     pauseSchedule.mockResolvedValue("a03000000000001AAA");
+    cancelBatchRun.mockResolvedValue("a01000000000001AAA");
   });
 
   afterEach(() => {
@@ -159,6 +162,23 @@ describe("c-rhc-run-manager", () => {
     await flushPromises();
 
     expect(getRuns).toHaveBeenCalledWith({ batchRunId: "a01000000000001AAA" });
+  });
+
+  it("offers Cancel only for active batch runs and reloads after cancelling", async () => {
+    const element = createElement("c-rhc-run-manager", { is: RhcRunManager });
+    document.body.appendChild(element);
+    await flushPromises(); await flushPromises();
+
+    const actionsFor = (row) => new Promise((resolve) => element.shadowRoot.querySelectorAll("lightning-datatable")[2].columns.at(-1).typeAttributes.rowActions(row, resolve));
+    expect((await actionsFor({ Status__c: "PROCESSING" })).map((a) => a.name)).toEqual(["scopes", "cancel"]);
+    expect((await actionsFor({ Status__c: "COMPLETED" })).map((a) => a.name)).toEqual(["scopes"]);
+
+    getBatchRuns.mockClear();
+    element.shadowRoot.querySelectorAll("lightning-datatable")[2].dispatchEvent(new CustomEvent("rowaction", { detail: { action: { name: "cancel" }, row: { Id: "a01000000000001AAA", Name: "RHC-BATCH-000001", Status__c: "PROCESSING" } } }));
+    await flushPromises(); await flushPromises();
+
+    expect(cancelBatchRun).toHaveBeenCalledWith({ batchRunId: "a01000000000001AAA" });
+    expect(getBatchRuns).toHaveBeenCalledTimes(1);
   });
 
   it("edits an existing guided definition and removes a retained filter", async () => {

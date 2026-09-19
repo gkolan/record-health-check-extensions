@@ -4,7 +4,11 @@
 public with sharing class RHCIntegrationDeliveryPolicy {
     private static final Integer CALLOUT_TIMEOUT_MS = 20000;
 
-    /** @param delivery Locked delivery row and its selected route. */
+    /**
+     * Performs one attempt and classifies it in memory; the caller persists the row after every
+     * callout of its slice has completed.
+     * @param delivery Locked delivery row and its selected route.
+     */
     public static void process(Record_Health_Check_Integration_Delivery__c delivery) {
         delivery.AttemptCount__c = Integer.valueOf(delivery.AttemptCount__c) + 1;
         delivery.LastAttemptAt__c = System.now();
@@ -15,7 +19,6 @@ public with sharing class RHCIntegrationDeliveryPolicy {
                 'CONFIGURATION_INVALID',
                 'Correct the active Named Credential and relative endpoint configuration before replay.'
             ));
-            Database.update(delivery, AccessLevel.SYSTEM_MODE);
             return;
         }
         try {
@@ -24,7 +27,6 @@ public with sharing class RHCIntegrationDeliveryPolicy {
         } catch (CalloutException exceptionRecord) {
             classifyRetryable(delivery, null, 'TRANSPORT_ERROR');
         }
-        Database.update(delivery, AccessLevel.SYSTEM_MODE);
     }
 
     /** @param delivery Delivery row whose parent Queueable failed unexpectedly. */

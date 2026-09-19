@@ -34,6 +34,7 @@ packages until their feasibility and release gates are complete.
 | [RHC Reports](packages/rhc-reports/README.md) | Durable facts, daily snapshots, Salesforce reports, and a trend dashboard | Shows whether data quality and business readiness are improving over time |
 | [RHC Actions](packages/rhc-actions/README.md) | Governed mapping from actionable outcomes to approved autolaunched Flows | Turns selected findings into controlled follow-up work, with manual approval by default |
 | [RHC Integrations](packages/rhc-integrations/README.md) | Allow-listed outbound delivery through Named Credentials | Sends approved outcomes to external automation, monitoring, or data platforms |
+| [RHC Agent Actions](packages/rhc-agent-actions/README.md) | Agentforce actions that explain findings and discover applicable Check Sets | Lets an agent tell a user which checks failed and how to fix them; source only |
 
 ## How the suite works
 

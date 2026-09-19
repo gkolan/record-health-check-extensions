@@ -61,6 +61,26 @@ private class RHCReportsControllerTest {
     }
 
     @isTest
+    static void shouldQueueLatestCompletedDay_WhenAdminRunsAggregationNow() {
+        User administrator = createUser('reports.runnow');
+        assignPermissionSet(administrator.Id, 'RHC_Reports_Admin');
+
+        System.runAs(administrator) {
+            Test.startTest();
+            Date queued = RHCReportsSetupController.runAggregationNow();
+            Integer jobs = Limits.getQueueableJobs();
+            Test.stopTest();
+
+            Assert.areEqual(1, jobs, 'One aggregation job is queued on demand.');
+            Assert.isTrue(queued < Date.today().addDays(1), 'Only a completed local day is aggregated.');
+            Assert.isNotNull(
+                Record_Health_Check_Report_Setting__c.getOrgDefaults().LastAggregationAttemptAt__c,
+                'The on-demand run records its outcome like the scheduled one.'
+            );
+        }
+    }
+
+    @isTest
     static void shouldDefaultRetentionCleanupOff_WhenOrgSettingIsAbsent() {
         User administrator = createUser('reports.defaults');
         assignPermissionSet(administrator.Id, 'RHC_Reports_Admin');
@@ -92,7 +112,7 @@ private class RHCReportsControllerTest {
                 'coverage-result',
                 'FAIL',
                 Datetime.now(),
-                '006000000000001AAA',
+                RHCReportsTestDataFactory.fakeId(Opportunity.SObjectType, 1),
                 'Close_Date_Complete'
             );
             Test.startTest();

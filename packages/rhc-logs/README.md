@@ -35,7 +35,8 @@ execute corrective Flows, make callouts, or access another extension.
 3. Open **RHC Logs → RHC Logs Setup**.
 4. Confirm the canonical event contract is available and review which visible Check Sets publish.
 5. Assign core **Record Health Check Error Log Publisher** to every approved running identity.
-6. Configure Retention Days (1–365) and Cleanup Batch Size (1–9,998).
+6. Configure Retention Days (1–365) and Cleanup Batch Size (1–9,998). A full batch continues in
+   up to five bounded follow-up jobs so backlogs drain within one schedule.
 7. Save with automated cleanup still disabled, publish one synthetic test error, and review it.
 8. Enable the daily cleanup only after validating the boundary and permissions.
 9. Follow the [administrator guide](docs/ADMINISTRATION.md) before production use.

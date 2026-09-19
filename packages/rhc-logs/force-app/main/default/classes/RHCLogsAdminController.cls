@@ -43,7 +43,7 @@ public with sharing class RHCLogsAdminController {
      * Returns evidence-based setup and operational findings.
      * @return current package and visible core configuration status
      */
-    @AuraEnabled(cacheable=true)
+    @AuraEnabled
     public static SetupStatus getStatus() {
         assertSettingsReadable();
         SetupStatus status = new SetupStatus();

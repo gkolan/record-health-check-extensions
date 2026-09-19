@@ -6,6 +6,7 @@ import listRecipients from "@salesforce/apex/RHCAlertsAdminController.listRecipi
 import savePolicy from "@salesforce/apex/RHCAlertsAdminController.savePolicy";
 import analyzeCoverage from "@salesforce/apex/RHCAlertsAdminController.analyzeCoverage";
 import getLimitInfo from "@salesforce/apex/RHCAlertsAdminController.getLimitInfo";
+import sendTestAlert from "@salesforce/apex/RHCAlertsAdminController.sendTestAlert";
 
 const EMPTY_POLICY = {
   DisplayName__c: "",
@@ -47,7 +48,7 @@ export default class RhcAlertsAdmin extends LightningElement {
     { label: "Public Group", value: "PUBLIC_GROUP" }
   ];
   channels = [
-    { label: "Salesforce Custom Notification", value: "CUSTOM_NOTIFICATION" },
+    { label: "Salesforce notification (bell)", value: "CUSTOM_NOTIFICATION" },
     { label: "Email", value: "EMAIL" }
   ];
 
@@ -109,8 +110,30 @@ export default class RhcAlertsAdmin extends LightningElement {
       { label: "Type", fieldName: "SelectionType__c" },
       { label: "Qualified API Name", fieldName: "QualifiedApiName__c" },
       { label: "Channel", fieldName: "NotificationChannel__c" },
-      { label: "Active", fieldName: "Active__c", type: "boolean" }
+      { label: "Active", fieldName: "Active__c", type: "boolean" },
+      { type: "action", typeAttributes: { rowActions: [{ label: "Send test alert to me", name: "test" }] } }
     ];
+  }
+
+  async handlePolicyAction(event) {
+    if (event.detail.action.name !== "test") {
+      return;
+    }
+    this.loading = true;
+    try {
+      await sendTestAlert({ policyId: event.detail.row.Id });
+      this.dispatchEvent(
+        new ShowToastEvent({
+          title: "Test alert sent",
+          message: "Check your notification bell or inbox. Test sends are not recorded in Delivery History.",
+          variant: "success"
+        })
+      );
+    } catch (error) {
+      this.toast("Test alert was not sent", this.message(error), "error");
+    } finally {
+      this.loading = false;
+    }
   }
 
   handleChange(event) {

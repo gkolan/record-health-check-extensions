@@ -15,7 +15,8 @@
 ## Daily checks
 
 1. Open **RHC Actions → Pending Actions**.
-2. Review records in `PENDING_REVIEW`, `QUEUED`, and `RETRY_WAIT`.
+2. Review records in `PENDING_REVIEW`, `QUEUED`, and `RETRY_WAIT`. Up to 50 pending-review rows
+   can be approved or rejected in one decision; each policy is re-validated when its Flow runs.
 3. Investigate old non-terminal records relative to the org's event and Queueable service levels.
 4. Open **Action History** and review `FAILED_RETRYABLE` and `FAILED_FINAL` outcomes.
 5. Correlate Event ID and Run ID to core evidence when necessary.

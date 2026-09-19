@@ -1,0 +1,7 @@
+# Package-development and test files are not Metadata API source.
+**/__tests__/**
+**/jsconfig.json
+**/.eslintrc.json
+node_modules/
+coverage/
+code-analyzer-results-*

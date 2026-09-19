@@ -79,7 +79,7 @@ const packageDirectories = fs.readdirSync(packagesRoot, { withFileTypes: true })
     .filter((directory) => fs.existsSync(path.join(directory, 'sfdx-project.json')))
     .sort();
 
-assert(packageDirectories.length === 8, `Expected 8 package projects; found ${packageDirectories.length}`);
+assert(packageDirectories.length === 9, `Expected 9 package projects; found ${packageDirectories.length}`);
 
 let sharedApiVersion;
 let sharedCoreDependency;

@@ -22,8 +22,12 @@ private class RHCRunManagerExecutionTest {
     batch.finish(null);
     Test.stopTest();
 
-    Record_Health_Check_Batch_Run__c captured = [SELECT Status__c, FailedScopeCount__c, ProcessedRecordCount__c FROM Record_Health_Check_Batch_Run__c WHERE Id = :batchRun.Id];
+    Record_Health_Check_Batch_Run__c captured = [SELECT Status__c, FailedScopeCount__c, ProcessedRecordCount__c, PassedCount__c, FailedCount__c, UnableCount__c, SystemErrorCount__c FROM Record_Health_Check_Batch_Run__c WHERE Id = :batchRun.Id];
     Assert.areEqual('PARTIAL_FAILURE', captured.Status__c, 'Scope failure should remain visible after finish.');
+    Record_Health_Check_Run__c scopeRun = [SELECT PassedCount__c, FailedCount__c, UnableCount__c, SystemErrorCount__c FROM Record_Health_Check_Run__c WHERE BatchRun__c = :batchRun.Id AND Status__c = 'COMPLETED' LIMIT 1];
+    Assert.areEqual(scopeRun.PassedCount__c + scopeRun.FailedCount__c + scopeRun.UnableCount__c + scopeRun.SystemErrorCount__c,
+      captured.PassedCount__c + captured.FailedCount__c + captured.UnableCount__c + captured.SystemErrorCount__c,
+      'Batch Run totals roll up the completed scope counts.');
     Assert.areEqual(1, captured.FailedScopeCount__c, 'Exactly one failed scope should be counted.');
     Assert.areEqual(1, captured.ProcessedRecordCount__c, 'The successful earlier scope must remain committed and counted.');
     Assert.areEqual(2, [SELECT COUNT() FROM Record_Health_Check_Run__c WHERE BatchRun__c = :batchRun.Id], 'Both independently committed scope envelopes must remain visible.');
@@ -48,6 +52,31 @@ private class RHCRunManagerExecutionTest {
     Assert.areEqual('ERROR', batchRun.Status__c, 'A failed population/query startup must not remain QUEUED or PROCESSING.');
     Assert.isNotNull(batchRun.CompletedAt__c, 'Startup failure should receive a terminal timestamp.');
     Assert.isTrue(batchRun.ErrorSummary__c.contains('Forced start failure'), 'The sanitized startup failure should be observable.');
+    }
+  }
+
+  @IsTest
+  static void shouldRejectOverlappingRun_WhenBatchRunIsStillActive() {
+    System.runAs(RHCRunManagerTestDataFactory.adminUser()) {
+    Record_Health_Check_Run_Definition__c definition = RHCRunManagerTestDataFactory.createDefinition('ALL_ACCESSIBLE', 'FAIL');
+    Record_Health_Check_Batch_Run__c active = RHCRunManagerTestDataFactory.createBatchRun(definition.Id);
+    String rejection;
+
+    try {
+      RHCRunManagerExecutionService.runNow(definition.Id);
+    } catch (RHCRunManagerExecutionService.ExecutionException error) {
+      rejection = error.getMessage();
+    }
+
+    Assert.isTrue(rejection != null && rejection.contains('already in progress'), 'An active Batch Run must block a second launch: ' + rejection);
+    Assert.areEqual(1, [SELECT COUNT() FROM Record_Health_Check_Batch_Run__c], 'No second Batch Run is created.');
+
+    active.Status__c = 'CANCELLED';
+    update active;
+    Test.startTest();
+    Id launched = RHCRunManagerExecutionService.runNow(definition.Id);
+    Test.stopTest();
+    Assert.isNotNull(launched, 'A terminal previous run no longer blocks a launch.');
     }
   }
 

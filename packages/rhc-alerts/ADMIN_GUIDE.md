@@ -19,7 +19,7 @@ The worked example creates this policy:
 | Minimum severity     | WARNING                                                                                                                      |
 | Recipient type       | Public Group                                                                                                                 |
 | Recipient            | Sales Operations                                                                                                             |
-| Notification channel | Salesforce Custom Notification                                                                                               |
+| Notification channel | Salesforce notification (bell)                                                                                               |
 | Cooldown             | 1,440 minutes (24 hours)                                                                                                     |
 | Active               | On after review                                                                                                              |
 
@@ -248,7 +248,9 @@ about this choice but cannot inspect a runtime request after the fact.
 2. A yellow limits banner.
 3. The policy form.
 4. **Save policy** and **Analyze publication coverage** buttons.
-5. **Existing policies** after at least one policy exists.
+5. **Existing policies** after at least one policy exists. Each row's menu offers **Send test
+   alert to me**, which sends one synthetic alert through the policy's channel to you only; it is
+   not recorded in Delivery History and does not contact the policy's recipients.
 6. **Setup assistant** findings after analysis finds one or more items.
 
 The yellow banner should show:
@@ -358,11 +360,11 @@ Minimum severity as a replacement for Matching statuses.
 ### 5G. Notification channel
 
 1. Click **Notification channel**.
-2. Select **Salesforce Custom Notification**.
+2. Select **Salesforce notification (bell)**.
 
 Channel behavior:
 
-- **Salesforce Custom Notification**: appears under the notification bell and can appear in the
+- **Salesforce notification (bell)**: a Custom Notification that appears under the notification bell and can appear in the
   Salesforce mobile app. If a valid checked record ID is present, selecting the notification targets
   that record; Salesforce still enforces record access.
 - **Email**: sends a plain-text Salesforce email to each resolved User. It does not create an
@@ -414,7 +416,7 @@ Before saving, compare your screen with this table:
 | Qualified API name   | Exact picker value for Example: Deal Readiness - Next Step |
 | Matching statuses    | FAIL; UNABLE TO EVALUATE; ERROR                            |
 | Minimum severity     | WARNING                                                    |
-| Notification channel | Salesforce Custom Notification                             |
+| Notification channel | Salesforce notification (bell)                             |
 | Recipient type       | Public Group                                               |
 | Recipient            | Sales Operations                                           |
 | Cooldown minutes     | 1440                                                       |

@@ -951,6 +951,30 @@
                   Status: {selectedVersion.status} · Fingerprint:
                   {selectedVersion.fingerprint}
                 </p>
+                <template lwc:if={versionDiff}>
+                  <div class="slds-box slds-box_x-small slds-m-bottom_small" data-region="version-diff">
+                    <h4 class="slds-text-title_caps">
+                      Changes versus active version {versionDiff.baseVersionNumber}
+                    </h4>
+                    <template lwc:if={versionDiff.isEmpty}>
+                      <p>No differences: activating this version changes nothing in core.</p>
+                    </template>
+                    <ul class="slds-list_dotted">
+                      <template lwc:if={versionDiff.hasCheckSetFields}>
+                        <li>Check Set fields: {versionDiff.checkSetFieldList}</li>
+                      </template>
+                      <template for:each={versionDiff.added} for:item="name">
+                        <li key={name}>Added check {name}</li>
+                      </template>
+                      <template for:each={versionDiff.removed} for:item="name">
+                        <li key={name}>Removed check {name} (deactivated on publish)</li>
+                      </template>
+                      <template for:each={versionDiff.changed} for:item="entry">
+                        <li key={entry.qualifiedApiName}>Changed check {entry.qualifiedApiName}: {entry.fieldList}</li>
+                      </template>
+                    </ul>
+                  </div>
+                </template>
                 <pre>{selectedVersionJson}</pre>
               </section>
             </template>

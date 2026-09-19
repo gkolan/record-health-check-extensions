@@ -11,7 +11,7 @@ public class RHCReportsTestDataFactory {
             RunId__c = 'run-' + eventId,
             Phase__c = 'COMPLETED',
             CheckSetQualifiedApiName__c = 'Opportunity_Close_Readiness',
-            RecordId__c = '006000000000001AAA',
+            RecordId__c = fakeId(Opportunity.SObjectType, 1),
             OccurredAt__c = occurredAt,
             Source__c = 'BATCH',
             EligibleCheckCount__c = 5,
@@ -35,7 +35,7 @@ public class RHCReportsTestDataFactory {
             RunId__c = 'run-' + eventId,
             CheckSetQualifiedApiName__c = 'Opportunity_Close_Readiness',
             CheckQualifiedApiName__c = 'Close_Date_Complete',
-            RecordId__c = '006000000000001AAA',
+            RecordId__c = fakeId(Opportunity.SObjectType, 1),
             Status__c = status,
             Severity__c = 'WARNING',
             ReasonCode__c = status == 'PASS' ? null : 'VALUE_MISSING',
@@ -74,7 +74,7 @@ public class RHCReportsTestDataFactory {
             EventId__c = eventId,
             RunId__c = 'run-' + eventId,
             CheckSetQualifiedApiName__c = 'Opportunity_Close_Readiness',
-            RecordId__c = '006000000000001AAA',
+            RecordId__c = fakeId(Opportunity.SObjectType, 1),
             OccurredAt__c = occurredAt,
             Source__c = 'BATCH',
             ContractVersion__c = '1.0',
@@ -88,5 +88,17 @@ public class RHCReportsTestDataFactory {
             UnableCount__c = 1,
             SystemErrorCount__c = 0
         );
+    }
+
+    /**
+     * Builds a syntactically valid ID for tests without hardcoding one.
+     * @param sobjectType object whose key prefix to use
+     * @param sequence positive sequence number
+     * @return 18-character ID string
+     */
+    public static String fakeId(Schema.SObjectType sobjectType, Integer sequence) {
+        String suffix = String.valueOf(sequence);
+        return sobjectType.getDescribe(SObjectDescribeOptions.DEFERRED).getKeyPrefix()
+            + '0'.repeat(12 - suffix.length()) + suffix + 'AAA';
     }
 }

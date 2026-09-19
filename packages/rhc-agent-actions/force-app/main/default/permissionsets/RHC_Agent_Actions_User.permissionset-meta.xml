@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <classAccesses><apexClass>RHCAgentSupport</apexClass><enabled>true</enabled></classAccesses>
+    <classAccesses><apexClass>RHCAgentExplainRecordHealthAction</apexClass><enabled>true</enabled></classAccesses>
+    <classAccesses><apexClass>RHCAgentListCheckSetsAction</apexClass><enabled>true</enabled></classAccesses>
+    <description>Lets an Agentforce agent user invoke the RHC Agent Actions. Assign together with core Record Health Check User; this set grants no record, field, or metadata access of its own.</description>
+    <hasActivationRequired>false</hasActivationRequired>
+    <label>RHC Agent Actions User</label>
+</PermissionSet>

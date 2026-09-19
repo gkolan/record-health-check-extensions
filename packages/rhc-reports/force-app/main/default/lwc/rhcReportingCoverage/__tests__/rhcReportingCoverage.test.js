@@ -8,7 +8,11 @@ jest.mock(
     { virtual: true }
 );
 
-const flushPromises = () => new Promise((resolve) => setTimeout(resolve, 0));
+const flushPromises = async () => {
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+};
 
 describe('c-rhc-reporting-coverage', () => {
     afterEach(() => {

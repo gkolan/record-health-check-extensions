@@ -2,6 +2,7 @@ import { createElement } from 'lwc';
 import RhcReportsSetup from 'c/rhcReportsSetup';
 import getSettings from '@salesforce/apex/RHCReportsSetupController.getSettings';
 import saveSettings from '@salesforce/apex/RHCReportsSetupController.saveSettings';
+import runAggregationNow from '@salesforce/apex/RHCReportsSetupController.runAggregationNow';
 
 jest.mock(
     '@salesforce/apex/RHCReportsSetupController.getSettings',
@@ -10,6 +11,11 @@ jest.mock(
 );
 jest.mock(
     '@salesforce/apex/RHCReportsSetupController.saveSettings',
+    () => ({ default: jest.fn() }),
+    { virtual: true }
+);
+jest.mock(
+    '@salesforce/apex/RHCReportsSetupController.runAggregationNow',
     () => ({ default: jest.fn() }),
     { virtual: true }
 );
@@ -26,7 +32,11 @@ const SETTINGS = {
     lastAggregationStatus: 'SUCCESS',
     lastAggregationErrorType: null
 };
-const flushPromises = () => new Promise((resolve) => setTimeout(resolve, 0));
+const flushPromises = async () => {
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+};
 
 describe('c-rhc-reports-setup', () => {
     beforeEach(() => {
@@ -76,5 +86,16 @@ describe('c-rhc-reports-setup', () => {
             aggregationTimeZone: 'America/Chicago',
             scheduled: false
         });
+    });
+
+    it('queues aggregation on demand and reloads the outcome', async () => {
+        runAggregationNow.mockResolvedValue('2026-09-17');
+        const element = createElement('c-rhc-reports-setup', { is: RhcReportsSetup });
+        document.body.appendChild(element);
+        await flushPromises();
+        element.shadowRoot.querySelector("[data-action='run-now']").click();
+        await flushPromises();
+        expect(runAggregationNow).toHaveBeenCalledTimes(1);
+        expect(getSettings).toHaveBeenCalledTimes(2);
     });
 });

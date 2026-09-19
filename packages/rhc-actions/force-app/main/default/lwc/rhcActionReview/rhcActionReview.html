@@ -13,11 +13,28 @@
           <span>{errorMessage}</span>
         </div>
       </template>
+      <lightning-button-group class="slds-m-bottom_x-small">
+        <lightning-button
+          label="Approve selected"
+          variant="brand"
+          disabled={bulkDisabled}
+          onclick={runSelectedRows}
+          data-action="approve-selected"
+        ></lightning-button>
+        <lightning-button
+          label="Reject selected"
+          disabled={bulkDisabled}
+          onclick={rejectSelectedRows}
+          data-action="reject-selected"
+        ></lightning-button>
+      </lightning-button-group>
       <lightning-datatable
         key-field="Id"
         data={actions}
         columns={columns}
-        is-loading={loading}
+        is-loading={tableBusy}
+        max-row-selection="50"
+        onrowselection={handleRowSelection}
         onrowaction={handleRowAction}
       ></lightning-datatable>
       <template lwc:if={selectedAction}>
@@ -63,12 +80,14 @@
             ></lightning-button>
             <lightning-button
               label="Reject"
+              data-action="reject"
               variant="destructive-text"
               onclick={rejectSelected}
               disabled={submitting}
             ></lightning-button>
             <lightning-button
               label="Run Action"
+              data-action="run"
               variant="brand"
               onclick={runSelected}
               disabled={submitting}

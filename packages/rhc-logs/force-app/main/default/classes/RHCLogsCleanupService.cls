@@ -1,12 +1,16 @@
 /**
  * Performs bounded, retry-safe retention cleanup only on package-owned diagnostic Logs.
  */
-public with sharing class RHCLogsCleanupService {
+public with sharing class RHCLogsCleanupService implements Queueable {
     /** Maximum deletes that leave room for lock acquisition and result persistence. */
     public static final Integer MAX_CLEANUP_BATCH_SIZE = 9998;
     private static final String SETTINGS_KEY = 'Default';
     private static final Integer STALE_LOCK_MINUTES = 60;
+    /** Bounded self-continuations after a full batch, so a backlog drains without an unbounded chain. */
+    public static final Integer MAX_CONTINUATIONS = 5;
     @TestVisible private static Datetime nowOverride;
+    private CleanupMode continuationMode;
+    private Integer continuationHop;
 
     /** Identifies whether cleanup was explicitly requested or schedule-driven. */
     public enum CleanupMode { MANUAL, AUTOMATED }
@@ -25,6 +29,16 @@ public with sharing class RHCLogsCleanupService {
      * @return observable cleanup result
      */
     public static CleanupResult run(CleanupMode mode) {
+        return run(mode, 0);
+    }
+
+    /**
+     * Runs one bounded cleanup transaction and, after a full batch, enqueues the next hop.
+     * @param mode manual or automation-policy-enforced execution
+     * @param hop zero for the initiating run, then the continuation number
+     * @return observable cleanup result
+     */
+    public static CleanupResult run(CleanupMode mode, Integer hop) {
         CleanupResult result = newResult();
         if (mode == null) {
             result.status = 'INVALID_MODE';
@@ -56,7 +70,25 @@ public with sharing class RHCLogsCleanupService {
         deleteExpiredLogs(settingsRecord, result);
         result.status = result.failureCount == 0 ? 'SUCCESS' : 'PARTIAL_FAILURE';
         recordResult(settingsRecord, result);
+        if (result.deletedCount == settingsRecord.CleanupBatchSize__c.intValue()
+            && hop < MAX_CONTINUATIONS
+            && Limits.getQueueableJobs() < Limits.getLimitQueueableJobs()) {
+            System.enqueueJob(new RHCLogsCleanupService(mode, hop + 1));
+        }
         return result;
+    }
+
+    private RHCLogsCleanupService(CleanupMode mode, Integer hop) {
+        continuationMode = mode;
+        continuationHop = hop;
+    }
+
+    /**
+     * Continues a bounded cleanup chain under the same user and mode.
+     * @param context Queueable context
+     */
+    public void execute(QueueableContext context) {
+        run(continuationMode, continuationHop);
     }
 
     private static CleanupResult newResult() {

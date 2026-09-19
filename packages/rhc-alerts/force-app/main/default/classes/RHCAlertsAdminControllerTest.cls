@@ -127,6 +127,26 @@ private class RHCAlertsAdminControllerTest {
   }
 
   @IsTest
+  static void shouldSendTestAlertToCurrentUserWithoutLedgerRow() {
+    System.runAs(adminUser()) {
+      Record_Health_Check_Alert_Policy__c policy = RHCAlertsTestDataFactory.createCheckPolicy('pkg__Safe_Check', 0);
+      Test.startTest();
+      RHCAlertsAdminController.sendTestAlert(policy.Id);
+      Integer emails = Limits.getEmailInvocations();
+      Test.stopTest();
+      Assert.areEqual(
+        0,
+        [SELECT COUNT() FROM Record_Health_Check_Alert_Delivery__c],
+        'A test send never writes to Delivery History.'
+      );
+      Assert.isTrue(
+        policy.NotificationChannel__c != 'EMAIL' || emails == 1,
+        'An email policy sends exactly one test message.'
+      );
+    }
+  }
+
+  @IsTest
   static void shouldRejectUnsupportedPickerValues() {
     System.runAs(adminUser()) {
       Test.startTest();

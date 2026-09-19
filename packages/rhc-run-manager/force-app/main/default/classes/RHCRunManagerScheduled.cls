@@ -31,12 +31,17 @@ public with sharing class RHCRunManagerScheduled implements Schedulable {
       }
       return;
     }
-    RHCRunManagerExecutionService.start(
-      scheduleRecord.RunDefinition__c,
-      'SCHEDULED',
-      scheduleRecord.Id,
-      null
-    );
+    try {
+      RHCRunManagerExecutionService.start(
+        scheduleRecord.RunDefinition__c,
+        'SCHEDULED',
+        scheduleRecord.Id,
+        null
+      );
+    } catch (RHCRunManagerExecutionService.ExecutionException overlap) {
+      // The previous run is still active; leave LastFiredAt unchanged and let the next occurrence try.
+      return;
+    }
     Database.update(new Record_Health_Check_Schedule__c(
       Id = scheduleRecord.Id,
       LastFiredAt__c = System.now()

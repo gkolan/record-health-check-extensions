@@ -111,6 +111,35 @@ private class RHCActionReviewControllerTest {
   }
 
   @IsTest
+  static void shouldApproveSelectionInOneDecisionAndSkipNonPending() {
+    RHCActionReviewController.approvalPermissionOverride = true;
+    RHCActionReviewController.asyncGateway = new RHCActionTestDataFactory.AsyncGatewayStub();
+    RHCActionReviewController.ReviewOutcome outcome;
+    System.runAs(new User(Id = UserInfo.getUserId())) {
+      RHC_Pending_Action__c pending = [SELECT Id, Policy__c FROM RHC_Pending_Action__c LIMIT 1];
+      RHC_Pending_Action__c second = RHCActionTestDataFactory.pending(pending.Policy__c, 'manual-2');
+      second.Queue_Status__c = 'PENDING_REVIEW';
+      update second;
+      RHC_Pending_Action__c alreadyQueued = RHCActionTestDataFactory.pending(pending.Policy__c, 'queued');
+      alreadyQueued.Queue_Status__c = 'QUEUED';
+      update alreadyQueued;
+
+      Test.startTest();
+      outcome = RHCActionReviewController.runActions(
+        new List<Id>{ pending.Id, second.Id, alreadyQueued.Id }
+      );
+      Test.stopTest();
+    }
+    Assert.areEqual(2, outcome.processed, 'Both pending-review rows are approved.');
+    Assert.areEqual(1, outcome.skipped, 'The already queued row is skipped, not failed.');
+    Assert.areEqual(
+      2,
+      [SELECT COUNT() FROM RHC_Pending_Action__c WHERE Queue_Status__c = 'QUEUED' AND Approved_By__c = :UserInfo.getUserId()],
+      'Approved rows record the approver.'
+    );
+  }
+
+  @IsTest
   static void shouldListAndRejectWhenApproverReviewsQueue() {
     RHCActionReviewController.approvalPermissionOverride = true;
     Test.startTest();

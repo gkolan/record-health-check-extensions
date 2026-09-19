@@ -17,6 +17,10 @@ public with sharing class RHCRunManagerBatch implements Database.Batchable<SObje
   private Integer submittedCount = 0;
   private Integer processedCount = 0;
   private Integer failedScopeCount = 0;
+  private Integer passedTotal = 0;
+  private Integer failedTotal = 0;
+  private Integer unableTotal = 0;
+  private Integer systemErrorTotal = 0;
   private String startError;
   private String scopeErrorSummary;
 
@@ -88,6 +92,10 @@ public with sharing class RHCRunManagerBatch implements Database.Batchable<SObje
       RHCRunManagerCaptureService.capture(runRecord.Id, correlationId, captureMode, response);
       completeRun(runRecord, response);
       processedCount += recordIds.size();
+      passedTotal += response.summary.passed ?? 0;
+      failedTotal += response.summary.failed ?? 0;
+      unableTotal += response.summary.unable ?? 0;
+      systemErrorTotal += response.summary.systemError ?? 0;
     } catch (Exception error) {
       failedScopeCount++;
       String summary = sanitize(error.getMessage());
@@ -105,12 +113,20 @@ public with sharing class RHCRunManagerBatch implements Database.Batchable<SObje
 
   /** Finalizes owned job monitoring without treating Check failures as job failures. */
   public void finish(Database.BatchableContext context) {
+    // An administrator cancel can land between the last scope and finish; keep that verdict.
+    if ('CANCELLED' == [
+      SELECT Status__c FROM Record_Health_Check_Batch_Run__c WHERE Id = :batchRunId WITH USER_MODE LIMIT 1
+    ].Status__c) return;
     Record_Health_Check_Batch_Run__c updateRecord = new Record_Health_Check_Batch_Run__c(
       Id = batchRunId,
       Status__c = String.isNotBlank(startError) ? 'ERROR' : (failedScopeCount > 0 ? 'PARTIAL_FAILURE' : 'COMPLETED'),
       SubmittedRecordCount__c = submittedCount,
       ProcessedRecordCount__c = processedCount,
       FailedScopeCount__c = failedScopeCount,
+      PassedCount__c = passedTotal,
+      FailedCount__c = failedTotal,
+      UnableCount__c = unableTotal,
+      SystemErrorCount__c = systemErrorTotal,
       CompletedAt__c = System.now(),
       ErrorSummary__c = String.isNotBlank(startError) ? startError : scopeErrorSummary
     );

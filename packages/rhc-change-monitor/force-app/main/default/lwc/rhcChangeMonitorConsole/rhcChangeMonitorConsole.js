@@ -1,0 +1,99 @@
+import { LightningElement } from "lwc";
+import { ShowToastEvent } from "lightning/platformShowToastEvent";
+import getStatus from "@salesforce/apex/RHCChangeMonitorAdminController.getStatus";
+import retryFailed from "@salesforce/apex/RHCChangeMonitorAdminController.retryFailed";
+import purgeEvaluations from "@salesforce/apex/RHCChangeMonitorAdminController.purgeEvaluations";
+
+const SUMMARY_COLUMNS = [
+  { label: "Outcome", fieldName: "outcome" },
+  { label: "Reason", fieldName: "reasonCode" },
+  { label: "Last 7 days", fieldName: "count", type: "number" }
+];
+const POLICY_COLUMNS = [
+  { label: "Policy", fieldName: "DisplayName__c" },
+  { label: "Active", fieldName: "Active__c", type: "boolean" },
+  { label: "Object", fieldName: "SourceObjectApiName__c" },
+  { label: "Selection", fieldName: "QualifiedApiName__c" },
+  { label: "Change types", fieldName: "ChangeTypes__c" },
+  { label: "Publication", fieldName: "EventPublication__c" }
+];
+const RECENT_COLUMNS = [
+  { label: "Claim", fieldName: "Name" },
+  { label: "Policy", fieldName: "policyName" },
+  { label: "Change", fieldName: "ChangeType__c" },
+  { label: "Outcome", fieldName: "Outcome__c" },
+  { label: "Reason", fieldName: "ReasonCode__c" },
+  { label: "Record", fieldName: "RecordId__c" },
+  { label: "Attempts", fieldName: "AttemptCount__c", type: "number" },
+  { label: "Actionable", fieldName: "ActionableCount__c", type: "number" },
+  { label: "Accepted", fieldName: "AcceptedAt__c", type: "date", typeAttributes: { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" } }
+];
+
+export default class RhcChangeMonitorConsole extends LightningElement {
+  summaryColumns = SUMMARY_COLUMNS;
+  policyColumns = POLICY_COLUMNS;
+  recentColumns = RECENT_COLUMNS;
+  status;
+  loading = true;
+  errorMessage;
+  retentionDays = 90;
+
+  connectedCallback() {
+    this.refresh();
+  }
+
+  async refresh() {
+    this.loading = true;
+    this.errorMessage = undefined;
+    try {
+      const result = await getStatus();
+      this.status = {
+        ...result,
+        recent: (result.recent || []).map((row) => ({ ...row, policyName: row.Policy__r?.DisplayName__c }))
+      };
+    } catch (error) {
+      this.errorMessage = this.messageFrom(error);
+    } finally {
+      this.loading = false;
+    }
+  }
+
+  get principalWarning() {
+    const buckets = this.status?.lastSevenDays || [];
+    return buckets.some((b) => b.reasonCode === "RUNTIME_PERMISSION_MISSING")
+      ? "Claims failed with RUNTIME_PERMISSION_MISSING: the dispatch trigger is running as Automated Process. Create a PlatformEventSubscriberConfig for RHCChangeMonitorDispatchSubscriber naming a runtime user that holds RHC Change Monitor Runtime and the core Record Health Check User permission sets, then use Retry failed claims."
+      : undefined;
+  }
+
+  handleRetentionChange(event) {
+    this.retentionDays = event.detail.value;
+  }
+
+  async handleRetry() {
+    await this.perform(retryFailed, (count) => `${count} claim(s) returned to PENDING and dispatch requested.`);
+  }
+
+  async handlePurge() {
+    await this.perform(
+      () => purgeEvaluations({ olderThanDays: Number(this.retentionDays) }),
+      (count) => `${count} terminal claim(s) older than ${this.retentionDays} days deleted.`
+    );
+  }
+
+  async perform(operation, message) {
+    this.loading = true;
+    this.errorMessage = undefined;
+    try {
+      const result = await operation();
+      this.dispatchEvent(new ShowToastEvent({ title: "RHC Change Monitor", message: message(result), variant: "success" }));
+      await this.refresh();
+    } catch (error) {
+      this.errorMessage = this.messageFrom(error);
+      this.loading = false;
+    }
+  }
+
+  messageFrom(error) {
+    return error?.body?.message || error?.message || "The request could not be completed.";
+  }
+}

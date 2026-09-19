@@ -46,17 +46,28 @@ public inherited sharing class RHCAlertsNotificationSender {
     notification.setNotificationTypeId(types[0].Id);
     notification.setTitle('Record health check alert');
     notification.setBody(messageBody(row));
+    String target = resolveTarget(row);
+    if (target.startsWith('{')) {
+      notification.setTargetPageRef(target);
+    } else {
+      notification.setTargetId(target);
+    }
+    notification.send(stringIds(recipientIds));
+  }
+
+  /**
+   * Chooses the checked record ID when it is well formed; otherwise the packaged Delivery History
+   * page reference. Never an administrator-entered URL or page reference.
+   */
+  @TestVisible
+  private static String resolveTarget(Record_Health_Check_Alert_Delivery__c row) {
     if (
       String.isNotBlank(row.RecordId__c) &&
       Pattern.matches('[a-zA-Z0-9]{15,18}', row.RecordId__c)
     ) {
-      notification.setTargetId(row.RecordId__c);
-    } else {
-      notification.setTargetPageRef(
-        '{"type":"standard__navItemPage","attributes":{"apiName":"RHC_Alerts_Delivery_History"}}'
-      );
+      return row.RecordId__c;
     }
-    notification.send(stringIds(recipientIds));
+    return '{"type":"standard__navItemPage","attributes":{"apiName":"RHC_Alerts_Delivery_History"}}';
   }
 
   private static void sendEmail(

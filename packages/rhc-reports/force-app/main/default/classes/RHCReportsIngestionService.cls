@@ -3,6 +3,9 @@
  */
 public inherited sharing class RHCReportsIngestionService {
     public static final String SUPPORTED_CONTRACT_VERSION = '1.0';
+    /** Platform Event redeliveries requested before a transient failure is recorded as permanent. */
+    private static final Integer MAX_RETRIES = 3;
+    @TestVisible private static Integer retryCountOverride;
     private static final Set<String> RETRYABLE_STATUS_CODES = new Set<String>{
         'REQUEST_RUNNING_TOO_LONG',
         'SERVER_UNAVAILABLE',
@@ -100,6 +103,8 @@ public inherited sharing class RHCReportsIngestionService {
         }
     }
 
+    // A non-retryable exception here would move the subscription into the error state and
+    // silently stop all reporting, so permanent failures are recorded and the delivery continues.
     private static void assertSuccessful(
         Database.UpsertResult[] results,
         String factLabel
@@ -115,13 +120,50 @@ public inherited sharing class RHCReportsIngestionService {
                 statusCodes.add(String.valueOf(error.getStatusCode()));
             }
         }
-        if (failureCount > 0) {
-            String message = 'Unable to persist ' + failureCount + ' ' + factLabel +
-                '. Status codes: ' + String.join(new List<String>(statusCodes), ', ');
-            if (areAllRetryable(statusCodes)) {
-                throw new EventBus.RetryableException(message);
+        if (failureCount == 0) {
+            return;
+        }
+        if (areAllRetryable(statusCodes)) {
+            if (shouldRetry()) {
+                throw new EventBus.RetryableException(
+                    'Unable to persist ' + failureCount + ' ' + factLabel + '. Status codes: '
+                    + String.join(new List<String>(statusCodes), ', ')
+                );
             }
-            throw new RHCReportsIngestionException(message);
+            statusCodes.add('RETRY_EXHAUSTED');
+        }
+        recordFailureEvidence(statusCodes);
+    }
+
+    @TestVisible
+    private static Boolean shouldRetry() {
+        EventBus.TriggerContext context = EventBus.TriggerContext.currentContext();
+        Integer retries = retryCountOverride != null
+            ? retryCountOverride
+            : (context == null ? 0 : context.retries);
+        return retries < MAX_RETRIES;
+    }
+
+    // The subscriber runs as Automated Process, which cannot hold CRUD on the hierarchy setting;
+    // the same system-mode write the aggregation Finalizer already performs.
+    @SuppressWarnings('PMD.ApexCRUDViolation')
+    private static void recordFailureEvidence(Set<String> statusCodes) {
+        try {
+            Record_Health_Check_Report_Setting__c setting =
+                Record_Health_Check_Report_Setting__c.getOrgDefaults();
+            if (setting == null) {
+                setting = new Record_Health_Check_Report_Setting__c(
+                    SetupOwnerId = UserInfo.getOrganizationId()
+                );
+            }
+            List<String> sortedCodes = new List<String>(statusCodes);
+            sortedCodes.sort();
+            setting.LastIngestionFailureAt__c = Datetime.now();
+            setting.LastIngestionErrorCodes__c = String.join(sortedCodes, ',').left(255);
+            upsert setting;
+        } catch (Exception evidenceFailure) {
+            // Evidence is best effort; it must never take the subscriber down with it.
+            return;
         }
     }
 
@@ -133,9 +175,4 @@ public inherited sharing class RHCReportsIngestionService {
     private static Boolean isSupported(String contractVersion, String eventId) {
         return contractVersion == SUPPORTED_CONTRACT_VERSION && String.isNotBlank(eventId);
     }
-
-    /**
-     * Indicates that accepted lifecycle events could not be persisted atomically.
-     */
-    public class RHCReportsIngestionException extends Exception {}
 }

@@ -226,7 +226,9 @@ Use Run Now for **All Accessible** or **Guided Filtered** definitions.
 
 1. In **1. Run Definitions**, find the saved definition.
 2. Open the row-action menu at the right side of the row.
-3. Click **Run Now**.
+3. Click **Run Now**. While a Batch Run for the same definition is still queued or processing,
+   Run Now and schedules are refused with "already in progress"; wait for it to finish or use
+   **Cancel** on the Batch Run in **3. Monitoring**.
 4. Wait for the success message.
 5. Open **3. Monitoring**.
 6. Click the refresh icon until the Batch Run appears.

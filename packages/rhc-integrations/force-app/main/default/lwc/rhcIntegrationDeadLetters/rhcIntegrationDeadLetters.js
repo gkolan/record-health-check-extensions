@@ -3,6 +3,7 @@ import { ShowToastEvent } from 'lightning/platformShowToastEvent';
 import canReplay from '@salesforce/customPermission/RHC_Integration_Replay';
 import getDeadLetters from '@salesforce/apex/RHCIntegrationDeadLetterController.getDeadLetters';
 import replay from '@salesforce/apex/RHCIntegrationDeadLetterController.replay';
+import replayAll from '@salesforce/apex/RHCIntegrationDeadLetterController.replayAll';
 
 const BASE_COLUMNS = [
     { label: 'Delivery', fieldName: 'deliveryNumber', type: 'text' },
@@ -38,8 +39,40 @@ export default class RhcIntegrationDeadLetters extends LightningElement {
         return Boolean(this.errorMessage);
     }
 
+    selectedIds = [];
+
     connectedCallback() {
         this.loadRows();
+    }
+
+    get hideSelection() {
+        return !canReplay;
+    }
+
+    get replaySelectedDisabled() {
+        return this.isLoading || this.selectedIds.length === 0;
+    }
+
+    handleRowSelection(event) {
+        this.selectedIds = event.detail.selectedRows.map((row) => row.id);
+    }
+
+    async handleReplaySelected() {
+        this.isLoading = true;
+        try {
+            const count = await replayAll({ deliveryIds: this.selectedIds });
+            this.dispatchEvent(new ShowToastEvent({
+                title: `${count} replay(s) queued`,
+                message: 'Each delivery reuses its original Event ID idempotency key.',
+                variant: 'success'
+            }));
+            this.selectedIds = [];
+            await this.loadRows();
+        } catch (error) {
+            this.showError(error);
+        } finally {
+            this.isLoading = false;
+        }
     }
 
     handleRefresh() {

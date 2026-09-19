@@ -6,7 +6,7 @@ public with sharing class RHCReportsSetupController {
      * Returns effective package settings with Day-1 defaults.
      * @return setup values for the assistant
      */
-    @AuraEnabled(cacheable=true)
+    @AuraEnabled
     public static SettingDTO getSettings() {
         requireManager();
         Record_Health_Check_Report_Setting__c setting =
@@ -33,10 +33,39 @@ public with sharing class RHCReportsSetupController {
         output.lastAggregationAttemptAt = setting?.LastAggregationAttemptAt__c;
         output.lastAggregationStatus = setting?.LastAggregationStatus__c;
         output.lastAggregationErrorType = setting?.LastAggregationErrorType__c;
+        output.lastIngestionFailureAt = setting?.LastIngestionFailureAt__c;
+        output.lastIngestionErrorCodes = setting?.LastIngestionErrorCodes__c;
         output.cronTriggerId = setting?.CronTriggerId__c;
         output.scheduled = String.isNotBlank(output.cronTriggerId);
         return output;
     }
+    /**
+     * Queues aggregation of the most recently completed local day (and bounded catch-up of
+     * earlier missed days) without waiting for the nightly schedule.
+     * @return local snapshot date that was queued
+     */
+    @AuraEnabled
+    public static Date runAggregationNow() {
+        requireManager();
+        Record_Health_Check_Report_Setting__c setting =
+            Record_Health_Check_Report_Setting__c.getOrgDefaults();
+        String timeZoneId = String.isBlank(setting?.AggregationTimeZone__c)
+            ? UserInfo.getTimeZone().getID()
+            : setting.AggregationTimeZone__c;
+        Date latestCompletedDate = Date.valueOf(
+            Datetime.now().format('yyyy-MM-dd', timeZoneId)
+        ).addDays(-1);
+        Date nextSnapshotDate = setting?.LastAggregatedDate__c == null ||
+            setting.LastAggregatedDate__c >= latestCompletedDate
+            ? latestCompletedDate
+            : setting.LastAggregatedDate__c.addDays(1);
+        if (Limits.getQueueableJobs() >= Limits.getLimitQueueableJobs()) {
+            throw new AuraHandledException('Too many asynchronous jobs are queued. Try again shortly.');
+        }
+        System.enqueueJob(new RHCReportsDailyAggregationQueueable(nextSnapshotDate, timeZoneId, true));
+        return nextSnapshotDate;
+    }
+
     /**
      * Saves retention and aggregation settings and optionally registers daily maintenance.
      * @param detailedRetentionDays detailed fact retention in days
@@ -153,6 +182,8 @@ public with sharing class RHCReportsSetupController {
         @AuraEnabled public Datetime lastAggregationAttemptAt { get; set; }
         @AuraEnabled public String lastAggregationStatus { get; set; }
         @AuraEnabled public String lastAggregationErrorType { get; set; }
+        @AuraEnabled public Datetime lastIngestionFailureAt { get; set; }
+        @AuraEnabled public String lastIngestionErrorCodes { get; set; }
         @AuraEnabled public String cronTriggerId { get; set; }
         @AuraEnabled public Boolean scheduled { get; set; }
     }

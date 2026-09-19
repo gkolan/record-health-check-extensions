@@ -1,7 +1,7 @@
 /** LWC facade for Run Definition administration, scheduling, and monitoring. */
 public with sharing class RHCRunManagerAdminController {
   /** Returns saved definitions visible to the current user. */
-  @AuraEnabled(cacheable=true)
+  @AuraEnabled
   public static List<Record_Health_Check_Run_Definition__c> getDefinitions() {
     return [
       SELECT Id, Name, DisplayName__c, Active__c, SelectionType__c, QualifiedApiName__c,
@@ -25,7 +25,7 @@ public with sharing class RHCRunManagerAdminController {
   }
 
   /** Returns schedules visible to the current administrator. */
-  @AuraEnabled(cacheable=true)
+  @AuraEnabled
   public static List<Record_Health_Check_Schedule__c> getSchedules() {
     return [
       SELECT Id, Name, RunDefinition__c, RunDefinition__r.DisplayName__c,
@@ -40,7 +40,7 @@ public with sharing class RHCRunManagerAdminController {
   }
 
   /** Returns scope Runs owned by one Batch Run. */
-  @AuraEnabled(cacheable=true)
+  @AuraEnabled
   public static List<Record_Health_Check_Run__c> getRuns(Id batchRunId) {
     if (batchRunId == null) throw handled('Choose a Batch Run.');
     return [
@@ -56,7 +56,7 @@ public with sharing class RHCRunManagerAdminController {
   }
 
   /** Returns retained Results owned by one scope Run. */
-  @AuraEnabled(cacheable=true)
+  @AuraEnabled
   public static List<Record_Health_Check_Run_Result__c> getResults(Id runId) {
     if (runId == null) throw handled('Choose a scope Run.');
     return [
@@ -72,13 +72,13 @@ public with sharing class RHCRunManagerAdminController {
   }
 
   /** Returns recent owned Batch Runs for monitoring. */
-  @AuraEnabled(cacheable=true)
+  @AuraEnabled
   public static List<Record_Health_Check_Batch_Run__c> getBatchRuns() {
     return [
       SELECT Id, Name, RunDefinition__c, RunDefinition__r.Name, Source__c,
         Status__c, AsyncApexJobId__c, SubmittedRecordCount__c,
-        ProcessedRecordCount__c, FailedScopeCount__c, StartedAt__c,
-        CompletedAt__c, ErrorSummary__c
+        ProcessedRecordCount__c, FailedScopeCount__c, PassedCount__c, FailedCount__c,
+        UnableCount__c, SystemErrorCount__c, StartedAt__c, CompletedAt__c, ErrorSummary__c
       FROM Record_Health_Check_Batch_Run__c
       WITH USER_MODE
       ORDER BY CreatedDate DESC
@@ -161,9 +161,50 @@ public with sharing class RHCRunManagerAdminController {
   public static Id runNow(Id definitionId) {
     try {
       return RHCRunManagerExecutionService.runNow(definitionId);
+    } catch (RHCRunManagerExecutionService.ExecutionException error) {
+      throw handled(error.getMessage());
     } catch (Exception error) {
       throw handled('The Run Definition could not be started.');
     }
+  }
+
+  /** Aborts the owned platform job of an active Batch Run and records the cancellation. */
+  @AuraEnabled
+  public static Id cancelBatchRun(Id batchRunId) {
+    if (batchRunId == null) throw handled('Choose a Batch Run.');
+    List<Record_Health_Check_Batch_Run__c> rows = [
+      SELECT Id, Status__c, AsyncApexJobId__c
+      FROM Record_Health_Check_Batch_Run__c
+      WHERE Id = :batchRunId
+      WITH USER_MODE
+      LIMIT 1
+    ];
+    if (rows.isEmpty()) throw handled('The Batch Run is not visible to you.');
+    Record_Health_Check_Batch_Run__c batchRun = rows[0];
+    if (batchRun.Status__c != 'QUEUED' && batchRun.Status__c != 'PROCESSING') {
+      throw handled('Only a queued or processing Batch Run can be cancelled.');
+    }
+    // Abort only while the platform still lists the job as active; a job that finished between the
+    // status read and this query needs no abort and the CANCELLED verdict still stands.
+    for (AsyncApexJob job : [
+      SELECT Id FROM AsyncApexJob
+      WHERE Id = :batchRun.AsyncApexJobId__c AND Status IN ('Queued', 'Holding', 'Preparing', 'Processing')
+      WITH USER_MODE
+      LIMIT 1
+    ]) {
+      System.abortJob(job.Id);
+    }
+    try {
+      Database.update(new Record_Health_Check_Batch_Run__c(
+        Id = batchRun.Id,
+        Status__c = 'CANCELLED',
+        CompletedAt__c = System.now(),
+        ErrorSummary__c = 'Cancelled by ' + UserInfo.getName()
+      ), AccessLevel.USER_MODE);
+    } catch (Exception error) {
+      throw handled('The Batch Run could not be cancelled.');
+    }
+    return batchRun.Id;
   }
 
   /** Saves a human recurrence without accepting CRON. */

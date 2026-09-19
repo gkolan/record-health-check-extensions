@@ -273,7 +273,9 @@ Only continue after sandbox testing and release approval.
 1. Open **3. Publish and monitor**.
 2. Find **Account Data Quality — Version 1**.
 3. Select **Review**.
-4. Match the version number and fingerprint to the approval record.
+4. Match the version number and fingerprint to the approval record. When another version of the
+   same Check Set is active, the review shows **Changes versus active version N**: added,
+   removed (deactivated on publish), and changed Checks with the changed field names.
 5. Select **Activate**.
 6. Read the confirmation: the Check Set and every Check become active together.
 7. Select **Cancel** if any part of the version is unapproved.

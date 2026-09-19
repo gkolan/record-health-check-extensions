@@ -2,6 +2,14 @@
     <lightning-card title="RHC Integration Dead Letters" icon-name="utility:error">
         <lightning-button
             slot="actions"
+            label="Replay selected"
+            variant="brand"
+            onclick={handleReplaySelected}
+            disabled={replaySelectedDisabled}
+            data-action="replay-selected"
+        ></lightning-button>
+        <lightning-button
+            slot="actions"
             label="Refresh"
             icon-name="utility:refresh"
             onclick={handleRefresh}
@@ -16,7 +24,9 @@
                 data={rows}
                 columns={columns}
                 onrowaction={handleRowAction}
-                hide-checkbox-column
+                onrowselection={handleRowSelection}
+                hide-checkbox-column={hideSelection}
+                max-row-selection="50"
             ></lightning-datatable>
         </template>
         <template lwc:elseif={hasError}>

@@ -91,7 +91,7 @@ public with sharing class RHCAlertsAdminController {
    * Lists policies visible to the current administrator.
    * @return At most 2,000 policies read in user mode.
    */
-  @AuraEnabled(cacheable=true)
+  @AuraEnabled
   public static List<Record_Health_Check_Alert_Policy__c> listPolicies() {
     return [
       SELECT
@@ -147,9 +147,44 @@ public with sharing class RHCAlertsAdminController {
    * Lists recent bounded delivery evidence without raw event payloads.
    * @return Reviewed history fields for at most 500 recent deliveries.
    */
-  @AuraEnabled(cacheable=true)
+  @AuraEnabled
   public static List<Record_Health_Check_Alert_Delivery__c> listDeliveries() {
     return RHCAlertsViewerController.listDeliveries();
+  }
+
+  /**
+   * Sends one synthetic alert for a policy through its configured channel to the current user
+   * only. Nothing is written to the delivery ledger and no policy recipient is contacted, so an
+   * administrator can verify the channel, notification type, and message shape before activation.
+   * @param policyId Policy whose channel is exercised.
+   */
+  @AuraEnabled
+  public static void sendTestAlert(Id policyId) {
+    if (policyId == null) {
+      throw handled('Policy is required.');
+    }
+    List<Record_Health_Check_Alert_Policy__c> policies = [
+      SELECT Id, DisplayName__c, SelectionType__c, QualifiedApiName__c, NotificationChannel__c
+      FROM Record_Health_Check_Alert_Policy__c
+      WHERE Id = :policyId
+      WITH USER_MODE
+      LIMIT 1
+    ];
+    if (policies.isEmpty()) {
+      throw handled('The policy is not visible to you.');
+    }
+    Record_Health_Check_Alert_Delivery__c sample = new Record_Health_Check_Alert_Delivery__c(
+      Policy__r = policies[0],
+      CheckSetQualifiedApiName__c = policies[0].SelectionType__c == 'CHECK_SET' ? policies[0].QualifiedApiName__c : null,
+      CheckQualifiedApiName__c = policies[0].SelectionType__c == 'CHECK' ? policies[0].QualifiedApiName__c : null,
+      Status__c = 'TEST',
+      Severity__c = 'TEST'
+    );
+    try {
+      RHCAlertsNotificationSender.send(sample, new Set<Id>{ UserInfo.getUserId() });
+    } catch (RHCAlertsNotificationSender.NotificationException error) {
+      throw handled('Test alert could not be sent: ' + error.getMessage());
+    }
   }
 
   /**

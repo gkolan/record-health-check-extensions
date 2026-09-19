@@ -113,6 +113,34 @@ private class RHCBuilderMetadataServiceTest {
   }
 
   @IsTest
+  static void shouldListBoundedComponentFailuresInFailureSummary() {
+    Metadata.DeployResult result = new Metadata.DeployResult();
+    result.details = new Metadata.DeployDetails();
+    result.details.componentFailures = new List<Metadata.DeployMessage>();
+    for (Integer index = 0; index < 12; index++) {
+      Metadata.DeployMessage failure = new Metadata.DeployMessage();
+      failure.fullName = 'Record_Health_Check.Check_' + index;
+      failure.problem = 'Field Bad__c does not exist';
+      result.details.componentFailures.add(failure);
+    }
+
+    String summary = RHCBuilderMetadataService.failureSummary(result);
+
+    Assert.isTrue(
+      summary.contains('Record_Health_Check.Check_0: Field Bad__c does not exist'),
+      'The first rejected component and its problem must be listed.'
+    );
+    Assert.isTrue(summary.contains('Check_9'), 'Ten failures are listed.');
+    Assert.isFalse(summary.contains('Check_10'), 'The eleventh failure is omitted.');
+    Assert.isTrue(summary.contains('...and 2 more.'), 'Omitted failures are counted.');
+    Assert.areEqual(
+      'Salesforce rejected the metadata publication. Review Deployment Status before retrying.',
+      RHCBuilderMetadataService.failureSummary(null),
+      'A result without details keeps the fixed sentence only.'
+    );
+  }
+
+  @IsTest
   static void shouldActivateSelectedVersionWhenActivationPublicationSucceeds() {
     System.runAs(currentUser()) {
       Id versionId = RHCBuilderTestDataFactory.createValidatedVersion();

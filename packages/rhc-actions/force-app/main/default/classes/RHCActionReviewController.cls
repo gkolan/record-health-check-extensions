@@ -10,7 +10,7 @@ public with sharing class RHCActionReviewController {
   /**
    * @return Pending actions visible to the current user
    */
-  @AuraEnabled(cacheable=true)
+  @AuraEnabled
   public static List<RHC_Pending_Action__c> getPendingActions() {
     return [
       SELECT
@@ -77,32 +77,19 @@ public with sharing class RHCActionReviewController {
     return RHCActionPolicyService.validate(policy);
   }
 
+  /** Outcome of a bulk review decision. */
+  public class ReviewOutcome {
+    @AuraEnabled public Integer processed = 0;
+    @AuraEnabled public Integer skipped = 0;
+  }
+
   /**
    * @param pendingActionId Pending action approved for execution
    */
   @AuraEnabled
   public static void runAction(Id pendingActionId) {
-    requireApprovalPermission();
-    if (pendingActionId == null) {
-      throw new AuraHandledException('Pending Action ID is required.');
-    }
-    RHC_Pending_Action__c action = [
-      SELECT Id, Queue_Status__c
-      FROM RHC_Pending_Action__c
-      WHERE Id = :pendingActionId
-      WITH USER_MODE
-      FOR UPDATE
-    ];
-    if (action.Queue_Status__c != RHCActionConstants.STATUS_PENDING_REVIEW) {
-      throw new AuraHandledException('Only pending-review actions can be run.');
-    }
-    action.Queue_Status__c = RHCActionConstants.STATUS_QUEUED;
-    action.Approved_By__c = UserInfo.getUserId();
-    action.Approved_At__c = System.now();
-    // Permission and user-mode visibility checks guard this package-owned
-    // lifecycle transition; approvers do not need direct field edit access.
-    Database.update(action, AccessLevel.SYSTEM_MODE);
-    asyncGateway.enqueue(new List<Id>{ action.Id }, 0);
+    requireIds(new List<Id>{ pendingActionId });
+    runActions(new List<Id>{ pendingActionId });
   }
 
   /**
@@ -110,29 +97,88 @@ public with sharing class RHCActionReviewController {
    */
   @AuraEnabled
   public static void rejectAction(Id pendingActionId) {
+    requireIds(new List<Id>{ pendingActionId });
+    rejectActions(new List<Id>{ pendingActionId });
+  }
+
+  /**
+   * Approves up to {@link #MAX_BULK} pending-review actions in one decision. Rows that are no
+   * longer pending review are skipped, not failed. The execution service re-validates each
+   * policy's Flow contract at run time, so an invalid policy fails closed there.
+   * @param pendingActionIds Pending actions approved for execution
+   * @return processed and skipped counts
+   */
+  @AuraEnabled
+  public static ReviewOutcome runActions(List<Id> pendingActionIds) {
     requireApprovalPermission();
-    if (pendingActionId == null) {
+    requireIds(pendingActionIds);
+    List<RHC_Pending_Action__c> actions = lockPendingReview(pendingActionIds);
+    ReviewOutcome outcome = new ReviewOutcome();
+    outcome.skipped = pendingActionIds.size() - actions.size();
+    List<Id> queuedIds = new List<Id>();
+    for (RHC_Pending_Action__c action : actions) {
+      action.Queue_Status__c = RHCActionConstants.STATUS_QUEUED;
+      action.Approved_By__c = UserInfo.getUserId();
+      action.Approved_At__c = System.now();
+      queuedIds.add(action.Id);
+    }
+    // Permission and user-mode visibility checks guard this package-owned
+    // lifecycle transition; approvers do not need direct field edit access.
+    Database.update(actions, AccessLevel.SYSTEM_MODE);
+    if (!queuedIds.isEmpty()) {
+      asyncGateway.enqueue(queuedIds, 0);
+    }
+    outcome.processed = queuedIds.size();
+    return outcome;
+  }
+
+  /**
+   * Rejects up to {@link #MAX_BULK} pending-review actions in one decision.
+   * @param pendingActionIds Pending actions to reject
+   * @return processed and skipped counts
+   */
+  @AuraEnabled
+  public static ReviewOutcome rejectActions(List<Id> pendingActionIds) {
+    requireApprovalPermission();
+    requireIds(pendingActionIds);
+    List<RHC_Pending_Action__c> actions = lockPendingReview(pendingActionIds);
+    for (RHC_Pending_Action__c action : actions) {
+      action.Queue_Status__c = 'REJECTED';
+      action.Approved_By__c = UserInfo.getUserId();
+      action.Approved_At__c = System.now();
+      action.Completed_At__c = System.now();
+    }
+    Database.update(actions, AccessLevel.SYSTEM_MODE);
+    ReviewOutcome outcome = new ReviewOutcome();
+    outcome.processed = actions.size();
+    outcome.skipped = pendingActionIds.size() - actions.size();
+    return outcome;
+  }
+
+  private static final Integer MAX_BULK = 50;
+
+  private static void requireIds(List<Id> pendingActionIds) {
+    if (pendingActionIds == null || pendingActionIds.isEmpty() || pendingActionIds.contains(null)) {
       throw new AuraHandledException('Pending Action ID is required.');
     }
-    RHC_Pending_Action__c action = [
+    if (pendingActionIds.size() > MAX_BULK) {
+      throw new AuraHandledException('Review at most ' + MAX_BULK + ' actions in one decision.');
+    }
+  }
+
+  private static List<RHC_Pending_Action__c> lockPendingReview(List<Id> pendingActionIds) {
+    List<RHC_Pending_Action__c> actions = [
       SELECT Id, Queue_Status__c
       FROM RHC_Pending_Action__c
-      WHERE Id = :pendingActionId
+      WHERE Id IN :pendingActionIds
+        AND Queue_Status__c = :RHCActionConstants.STATUS_PENDING_REVIEW
       WITH USER_MODE
       FOR UPDATE
     ];
-    if (action.Queue_Status__c != RHCActionConstants.STATUS_PENDING_REVIEW) {
-      throw new AuraHandledException(
-        'Only pending-review actions can be rejected.'
-      );
+    if (actions.isEmpty()) {
+      throw new AuraHandledException('Only pending-review actions can be reviewed.');
     }
-    action.Queue_Status__c = 'REJECTED';
-    action.Approved_By__c = UserInfo.getUserId();
-    action.Approved_At__c = System.now();
-    action.Completed_At__c = System.now();
-    // Permission and user-mode visibility checks guard this package-owned
-    // lifecycle transition; approvers do not need direct field edit access.
-    Database.update(action, AccessLevel.SYSTEM_MODE);
+    return actions;
   }
 
   private static void requireApprovalPermission() {

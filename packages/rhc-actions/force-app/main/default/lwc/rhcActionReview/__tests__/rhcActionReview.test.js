@@ -4,6 +4,8 @@ import getPendingActions from "@salesforce/apex/RHCActionReviewController.getPen
 import validatePolicy from "@salesforce/apex/RHCActionReviewController.validatePolicy";
 import runAction from "@salesforce/apex/RHCActionReviewController.runAction";
 import rejectAction from "@salesforce/apex/RHCActionReviewController.rejectAction";
+import runActions from "@salesforce/apex/RHCActionReviewController.runActions";
+import rejectActions from "@salesforce/apex/RHCActionReviewController.rejectActions";
 
 jest.mock(
   "@salesforce/apex/RHCActionReviewController.getPendingActions",
@@ -22,6 +24,16 @@ jest.mock(
 );
 jest.mock(
   "@salesforce/apex/RHCActionReviewController.rejectAction",
+  () => ({ default: jest.fn() }),
+  { virtual: true },
+);
+jest.mock(
+  "@salesforce/apex/RHCActionReviewController.runActions",
+  () => ({ default: jest.fn() }),
+  { virtual: true },
+);
+jest.mock(
+  "@salesforce/apex/RHCActionReviewController.rejectActions",
   () => ({ default: jest.fn() }),
   { virtual: true },
 );
@@ -54,6 +66,8 @@ describe("c-rhc-action-review", () => {
     validatePolicy.mockResolvedValue({ valid: true, errors: [] });
     runAction.mockResolvedValue();
     rejectAction.mockResolvedValue();
+    runActions.mockResolvedValue({ processed: 1, skipped: 0 });
+    rejectActions.mockResolvedValue({ processed: 1, skipped: 0 });
   });
 
   afterEach(() => {
@@ -92,12 +106,56 @@ describe("c-rhc-action-review", () => {
       }),
     );
     await flushPromises();
-    element.shadowRoot.querySelectorAll("lightning-button")[2].click();
+    element.shadowRoot.querySelector("[data-action='run']").click();
     await flushPromises();
     expect(validatePolicy).toHaveBeenCalledWith({
       policyId: pending[0].Policy__c,
     });
     expect(runAction).toHaveBeenCalledWith({ pendingActionId: pending[0].Id });
+  });
+
+  it("keeps the queue busy while an approval is in flight", async () => {
+    let resolveRun;
+    runAction.mockImplementation(
+      () => new Promise((resolve) => { resolveRun = resolve; }),
+    );
+    const element = createElement("c-rhc-action-review", {
+      is: RhcActionReview,
+    });
+    document.body.appendChild(element);
+    await flushPromises();
+    const table = element.shadowRoot.querySelector("lightning-datatable");
+    table.dispatchEvent(
+      new CustomEvent("rowaction", {
+        detail: { action: { name: "review" }, row: pending[0] },
+      }),
+    );
+    await flushPromises();
+    element.shadowRoot.querySelector("[data-action='run']").click();
+    await flushPromises();
+    expect(table.isLoading).toBe(true);
+    resolveRun();
+    await flushPromises();
+    expect(table.isLoading).toBe(false);
+  });
+
+  it("approves the selected rows in one decision and reloads", async () => {
+    const element = createElement("c-rhc-action-review", {
+      is: RhcActionReview,
+    });
+    document.body.appendChild(element);
+    await flushPromises();
+    const approve = element.shadowRoot.querySelector("[data-action='approve-selected']");
+    expect(approve.disabled).toBe(true);
+    element.shadowRoot.querySelector("lightning-datatable").dispatchEvent(
+      new CustomEvent("rowselection", { detail: { selectedRows: [pending[0]] } }),
+    );
+    await flushPromises();
+    expect(approve.disabled).toBe(false);
+    approve.click();
+    await flushPromises();
+    expect(runActions).toHaveBeenCalledWith({ pendingActionIds: [pending[0].Id] });
+    expect(getPendingActions).toHaveBeenCalledTimes(2);
   });
 
   it("fails closed when the Flow contract is invalid", async () => {
@@ -116,7 +174,7 @@ describe("c-rhc-action-review", () => {
       }),
     );
     await flushPromises();
-    element.shadowRoot.querySelectorAll("lightning-button")[2].click();
+    element.shadowRoot.querySelector("[data-action='run']").click();
     await flushPromises();
     expect(runAction).not.toHaveBeenCalled();
     expect(
@@ -136,7 +194,7 @@ describe("c-rhc-action-review", () => {
       }),
     );
     await flushPromises();
-    element.shadowRoot.querySelectorAll("lightning-button")[1].click();
+    element.shadowRoot.querySelector("[data-action='reject']").click();
     await flushPromises();
     expect(rejectAction).toHaveBeenCalledWith({
       pendingActionId: pending[0].Id,

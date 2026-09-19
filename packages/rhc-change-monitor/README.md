@@ -55,8 +55,11 @@ email. It does not retain analytical result history, schedule portfolio scans, o
 
 ## Current state
 
-State: **implementation preview, blocked on feasibility evidence**. The project contains the policy
-and ledger schema, disclosure-safe event envelope, versioned claim keys, closed routing, bulk claim
-intake, bounded dispatch, permission sets, and contract tests. It deliberately ships no
+State: **implementation preview; Gate 3 (execution principal) passed on 2026-09-18**. The project
+contains the policy and ledger schema, disclosure-safe event envelope, versioned claim keys, closed
+routing, bulk claim intake, a package-owned dispatch event whose trigger runs as a
+subscriber-configured runtime user, bounded dispatch, an operations console (outcome summary,
+bounded retry of runtime failures, bounded purge of terminal claims), permission sets, and contract
+tests. See `docs/IMPROVEMENTS-2026-09.md` for the evidence. It deliberately ships no
 object-specific CDC trigger or CDC channel membership. A package container, release language, and
 production use remain blocked until the named feasibility gates pass.

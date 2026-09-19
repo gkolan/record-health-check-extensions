@@ -6,14 +6,14 @@ private class RHCReportsRetentionBatchTest {
             'expired-result',
             'FAIL',
             Datetime.now().addDays(-100),
-            '006000000000001AAA',
+            RHCReportsTestDataFactory.fakeId(Opportunity.SObjectType, 1),
             'Close_Date_Complete'
         );
         insert RHCReportsTestDataFactory.resultFact(
             'current-result',
             'PASS',
             Datetime.now(),
-            '006000000000001AAA',
+            RHCReportsTestDataFactory.fakeId(Opportunity.SObjectType, 1),
             'Close_Date_Complete'
         );
         Test.startTest();

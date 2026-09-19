@@ -10,6 +10,7 @@ import getTargetFields from "@salesforce/apex/RHCRunManagerAdminController.getTa
 import resolveSelection from "@salesforce/apex/RHCRunManagerAdminController.resolveSelection";
 import saveDefinition from "@salesforce/apex/RHCRunManagerAdminController.saveDefinition";
 import runNow from "@salesforce/apex/RHCRunManagerAdminController.runNow";
+import cancelBatchRun from "@salesforce/apex/RHCRunManagerAdminController.cancelBatchRun";
 import saveSchedule from "@salesforce/apex/RHCRunManagerAdminController.saveSchedule";
 import pauseSchedule from "@salesforce/apex/RHCRunManagerAdminController.pauseSchedule";
 
@@ -29,7 +30,13 @@ export default class RhcRunManager extends LightningElement {
   ];
   filterColumns = [{ label: "Field", fieldName: "field" }, { label: "Operator", fieldName: "operator" }, { label: "Value", fieldName: "value" }, { type: "action", typeAttributes: { rowActions: [{ label: "Remove", name: "remove" }] } }];
   scheduleColumns = [{ label: "Definition", fieldName: "definitionName" }, { label: "Frequency", fieldName: "Frequency__c" }, { label: "Start time", fieldName: "PreferredStartTime__c" }, { label: "First date", fieldName: "StartDate__c", type: "date-local" }, { label: "Last date", fieldName: "EndDate__c", type: "date-local" }, { label: "Active", fieldName: "Active__c", type: "boolean" }, { type: "action", typeAttributes: { rowActions: [{ label: "Edit", name: "edit" }, { label: "Pause", name: "pause" }] } }];
-  batchRunColumns = [{ label: "Batch run", fieldName: "Name" }, { label: "Source", fieldName: "Source__c" }, { label: "Status", fieldName: "Status__c" }, { label: "Submitted", fieldName: "SubmittedRecordCount__c", type: "number" }, { label: "Processed", fieldName: "ProcessedRecordCount__c", type: "number" }, { label: "Failed scopes", fieldName: "FailedScopeCount__c", type: "number" }, { type: "action", typeAttributes: { rowActions: [{ label: "View scopes", name: "scopes" }] } }];
+  // Cancel is offered only while the owned platform job can still be aborted.
+  batchRunActions = (row, doneCallback) => {
+    const actions = [{ label: "View scopes", name: "scopes" }];
+    if (row.Status__c === "QUEUED" || row.Status__c === "PROCESSING") actions.push({ label: "Cancel", name: "cancel" });
+    doneCallback(actions);
+  };
+  batchRunColumns = [{ label: "Batch run", fieldName: "Name" }, { label: "Source", fieldName: "Source__c" }, { label: "Status", fieldName: "Status__c" }, { label: "Submitted", fieldName: "SubmittedRecordCount__c", type: "number" }, { label: "Processed", fieldName: "ProcessedRecordCount__c", type: "number" }, { label: "Failed scopes", fieldName: "FailedScopeCount__c", type: "number" }, { label: "Pass", fieldName: "PassedCount__c", type: "number" }, { label: "Fail", fieldName: "FailedCount__c", type: "number" }, { label: "Unable", fieldName: "UnableCount__c", type: "number" }, { label: "Error", fieldName: "SystemErrorCount__c", type: "number" }, { type: "action", typeAttributes: { rowActions: this.batchRunActions } }];
   runColumns = [{ label: "Scope", fieldName: "ScopeNumber__c", type: "number" }, { label: "Status", fieldName: "Status__c" }, { label: "Records", fieldName: "RecordCount__c", type: "number" }, { label: "Pass", fieldName: "PassedCount__c", type: "number" }, { label: "Fail", fieldName: "FailedCount__c", type: "number" }, { label: "Skipped", fieldName: "SkippedCount__c", type: "number" }, { label: "Unable", fieldName: "UnableCount__c", type: "number" }, { label: "Errors", fieldName: "SystemErrorCount__c", type: "number" }, { type: "action", typeAttributes: { rowActions: [{ label: "View retained results", name: "results" }] } }];
   resultColumns = [{ label: "Record ID", fieldName: "RecordId__c" }, { label: "Check", fieldName: "CheckQualifiedApiName__c" }, { label: "Status", fieldName: "Status__c" }, { label: "Severity", fieldName: "Severity__c" }, { label: "Reason", fieldName: "ReasonCode__c" }, { label: "Summary", fieldName: "DiagnosticSummary__c", wrapText: true }];
 
@@ -87,7 +94,14 @@ export default class RhcRunManager extends LightningElement {
     if (action.name === "edit") { this.schedule = { id: row.Id, runDefinitionId: row.RunDefinition__c, active: row.Active__c, frequency: row.Frequency__c, preferredStartTime: row.PreferredStartTime__c, dayOfWeek: row.DayOfWeek__c || "MON", startDate: row.StartDate__c || null, endDate: row.EndDate__c || null }; return; }
     this.isLoading = true; try { await pauseSchedule({ scheduleId: row.Id }); this.toast("Schedule paused", "Its owned Salesforce scheduled job was safely removed.", "success"); await this.loadData(); } catch (error) { this.toast("Couldn’t pause schedule", this.errorMessage(error), "error"); } finally { this.isLoading = false; }
   }
-  async handleBatchAction(event) { if (event.detail.action.name !== "scopes") return; this.isLoading = true; this.results = []; this.selectedRunName = ""; try { this.runs = await getRuns({ batchRunId: event.detail.row.Id }); this.selectedBatchName = event.detail.row.Name; } catch (error) { this.toast("Couldn’t load scopes", this.errorMessage(error), "error"); } finally { this.isLoading = false; } }
+  async handleCancelBatchRun(row) {
+    this.isLoading = true;
+    try { await cancelBatchRun({ batchRunId: row.Id }); this.toast("Batch run cancelled", `${row.Name} was cancelled.`, "success"); await this.loadData(); }
+    catch (error) { this.toast("Couldn’t cancel batch run", this.errorMessage(error), "error"); } finally { this.isLoading = false; }
+  }
+  async handleBatchAction(event) {
+    if (event.detail.action.name === "cancel") { await this.handleCancelBatchRun(event.detail.row); return; }
+    if (event.detail.action.name !== "scopes") return; this.isLoading = true; this.results = []; this.selectedRunName = ""; try { this.runs = await getRuns({ batchRunId: event.detail.row.Id }); this.selectedBatchName = event.detail.row.Name; } catch (error) { this.toast("Couldn’t load scopes", this.errorMessage(error), "error"); } finally { this.isLoading = false; } }
   async handleRunAction(event) { if (event.detail.action.name !== "results") return; this.isLoading = true; try { this.results = await getResults({ runId: event.detail.row.Id }); this.selectedRunName = `Scope ${event.detail.row.ScopeNumber__c}`; } catch (error) { this.toast("Couldn’t load retained results", this.errorMessage(error), "error"); } finally { this.isLoading = false; } }
   validateInputs(selector) { return [...this.template.querySelectorAll(selector)].reduce((valid, input) => input.reportValidity() && valid, true); }
   options(values) { return values.map((value) => ({ label: value.replaceAll("_", " ").toLowerCase().replace(/(^|\s)\S/g, (letter) => letter.toUpperCase()), value })); }

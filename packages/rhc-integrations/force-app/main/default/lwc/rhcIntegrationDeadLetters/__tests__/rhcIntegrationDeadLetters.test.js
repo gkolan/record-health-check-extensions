@@ -2,10 +2,12 @@ import { createElement } from 'lwc';
 import RhcIntegrationDeadLetters from 'c/rhcIntegrationDeadLetters';
 import getDeadLetters from '@salesforce/apex/RHCIntegrationDeadLetterController.getDeadLetters';
 import replay from '@salesforce/apex/RHCIntegrationDeadLetterController.replay';
+import replayAll from '@salesforce/apex/RHCIntegrationDeadLetterController.replayAll';
 
 jest.mock('@salesforce/customPermission/RHC_Integration_Replay', () => ({ default: true }), { virtual: true });
 jest.mock('@salesforce/apex/RHCIntegrationDeadLetterController.getDeadLetters', () => ({ default: jest.fn() }), { virtual: true });
 jest.mock('@salesforce/apex/RHCIntegrationDeadLetterController.replay', () => ({ default: jest.fn() }), { virtual: true });
+jest.mock('@salesforce/apex/RHCIntegrationDeadLetterController.replayAll', () => ({ default: jest.fn() }), { virtual: true });
 
 const ROW = {
     id: 'a01000000000001AAA',
@@ -56,6 +58,25 @@ describe('c-rhc-integration-dead-letters', () => {
         expect(getDeadLetters).toHaveBeenCalledTimes(2);
     });
 
+    it('replays the selected rows in one request', async () => {
+        getDeadLetters.mockResolvedValue([ROW]);
+        replayAll.mockResolvedValue(1);
+        const element = createElement('c-rhc-integration-dead-letters', { is: RhcIntegrationDeadLetters });
+        document.body.appendChild(element);
+        await flushPromises();
+        const button = element.shadowRoot.querySelector("[data-action='replay-selected']");
+        expect(button.disabled).toBe(true);
+        element.shadowRoot.querySelector('lightning-datatable').dispatchEvent(new CustomEvent('rowselection', {
+            detail: { selectedRows: [ROW] }
+        }));
+        await flushPromises();
+        expect(button.disabled).toBe(false);
+        button.click();
+        await flushPromises();
+        expect(replayAll).toHaveBeenCalledWith({ deliveryIds: [ROW.id] });
+        expect(getDeadLetters).toHaveBeenCalledTimes(2);
+    });
+
     it('shows an accessible error when Apex rejects the load', async () => {
         getDeadLetters.mockRejectedValue({ body: { message: 'Access denied' } });
         const element = createElement('c-rhc-integration-dead-letters', { is: RhcIntegrationDeadLetters });
@@ -81,7 +102,7 @@ describe('c-rhc-integration-dead-letters', () => {
         const element = createElement('c-rhc-integration-dead-letters', { is: RhcIntegrationDeadLetters });
         document.body.appendChild(element);
         await flushPromises();
-        element.shadowRoot.querySelector('lightning-button').click();
+        [...element.shadowRoot.querySelectorAll('lightning-button')].find((b) => b.label === 'Refresh').click();
         await flushPromises();
         expect(getDeadLetters).toHaveBeenCalledTimes(2);
     });
@@ -110,5 +131,22 @@ describe('c-rhc-integration-dead-letters', () => {
         }));
         await flushPromises();
         expect(replay).not.toHaveBeenCalled();
+    });
+
+    it('surfaces a bulk replay rejection', async () => {
+        getDeadLetters.mockResolvedValue([ROW]);
+        replayAll.mockRejectedValue({ body: { message: 'Activate and correct the route before replay.' } });
+        const element = createElement('c-rhc-integration-dead-letters', { is: RhcIntegrationDeadLetters });
+        const toastHandler = jest.fn();
+        element.addEventListener('lightning__showtoast', toastHandler);
+        document.body.appendChild(element);
+        await flushPromises();
+        element.shadowRoot.querySelector('lightning-datatable').dispatchEvent(new CustomEvent('rowselection', {
+            detail: { selectedRows: [ROW] }
+        }));
+        await flushPromises();
+        element.shadowRoot.querySelector("[data-action='replay-selected']").click();
+        await flushPromises();
+        expect(toastHandler.mock.calls.at(-1)[0].detail.message).toContain('Activate and correct');
     });
 });

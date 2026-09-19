@@ -4,7 +4,7 @@ public with sharing class RHCAlertsViewerController {
    * Returns recent bounded delivery evidence without raw event payloads.
    * @return At most 500 delivery rows visible in user mode.
    */
-  @AuraEnabled(cacheable=true)
+  @AuraEnabled
   public static List<Record_Health_Check_Alert_Delivery__c> listDeliveries() {
     return [
       SELECT

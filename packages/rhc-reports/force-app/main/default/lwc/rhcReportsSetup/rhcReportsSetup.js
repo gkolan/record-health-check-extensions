@@ -2,6 +2,7 @@ import { LightningElement } from "lwc";
 import { ShowToastEvent } from "lightning/platformShowToastEvent";
 import getSettings from "@salesforce/apex/RHCReportsSetupController.getSettings";
 import saveSettings from "@salesforce/apex/RHCReportsSetupController.saveSettings";
+import runAggregationNow from "@salesforce/apex/RHCReportsSetupController.runAggregationNow";
 export default class RhcReportsSetup extends LightningElement {
     settings = {};
     loading = true;
@@ -41,6 +42,18 @@ export default class RhcReportsSetup extends LightningElement {
             this.toast("RHC Reports configured", "Settings and maintenance schedule were saved.", "success");
         } catch (error) {
             this.toast("Unable to save setup", this.message(error), "error");
+        } finally {
+            this.saving = false;
+        }
+    }
+    async runNow() {
+        this.saving = true;
+        try {
+            const snapshotDate = await runAggregationNow();
+            this.toast("Aggregation queued", `Snapshot for ${snapshotDate} was queued; refresh in a minute to see the outcome.`, "success");
+            await this.load();
+        } catch (error) {
+            this.toast("Unable to queue aggregation", this.message(error), "error");
         } finally {
             this.saving = false;
         }

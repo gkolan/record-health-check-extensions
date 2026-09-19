@@ -117,7 +117,7 @@ private class RHCReportsIngestionServiceTest {
     }
 
     @isTest
-    static void shouldRejectAcceptedEvent_WhenRequiredFactFieldIsMissing() {
+    static void shouldRecordEvidenceAndContinue_WhenRequiredFactFieldIsMissing() {
         Record_Health_Check_Result__e invalidEvent =
             RHCReportsTestDataFactory.resultEvent(
                 'invalid-result-event',
@@ -125,26 +125,37 @@ private class RHCReportsIngestionServiceTest {
                 Datetime.now()
             );
         invalidEvent.FrameworkVersion__c = null;
+        Record_Health_Check_Result__e validEvent =
+            RHCReportsTestDataFactory.resultEvent('valid-result-event', 'FAIL', Datetime.now());
 
         Test.startTest();
-        try {
-            RHCReportsIngestionService.ingestResults(
-                new List<Record_Health_Check_Result__e>{ invalidEvent }
-            );
-            Assert.fail('A failed fact upsert must not be treated as successful ingestion.');
-        } catch (RHCReportsIngestionService.RHCReportsIngestionException error) {
-            Assert.isTrue(
-                error.getMessage().contains('Unable to persist 1 Result Facts'),
-                'The exception must identify the failed fact type and count.'
-            );
-        }
+        RHCReportsIngestionService.ingestResults(
+            new List<Record_Health_Check_Result__e>{ invalidEvent, validEvent }
+        );
         Test.stopTest();
 
         Assert.areEqual(
-            0,
+            1,
             [SELECT COUNT() FROM Record_Health_Check_Report_Result__c],
-            'A failed accepted event must not leave a partial fact behind.'
+            'The valid fact is kept; the invalid one is dropped without suspending the subscriber.'
         );
+        Record_Health_Check_Report_Setting__c setting =
+            Record_Health_Check_Report_Setting__c.getOrgDefaults();
+        Assert.isNotNull(setting.LastIngestionFailureAt__c, 'The failure time is recorded.');
+        Assert.isTrue(
+            setting.LastIngestionErrorCodes__c.contains('REQUIRED_FIELD_MISSING'),
+            'The sanitized status code is recorded: ' + setting.LastIngestionErrorCodes__c
+        );
+    }
+
+    @isTest
+    static void shouldStopRetrying_WhenRedeliveriesAreExhausted() {
+        RHCReportsIngestionService.retryCountOverride = 2;
+        Assert.isTrue(RHCReportsIngestionService.shouldRetry(), 'Redelivery two is within the bound');
+        RHCReportsIngestionService.retryCountOverride = 3;
+        Assert.isFalse(RHCReportsIngestionService.shouldRetry(), 'Redelivery three must stop retrying');
+        RHCReportsIngestionService.retryCountOverride = null;
+        Assert.isTrue(RHCReportsIngestionService.shouldRetry(), 'No trigger context means no retries yet');
     }
 
     @isTest

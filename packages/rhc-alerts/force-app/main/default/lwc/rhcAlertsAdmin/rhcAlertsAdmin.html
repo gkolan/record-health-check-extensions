@@ -97,6 +97,7 @@
             disabled={loading}
             required
             label="Notification channel"
+            field-level-help="Salesforce notification (bell) sends an asynchronous Custom Notification to the desktop bell and the mobile app. Email sends one plain-text message per recipient."
             data-field="NotificationChannel__c"
             value={policy.NotificationChannel__c}
             options={channels}
@@ -185,6 +186,7 @@
             key-field="Id"
             data={policies}
             columns={policyColumns}
+            onrowaction={handlePolicyAction}
             hide-checkbox-column
           ></lightning-datatable></section
       ></template>

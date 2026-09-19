@@ -29,6 +29,29 @@ private class RHCIntegrationDeadLetterControllerTest {
     }
 
     @isTest
+    static void shouldReplaySelectionInOneChainAndSkipNonDeadLetters() {
+        User administrator = createAuthorizedAdministrator('rhcbulk');
+        Test.setMock(HttpCalloutMock.class, new RHCIntegrationHttpMock(200, '{}'));
+        System.runAs(administrator) {
+            Record_Health_Check_Integration_Route__c route = RHCIntegrationTestDataFactory.createExampleRoute();
+            Record_Health_Check_Integration_Delivery__c first = RHCIntegrationTestDataFactory.createDelivery(route.Id, 'DEAD_LETTER');
+            Record_Health_Check_Integration_Delivery__c second = RHCIntegrationTestDataFactory.createDelivery(route.Id, 'DEAD_LETTER');
+            Record_Health_Check_Integration_Delivery__c done = RHCIntegrationTestDataFactory.createDelivery(route.Id, 'SUCCEEDED');
+
+            Test.startTest();
+            Integer replayed = RHCIntegrationDeadLetterController.replayAll(new List<Id>{ first.Id, second.Id, done.Id });
+            Test.stopTest();
+
+            Assert.areEqual(2, replayed, 'Only dead letters are replayed; the succeeded row is skipped.');
+            Assert.areEqual(
+                2,
+                [SELECT COUNT() FROM Record_Health_Check_Integration_Delivery__c WHERE Id IN (:first.Id, :second.Id) AND Status__c = 'SUCCEEDED' AND ReplayCount__c = 1],
+                'Both replayed rows are delivered by the single chain.'
+            );
+        }
+    }
+
+    @isTest
     static void shouldRejectReplayWhenDeliveryIsNoLongerDeadLettered() {
         User administrator = createAuthorizedAdministrator('rhcstate');
         System.runAs(administrator) {

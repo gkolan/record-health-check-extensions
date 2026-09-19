@@ -5,10 +5,12 @@
 1. Open **RHC Run Manager** from the App Launcher.
 2. Open **3. Monitoring**.
 3. Click the refresh icon.
-4. Review newest Batch Runs first.
+4. Review newest Batch Runs first. Pass, Fail, Unable, and Error totals are rolled up from the
+   completed scopes, so a run's business outcome is visible without opening each scope.
 5. Investigate any Batch Run with `PARTIAL_FAILURE`, or one that remains unexpectedly queued or
    processing, before changing its definition.
 6. Use **View scopes** to find the affected scope.
+   Use **Cancel** on a `QUEUED` or `PROCESSING` Batch Run that targets the wrong population.
 7. Use **View retained results** to inspect business outcomes retained by Capture Mode.
 
 ## Status interpretation
@@ -21,6 +23,8 @@
 | `PROCESSING` | Batch start executed; scopes may be running | Refresh later; do not submit duplicates |
 | `COMPLETED` | All Batch scopes completed without caught system exception | Review counts/results as needed |
 | `PARTIAL_FAILURE` | At least one scope threw; earlier successful scopes remain committed | Inspect failed scope/error summary and target data/access |
+| `ERROR` | Population could not be discovered; no scope ran | Correct the definition or filter, then Run Now |
+| `CANCELLED` | An administrator used **Cancel**; the owned platform job was aborted and the cancelling user is in the error summary | Scopes committed before the abort remain; rerun when ready |
 
 ### Scope Run
 

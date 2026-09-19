@@ -40,6 +40,10 @@ public with sharing class RHCRunManagerExecutionService {
           : 'Supplied-ID execution requires a SUPPLIED_IDS Run Definition.'
       );
     }
+    // Supplied-ID launches are already serialized per definition by the coalescer.
+    if (!'SUPPLIED_IDS'.equals(source) && hasActiveBatchRun(definition.Id)) {
+      throw new ExecutionException('A Batch Run for this Run Definition is already in progress.');
+    }
     Integer batchSize = definition.BatchSize__c == null ? 0 : Integer.valueOf(definition.BatchSize__c);
     if (batchSize < 1 || batchSize > 200) throw new ExecutionException('Batch Size must be between 1 and 200.');
     RHCRunManagerCoreMetadataGateway.DefinitionInfo coreInfo = RHCRunManagerCoreMetadataGateway.resolve(
@@ -76,6 +80,16 @@ public with sharing class RHCRunManagerExecutionService {
       throw new ExecutionException('Batch execution could not be queued.');
     }
     return batchRun.Id;
+  }
+
+  private static Boolean hasActiveBatchRun(Id definitionId) {
+    return ![
+      SELECT Id
+      FROM Record_Health_Check_Batch_Run__c
+      WHERE RunDefinition__c = :definitionId AND Status__c IN ('QUEUED', 'PROCESSING')
+      WITH USER_MODE
+      LIMIT 1
+    ].isEmpty();
   }
 
   /** Runs a saved definition immediately with its configured population mode. */

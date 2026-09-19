@@ -7,16 +7,16 @@ private class RHCReportsAggregationServiceTest {
         Datetime current = Datetime.newInstanceGMT(2026, 8, 20, 12, 0, 0);
         insert new List<Record_Health_Check_Report_Result__c>{
             RHCReportsTestDataFactory.resultFact(
-                'prior-recovery', 'FAIL', prior, '006000000000001AAA', 'Close_Date_Complete'
+                'prior-recovery', 'FAIL', prior, RHCReportsTestDataFactory.fakeId(Opportunity.SObjectType, 1), 'Close_Date_Complete'
             ),
             RHCReportsTestDataFactory.resultFact(
-                'prior-recurring', 'FAIL', prior, '006000000000002AAA', 'Close_Date_Complete'
+                'prior-recurring', 'FAIL', prior, RHCReportsTestDataFactory.fakeId(Opportunity.SObjectType, 2), 'Close_Date_Complete'
             ),
             RHCReportsTestDataFactory.resultFact(
-                'current-recovery', 'PASS', current, '006000000000001AAA', 'Close_Date_Complete'
+                'current-recovery', 'PASS', current, RHCReportsTestDataFactory.fakeId(Opportunity.SObjectType, 1), 'Close_Date_Complete'
             ),
             RHCReportsTestDataFactory.resultFact(
-                'current-recurring', 'FAIL', current, '006000000000002AAA', 'Close_Date_Complete'
+                'current-recurring', 'FAIL', current, RHCReportsTestDataFactory.fakeId(Opportunity.SObjectType, 2), 'Close_Date_Complete'
             )
         };
         insert RHCReportsTestDataFactory.runFact('target-run', current);

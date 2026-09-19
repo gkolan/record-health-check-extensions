@@ -63,6 +63,29 @@ private class RHCRunManagerAdminControllerTest {
   }
 
   @IsTest
+  static void shouldCancelActiveBatchRunAndRejectTerminalOne() {
+    System.runAs(RHCRunManagerTestDataFactory.adminUser()) {
+    Record_Health_Check_Run_Definition__c definition = RHCRunManagerTestDataFactory.createDefinition('ALL_ACCESSIBLE', 'FAIL');
+    Record_Health_Check_Batch_Run__c active = RHCRunManagerTestDataFactory.createBatchRun(definition.Id);
+
+    RHCRunManagerAdminController.cancelBatchRun(active.Id);
+
+    Record_Health_Check_Batch_Run__c cancelled = [SELECT Status__c, CompletedAt__c, ErrorSummary__c FROM Record_Health_Check_Batch_Run__c WHERE Id = :active.Id];
+    Assert.areEqual('CANCELLED', cancelled.Status__c, 'An active Batch Run becomes CANCELLED.');
+    Assert.isNotNull(cancelled.CompletedAt__c, 'Cancellation is a terminal completion.');
+    Assert.isTrue(cancelled.ErrorSummary__c.startsWith('Cancelled by '), 'The cancelling user is recorded.');
+
+    Boolean rejected = false;
+    try {
+      RHCRunManagerAdminController.cancelBatchRun(active.Id);
+    } catch (AuraHandledException error) {
+      rejected = true;
+    }
+    Assert.isTrue(rejected, 'A terminal Batch Run cannot be cancelled again.');
+    }
+  }
+
+  @IsTest
   static void shouldReturnRecentBatchRuns() {
     System.runAs(RHCRunManagerTestDataFactory.adminUser()) {
     Record_Health_Check_Run_Definition__c definition = RHCRunManagerTestDataFactory.createDefinition('ALL_ACCESSIBLE', 'FAIL');
