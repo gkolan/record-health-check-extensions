@@ -134,6 +134,20 @@ The six analyzer findings are new September review work and must not be confused
 zero-finding August baseline. Generated reports are retained locally under
 `packages/rhc-change-monitor/.release-evidence/recovery-20260919/` and remain ignored by Git.
 
+## Ignored artifact recovery
+
+An audit on 2026-09-19 found 92,114 ignored files totaling 957,907,774 bytes in the preserved
+checkout. Of these, 90,904 files were dependency trees, 1,099 were Salesforce local state, and 107
+were coverage output. These categories were excluded because they are reproducible or local-state
+material rather than product source.
+
+Twenty meaningful ignored or locally generated evidence artifacts totaling 34,442,136 bytes were
+copied to `/Users/gkolan/GitHub/record-health-check-extensions-recovered-ignored-20260919`. They
+comprise 12 historical analyzer files from the iCloud survivor directory, four current Change
+Monitor analyzer/test results, and four metadata-retrieve receipts. The archive contains a manifest
+and SHA-256 catalog; all checksums passed and an artifact-only credential-marker scan returned no
+matches. The archive remains outside Git intentionally.
+
 ## Safe recovery options
 
 1. **Preserve first:** create a local recovery branch and commit the complete non-generated working
