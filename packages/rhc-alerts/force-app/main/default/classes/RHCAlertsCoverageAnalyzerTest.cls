@@ -62,4 +62,32 @@ private class RHCAlertsCoverageAnalyzerTest {
       'Set Run contract limitation should remain explicit.'
     );
   }
+
+  @IsTest
+  static void shouldReportMissingNotificationTypeForBellPolicy() {
+    Record_Health_Check_Alert_Policy__c policy = RHCAlertsTestDataFactory.buildCheckPolicy(
+      'missing__Check',
+      0
+    );
+    policy.NotificationChannel__c = 'CUSTOM_NOTIFICATION';
+
+    Test.startTest();
+    List<RHCAlertsCoreMetadataGateway.CoverageGap> gaps = RHCAlertsCoverageAnalyzer.analyzePolicies(
+      new List<Record_Health_Check_Alert_Policy__c>{ policy },
+      new Map<String, Record_Health_Check__mdt>(),
+      false
+    );
+    Test.stopTest();
+
+    Assert.areEqual(
+      3,
+      gaps.size(),
+      'Missing Check, notification type, and caller guidance expected.'
+    );
+    Assert.areEqual(
+      'NOTIFICATION_TYPE_UNAVAILABLE',
+      gaps[1].code,
+      'A bell policy should expose a missing packaged notification type.'
+    );
+  }
 }

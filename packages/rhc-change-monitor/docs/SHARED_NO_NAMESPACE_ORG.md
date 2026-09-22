@@ -81,6 +81,16 @@ effective CDC trigger or Queueable principal.
    evidence.
 5. Rebuild the org after 2026-09-29 rather than extending claims based on an expired environment.
 
+## Baseline change — 2026-09-18
+
+The managed `Record Health Check 2.0.4.2` package, which had been installed on top of the unmanaged
+core source and consumed three of the Developer Edition's five platform-event definitions, was
+uninstalled so the package's dispatch event could deploy. Unmanaged core is unchanged. A
+`PlatformEventSubscriberConfig` (`RHC_Change_Monitor_Dispatch`) now runs
+`RHCChangeMonitorDispatchSubscriber` as the scratch administrator; treat it as shared
+infrastructure. The permission sets briefly assigned to Automated Process for the Gate 3 experiment
+were removed again.
+
 ## Real CDC evidence and current blocker
 
 Account CDC and the subscriber-owned trigger are active. The synthetic policy `CDC Gate Account`

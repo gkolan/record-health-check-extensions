@@ -23,6 +23,7 @@ default Automated Process user cannot use the runtime user's permission-set/prin
 | Read retained Payload | Yes | No | No | Yes |
 | Update delivery state | Yes | No | No | Yes |
 | Replay custom permission | Yes | No | No | No |
+| Configure and run bounded retention cleanup | Yes | No | No | No |
 | Read Run/Result/Log events | Not granted here | No | No | Yes |
 | External Credential principal | Separate org-owned assignment only | No | No | Required separately |
 
@@ -35,7 +36,11 @@ controller never return it. Limit Admin assignment and avoid copying payloads in
 - Delivery sharing is Private; Admin has Modify All, Operator/Viewer have View All, Runtime has
   View All plus create/edit.
 - Dead-letter queries use `WITH USER_MODE` and a DTO projection that omits Payload.
-- Replay checks the custom permission and performs user-mode query/update.
+- Replay checks the custom permission, sanitizes the replay-state fields, rejects any stripped
+  field rather than performing a partial reset, and performs user-mode query/update.
+- Retention management requires setting object and field create/read/edit access plus Delivery
+  delete access. Setting writes pass through `Security.stripInaccessible` and user-mode DML;
+  queries/deletes also use user mode, and controls are hidden from users without those capabilities.
 - Runtime route query intentionally supports Platform Event background processing; route authorship
   remains restricted to admins.
 - No permission set contains or can contain a subscriber-specific secret.
@@ -53,9 +58,10 @@ controller never return it. Limit Admin assignment and avoid copying payloads in
 ## Data minimization
 
 The ledger retains the allow-listed request only because automated retry and authorized replay need
-the original versioned request. Reports and search are disabled. Define an org retention period and
-delete completed rows after the approved audit window. Do not add report types, trend dashboards,
-checked-record snapshots, external bodies, or general health history to this package.
+the original versioned request. Reports and search are disabled. Define and save an approved org
+retention period, then use the administrator-confirmed, terminal-only, 1,000-row cleanup after the
+audit window. Saving settings does not schedule deletion, and active delivery states are excluded.
+Do not add report types, trend dashboards, checked-record snapshots, external bodies, or general
+health history to this package.
 
 Read the detailed [threat model](THREAT-MODEL.md) and [payload prohibitions](PAYLOAD-CONTRACTS.md).
-

@@ -70,10 +70,11 @@ Run Fact + Result Fact + Daily Snapshot → report types → reports → dashboa
 | `RHCReportsResultSubscriber` | Receives bulk `Record_Health_Check_Result__e` deliveries after insert. |
 | `RHCReportsIngestionService` | Validates contract 1.0, removes duplicate Event IDs in the delivery, and upserts facts. |
 | `RHCReportsCoverageController` | Combines active core Custom Metadata with observed fact counts and classifies coverage. |
-| `RHCReportsSetupController` | Permission-gates settings, validates retention/time zone, and registers the scheduled job. |
+| `RHCReportsSetupController` | Permission-gates one typed settings request, validates retention/time zone, and registers the scheduled job. |
 | `RHCReportsMaintenanceScheduled` | At 2:15 AM, launches prior-local-day aggregation and enabled retention cleanup. |
 | `RHCReportsDailyAggregationQueueable` | Runs one local-date aggregation. Its Finalizer records a durable outcome, advances the completed-date watermark monotonically, continues bounded catch-up, and starts retention only after catch-up succeeds. |
-| `RHCReportsAggregationService` | Creates deterministic RUN- and RESULT-grain snapshots. |
+| `RHCReportsAggregationService` | Applies RUN- and RESULT-grain aggregation rules and creates deterministic snapshot rows. |
+| `RHCReportsAggregationRepository` | Owns bounded system-mode fact reads and atomic replacement of one date/time-zone snapshot partition. |
 | `RHCReportsRetentionBatch` | Deletes expired Result Facts, then Run Facts, then snapshots in scopes of 200. |
 
 ## Object model

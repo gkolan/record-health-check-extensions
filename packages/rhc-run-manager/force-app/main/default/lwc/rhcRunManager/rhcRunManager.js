@@ -10,8 +10,12 @@ import getTargetFields from "@salesforce/apex/RHCRunManagerAdminController.getTa
 import resolveSelection from "@salesforce/apex/RHCRunManagerAdminController.resolveSelection";
 import saveDefinition from "@salesforce/apex/RHCRunManagerAdminController.saveDefinition";
 import runNow from "@salesforce/apex/RHCRunManagerAdminController.runNow";
+import cancelBatchRun from "@salesforce/apex/RHCRunManagerAdminController.cancelBatchRun";
 import saveSchedule from "@salesforce/apex/RHCRunManagerAdminController.saveSchedule";
 import pauseSchedule from "@salesforce/apex/RHCRunManagerAdminController.pauseSchedule";
+import getRetentionSettings from "@salesforce/apex/RHCRunManagerAdminController.getRetentionSettings";
+import saveRetentionSettings from "@salesforce/apex/RHCRunManagerAdminController.saveRetentionSettings";
+import purgeOperationalRecords from "@salesforce/apex/RHCRunManagerAdminController.purgeOperationalRecords";
 
 const DEFAULT_FORM = Object.freeze({ id: null, displayName: "", active: true, selectionType: "CHECK_SET", qualifiedApiName: "", populationMode: "ALL_ACCESSIBLE", batchSize: 100, captureMode: "FAIL", coalesceDelayMinutes: 1 });
 const DEFAULT_SCHEDULE = Object.freeze({ id: null, runDefinitionId: "", active: true, frequency: "DAILY", preferredStartTime: "02:00", dayOfWeek: "MON", startDate: null, endDate: null });
@@ -21,6 +25,8 @@ export default class RhcRunManager extends LightningElement {
   targetFieldOptions = []; filters = []; form = { ...DEFAULT_FORM }; schedule = { ...DEFAULT_SCHEDULE };
   newFilter = { field: "", operator: "EQ", value: "" };
   resolvedTarget = ""; selectedBatchName = ""; selectedRunName = ""; isLoading = false;
+  retention = { retentionDays: 365, configured: false, maxDeleteRows: 1000, canManage: false };
+  retentionConfirmed = false; retentionDirty = false;
 
   definitionColumns = [
     { label: "Name", fieldName: "DisplayName__c" }, { label: "Selection", fieldName: "QualifiedApiName__c" },
@@ -29,7 +35,13 @@ export default class RhcRunManager extends LightningElement {
   ];
   filterColumns = [{ label: "Field", fieldName: "field" }, { label: "Operator", fieldName: "operator" }, { label: "Value", fieldName: "value" }, { type: "action", typeAttributes: { rowActions: [{ label: "Remove", name: "remove" }] } }];
   scheduleColumns = [{ label: "Definition", fieldName: "definitionName" }, { label: "Frequency", fieldName: "Frequency__c" }, { label: "Start time", fieldName: "PreferredStartTime__c" }, { label: "First date", fieldName: "StartDate__c", type: "date-local" }, { label: "Last date", fieldName: "EndDate__c", type: "date-local" }, { label: "Active", fieldName: "Active__c", type: "boolean" }, { type: "action", typeAttributes: { rowActions: [{ label: "Edit", name: "edit" }, { label: "Pause", name: "pause" }] } }];
-  batchRunColumns = [{ label: "Batch run", fieldName: "Name" }, { label: "Source", fieldName: "Source__c" }, { label: "Status", fieldName: "Status__c" }, { label: "Submitted", fieldName: "SubmittedRecordCount__c", type: "number" }, { label: "Processed", fieldName: "ProcessedRecordCount__c", type: "number" }, { label: "Failed scopes", fieldName: "FailedScopeCount__c", type: "number" }, { type: "action", typeAttributes: { rowActions: [{ label: "View scopes", name: "scopes" }] } }];
+  // Cancel is offered only while the owned platform job can still be aborted.
+  batchRunActions = (row, doneCallback) => {
+    const actions = [{ label: "View scopes", name: "scopes" }];
+    if (row.Status__c === "QUEUED" || row.Status__c === "PROCESSING") actions.push({ label: "Cancel", name: "cancel" });
+    doneCallback(actions);
+  };
+  batchRunColumns = [{ label: "Batch run", fieldName: "Name" }, { label: "Source", fieldName: "Source__c" }, { label: "Status", fieldName: "Status__c" }, { label: "Submitted", fieldName: "SubmittedRecordCount__c", type: "number" }, { label: "Processed", fieldName: "ProcessedRecordCount__c", type: "number" }, { label: "Failed scopes", fieldName: "FailedScopeCount__c", type: "number" }, { label: "Pass", fieldName: "PassedCount__c", type: "number" }, { label: "Fail", fieldName: "FailedCount__c", type: "number" }, { label: "Unable", fieldName: "UnableCount__c", type: "number" }, { label: "Error", fieldName: "SystemErrorCount__c", type: "number" }, { type: "action", typeAttributes: { rowActions: this.batchRunActions } }];
   runColumns = [{ label: "Scope", fieldName: "ScopeNumber__c", type: "number" }, { label: "Status", fieldName: "Status__c" }, { label: "Records", fieldName: "RecordCount__c", type: "number" }, { label: "Pass", fieldName: "PassedCount__c", type: "number" }, { label: "Fail", fieldName: "FailedCount__c", type: "number" }, { label: "Skipped", fieldName: "SkippedCount__c", type: "number" }, { label: "Unable", fieldName: "UnableCount__c", type: "number" }, { label: "Errors", fieldName: "SystemErrorCount__c", type: "number" }, { type: "action", typeAttributes: { rowActions: [{ label: "View retained results", name: "results" }] } }];
   resultColumns = [{ label: "Record ID", fieldName: "RecordId__c" }, { label: "Check", fieldName: "CheckQualifiedApiName__c" }, { label: "Status", fieldName: "Status__c" }, { label: "Severity", fieldName: "Severity__c" }, { label: "Reason", fieldName: "ReasonCode__c" }, { label: "Summary", fieldName: "DiagnosticSummary__c", wrapText: true }];
 
@@ -42,12 +54,14 @@ export default class RhcRunManager extends LightningElement {
   get isWeekly() { return this.schedule.frequency === "WEEKLY"; }
   get hasRuns() { return this.runs.length > 0; }
   get hasResults() { return this.results.length > 0; }
+  get showRetention() { return Boolean(this.retention?.canManage); }
+  get purgeDisabled() { return this.isLoading || !this.retention.configured || this.retentionDirty || !this.retentionConfirmed; }
   get selectionOptions() { return this.selections.map((item) => ({ label: item.label, value: item.value })); }
   get definitionOptions() { return this.definitions.filter((item) => item.Active__c && item.PopulationMode__c !== "SUPPLIED_IDS").map((item) => ({ label: item.DisplayName__c, value: item.Id })); }
 
   async loadData() {
     this.isLoading = true;
-    try { const [definitions, schedules, batchRuns] = await Promise.all([getDefinitions(), getSchedules(), getBatchRuns()]); this.definitions = definitions; this.schedules = schedules.map((item) => ({ ...item, definitionName: item.RunDefinition__r?.DisplayName__c || "" })); this.batchRuns = batchRuns; }
+    try { const [definitions, schedules, batchRuns, retention] = await Promise.all([getDefinitions(), getSchedules(), getBatchRuns(), getRetentionSettings()]); this.definitions = definitions; this.schedules = schedules.map((item) => ({ ...item, definitionName: item.RunDefinition__r?.DisplayName__c || "" })); this.batchRuns = batchRuns; this.retention = retention || this.retention; this.retentionDirty = false; }
     catch (error) { this.toast("Couldn’t load Run Manager", this.errorMessage(error), "error"); } finally { this.isLoading = false; }
   }
   async loadSelections() { try { this.selections = await getSelections({ selectionType: this.form.selectionType }); } catch (error) { this.toast("Couldn’t load core selections", this.errorMessage(error), "error"); } }
@@ -87,8 +101,29 @@ export default class RhcRunManager extends LightningElement {
     if (action.name === "edit") { this.schedule = { id: row.Id, runDefinitionId: row.RunDefinition__c, active: row.Active__c, frequency: row.Frequency__c, preferredStartTime: row.PreferredStartTime__c, dayOfWeek: row.DayOfWeek__c || "MON", startDate: row.StartDate__c || null, endDate: row.EndDate__c || null }; return; }
     this.isLoading = true; try { await pauseSchedule({ scheduleId: row.Id }); this.toast("Schedule paused", "Its owned Salesforce scheduled job was safely removed.", "success"); await this.loadData(); } catch (error) { this.toast("Couldn’t pause schedule", this.errorMessage(error), "error"); } finally { this.isLoading = false; }
   }
-  async handleBatchAction(event) { if (event.detail.action.name !== "scopes") return; this.isLoading = true; this.results = []; this.selectedRunName = ""; try { this.runs = await getRuns({ batchRunId: event.detail.row.Id }); this.selectedBatchName = event.detail.row.Name; } catch (error) { this.toast("Couldn’t load scopes", this.errorMessage(error), "error"); } finally { this.isLoading = false; } }
+  async handleCancelBatchRun(row) {
+    this.isLoading = true;
+    try { await cancelBatchRun({ batchRunId: row.Id }); this.toast("Batch run cancelled", `${row.Name} was cancelled.`, "success"); await this.loadData(); }
+    catch (error) { this.toast("Couldn’t cancel batch run", this.errorMessage(error), "error"); } finally { this.isLoading = false; }
+  }
+  async handleBatchAction(event) {
+    if (event.detail.action.name === "cancel") { await this.handleCancelBatchRun(event.detail.row); return; }
+    if (event.detail.action.name !== "scopes") return; this.isLoading = true; this.results = []; this.selectedRunName = ""; try { this.runs = await getRuns({ batchRunId: event.detail.row.Id }); this.selectedBatchName = event.detail.row.Name; } catch (error) { this.toast("Couldn’t load scopes", this.errorMessage(error), "error"); } finally { this.isLoading = false; } }
   async handleRunAction(event) { if (event.detail.action.name !== "results") return; this.isLoading = true; try { this.results = await getResults({ runId: event.detail.row.Id }); this.selectedRunName = `Scope ${event.detail.row.ScopeNumber__c}`; } catch (error) { this.toast("Couldn’t load retained results", this.errorMessage(error), "error"); } finally { this.isLoading = false; } }
+  handleRetentionChange(event) { this.retention = { ...this.retention, retentionDays: Number(event.target.value) }; this.retentionDirty = true; this.retentionConfirmed = false; }
+  handleRetentionConfirm(event) { this.retentionConfirmed = event.target.checked; }
+  async handleSaveRetention() {
+    const input = this.template.querySelector("[data-retention-days]");
+    if (!input.reportValidity()) return;
+    this.isLoading = true;
+    try { this.retention = await saveRetentionSettings({ retentionDays: this.retention.retentionDays }); this.retentionDirty = false; this.toast("Retention settings saved", "Cleanup remains manual and requires confirmation for each purge.", "success"); }
+    catch (error) { this.toast("Couldn’t save retention settings", this.errorMessage(error), "error"); } finally { this.isLoading = false; }
+  }
+  async handlePurge() {
+    this.isLoading = true;
+    try { const outcome = await purgeOperationalRecords(); this.toast("Run Manager retention complete", `${outcome.resultsDeleted} results, ${outcome.runsDeleted} runs, ${outcome.batchRunsDeleted} batch runs, and ${outcome.requestsDeleted} submitted requests deleted.`, "success"); this.retentionConfirmed = false; await this.loadData(); }
+    catch (error) { this.toast("Couldn’t purge operational records", this.errorMessage(error), "error"); } finally { this.isLoading = false; }
+  }
   validateInputs(selector) { return [...this.template.querySelectorAll(selector)].reduce((valid, input) => input.reportValidity() && valid, true); }
   options(values) { return values.map((value) => ({ label: value.replaceAll("_", " ").toLowerCase().replace(/(^|\s)\S/g, (letter) => letter.toUpperCase()), value })); }
   errorMessage(error) { return error?.body?.message || error?.message || "An unexpected error occurred."; }

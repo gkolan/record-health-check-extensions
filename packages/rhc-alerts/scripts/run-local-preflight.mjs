@@ -1,3 +1,4 @@
+/* eslint-disable @lwc/lwc-platform/no-aura-libs, @lwc/lwc-platform/no-process-env -- Node CLI, not LWC runtime code. */
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";

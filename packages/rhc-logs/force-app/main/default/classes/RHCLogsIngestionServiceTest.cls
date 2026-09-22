@@ -156,6 +156,16 @@ private class RHCLogsIngestionServiceTest {
     }
 
     @IsTest
+    static void shouldStopRetryingWhenRedeliveriesAreExhausted() {
+        RHCLogsIngestionService.retryCountOverride = 2;
+        Assert.isTrue(RHCLogsIngestionService.shouldRetry(), 'Redelivery two is still within the bound');
+        RHCLogsIngestionService.retryCountOverride = 3;
+        Assert.isFalse(RHCLogsIngestionService.shouldRetry(), 'Redelivery three must stop retrying');
+        RHCLogsIngestionService.retryCountOverride = null;
+        Assert.isTrue(RHCLogsIngestionService.shouldRetry(), 'Outside a trigger context there are no retries yet');
+    }
+
+    @IsTest
     static void shouldClassifyOnlyTransientDatabaseFailuresForRetry() {
         Assert.isTrue(
             RHCLogsIngestionService.isRetryable(StatusCode.UNABLE_TO_LOCK_ROW),

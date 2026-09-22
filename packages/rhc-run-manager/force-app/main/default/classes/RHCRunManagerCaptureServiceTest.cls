@@ -6,7 +6,7 @@ private class RHCRunManagerCaptureServiceTest {
   }
 
   @IsTest
-  static void shouldRetainExactStatusGroups_ForEveryCaptureMode() {
+  static void shouldRetainExactStatusGroupsForEveryCaptureMode() {
     System.runAs(RHCRunManagerTestDataFactory.adminUser()) {
     Assert.isTrue(RHCRunManagerCaptureService.shouldRetain('PASS', RecordHealthCheckStatus.PASS), 'PASS mode retains PASS.');
     Assert.isFalse(RHCRunManagerCaptureService.shouldRetain('PASS', RecordHealthCheckStatus.FAIL), 'PASS mode excludes FAIL.');
@@ -17,7 +17,7 @@ private class RHCRunManagerCaptureServiceTest {
   }
 
   @IsTest
-  static void shouldUpsertOneResult_WhenCaptureRepeated() {
+  static void shouldUpsertOneResultWhenCaptureRepeated() {
     System.runAs(RHCRunManagerTestDataFactory.adminUser()) {
     Record_Health_Check_Run_Definition__c definition = RHCRunManagerTestDataFactory.createDefinition('ALL_ACCESSIBLE', 'BOTH');
     Record_Health_Check_Batch_Run__c batchRun = RHCRunManagerTestDataFactory.createBatchRun(definition.Id);
@@ -35,8 +35,9 @@ private class RHCRunManagerCaptureServiceTest {
     response.results.add(item);
 
     Test.startTest();
-    RHCRunManagerCaptureService.capture(runRecord.Id, 'idempotent-run', 'BOTH', response);
-    RHCRunManagerCaptureService.capture(runRecord.Id, 'idempotent-run', 'BOTH', response);
+    RHCRunManagerCaptureService.Request request = captureRequest(runRecord.Id, 'idempotent-run', response);
+    RHCRunManagerCaptureService.capture(request);
+    RHCRunManagerCaptureService.capture(request);
     Test.stopTest();
 
     Assert.areEqual(1, [SELECT COUNT() FROM Record_Health_Check_Run_Result__c WHERE Run__c = :runRecord.Id], 'Unique ResultKey should suppress retries and event-equivalent duplicates.');
@@ -44,7 +45,7 @@ private class RHCRunManagerCaptureServiceTest {
   }
 
   @IsTest
-  static void shouldRollbackEveryResult_WhenOneRetainedRowFailsDml() {
+  static void shouldRollbackEveryResultWhenOneRetainedRowFailsDml() {
     System.runAs(RHCRunManagerTestDataFactory.adminUser()) {
     Record_Health_Check_Run_Definition__c definition = RHCRunManagerTestDataFactory.createDefinition('ALL_ACCESSIBLE', 'BOTH');
     Record_Health_Check_Batch_Run__c batchRun = RHCRunManagerTestDataFactory.createBatchRun(definition.Id);
@@ -62,14 +63,16 @@ private class RHCRunManagerCaptureServiceTest {
     Account account = new Account(Name = 'Atomic capture');
     insert account;
     String overlongCheckName = '';
-    for (Integer characterIndex = 0; characterIndex < 121; characterIndex++) overlongCheckName += 'x';
+    for (Integer characterIndex = 0; characterIndex < 121; characterIndex++) {
+      overlongCheckName += 'x';
+    }
     RecordHealthCheckResponse response = new RecordHealthCheckResponse();
     response.results.add(resultItem(account.Id, 'Valid_Check'));
     response.results.add(resultItem(account.Id, overlongCheckName));
 
     Boolean captureFailed = false;
     try {
-      RHCRunManagerCaptureService.capture(runRecord.Id, 'atomic-capture', 'BOTH', response);
+      RHCRunManagerCaptureService.capture(captureRequest(runRecord.Id, 'atomic-capture', response));
     } catch (RHCRunManagerCaptureService.CaptureException error) {
       captureFailed = true;
     }
@@ -77,6 +80,30 @@ private class RHCRunManagerCaptureServiceTest {
     Assert.isTrue(captureFailed, 'Any retained-row DML failure must be surfaced to the owning Batch scope.');
     Assert.areEqual(0, [SELECT COUNT() FROM Record_Health_Check_Run_Result__c WHERE Run__c = :runRecord.Id], 'A partial retained-result write must be rolled back.');
     }
+  }
+
+  @IsTest
+  static void shouldIgnoreNullCaptureRequest() {
+    System.runAs(RHCRunManagerTestDataFactory.adminUser()) {
+      Test.startTest();
+      Integer capturedCount = RHCRunManagerCaptureService.capture(null);
+      Test.stopTest();
+
+      Assert.areEqual(0, capturedCount, 'A missing capture request should not write results.');
+    }
+  }
+
+  private static RHCRunManagerCaptureService.Request captureRequest(
+    Id runId,
+    String runCorrelationId,
+    RecordHealthCheckResponse response
+  ) {
+    RHCRunManagerCaptureService.Request request = new RHCRunManagerCaptureService.Request();
+    request.runId = runId;
+    request.runCorrelationId = runCorrelationId;
+    request.captureMode = 'BOTH';
+    request.response = response;
+    return request;
   }
 
   private static RecordHealthCheckResultItem resultItem(Id recordId, String checkQualifiedApiName) {

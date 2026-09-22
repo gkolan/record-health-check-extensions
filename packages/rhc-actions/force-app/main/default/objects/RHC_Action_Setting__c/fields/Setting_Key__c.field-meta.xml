@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Setting_Key__c</fullName>
+    <description>Package-owned singleton key used to locate the supported Actions retention setting.</description>
+    <externalId>true</externalId>
+    <inlineHelpText>Keep the package-owned value Default; other values are not supported.</inlineHelpText>
+    <label>Setting Key</label>
+    <length>80</length>
+    <type>Text</type>
+    <unique>true</unique>
+</CustomField>

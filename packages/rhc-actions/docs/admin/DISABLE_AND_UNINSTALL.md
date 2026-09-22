@@ -48,7 +48,7 @@ needed to understand what happened.
    the installed Actions trigger.
 9. Remove RHC Actions Permission Set assignments from users.
 10. Confirm no Flow, report, integration, or custom automation outside the package depends on the
-    three Actions objects, tabs, Apex APIs, or LWC.
+    four Actions objects, tabs, Apex APIs, or LWC.
 
 **Stop if:** a non-terminal action remains, required audit evidence is not preserved, or subscriber
 metadata still references the package trigger.

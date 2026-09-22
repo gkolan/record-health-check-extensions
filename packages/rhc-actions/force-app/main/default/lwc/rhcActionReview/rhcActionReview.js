@@ -4,15 +4,29 @@ import getPendingActions from "@salesforce/apex/RHCActionReviewController.getPen
 import validatePolicy from "@salesforce/apex/RHCActionReviewController.validatePolicy";
 import runAction from "@salesforce/apex/RHCActionReviewController.runAction";
 import rejectAction from "@salesforce/apex/RHCActionReviewController.rejectAction";
+import runActions from "@salesforce/apex/RHCActionReviewController.runActions";
+import rejectActions from "@salesforce/apex/RHCActionReviewController.rejectActions";
+import getRetentionSettings from "@salesforce/apex/RHCActionReviewController.getRetentionSettings";
+import saveRetentionSettings from "@salesforce/apex/RHCActionReviewController.saveRetentionSettings";
+import purgeAuditRecords from "@salesforce/apex/RHCActionReviewController.purgeAuditRecords";
 
 const ROW_ACTIONS = [{ label: "Review", name: "review" }];
 
 export default class RhcActionReview extends LightningElement {
   actions = [];
   selectedAction;
+  selectedIds = [];
   loading = true;
   submitting = false;
   errorMessage;
+  retention = {
+    retentionDays: 365,
+    configured: false,
+    maxDeleteRows: 1000,
+    canManage: false,
+  };
+  retentionConfirmed = false;
+  retentionDirty = false;
 
   columns = [
     { label: "Action", fieldName: "Name" },
@@ -26,7 +40,26 @@ export default class RhcActionReview extends LightningElement {
   ];
 
   connectedCallback() {
-    this.loadActions();
+    this.initialize();
+  }
+
+  get showRetention() {
+    return Boolean(this.retention?.canManage);
+  }
+
+  get purgeDisabled() {
+    return (
+      this.submitting ||
+      !this.retention.configured ||
+      this.retentionDirty ||
+      !this.retentionConfirmed
+    );
+  }
+
+  // Row actions stay disabled while a request is in flight so a second record cannot be
+  // opened and submitted before the first approve/reject call returns.
+  get tableBusy() {
+    return this.loading || this.submitting;
   }
 
   async loadActions() {
@@ -34,18 +67,144 @@ export default class RhcActionReview extends LightningElement {
     this.errorMessage = undefined;
     try {
       const rows = await getPendingActions();
-      this.actions = rows.map((row) => ({
-        ...row,
-        policyName: row.Policy__r?.Name,
-        flowName: row.Policy__r?.Flow_API_Name__c,
-        recordUrl: row.Record_Id__c
-          ? `/lightning/r/${row.Record_Id__c}/view`
-          : undefined,
-      }));
+      this.actions = this.mapActions(rows);
     } catch (error) {
       this.errorMessage = this.messageFrom(error);
     } finally {
       this.loading = false;
+    }
+  }
+
+  async initialize() {
+    this.loading = true;
+    this.errorMessage = undefined;
+    try {
+      const [rows, retention] = await Promise.all([
+        getPendingActions(),
+        getRetentionSettings(),
+      ]);
+      this.actions = this.mapActions(rows);
+      this.retention = retention || this.retention;
+      this.retentionDirty = false;
+    } catch (error) {
+      this.errorMessage = this.messageFrom(error);
+    } finally {
+      this.loading = false;
+    }
+  }
+
+  mapActions(rows) {
+    return rows.map((row) => ({
+      ...row,
+      policyName: row.Policy__r?.Name,
+      flowName: row.Policy__r?.Flow_API_Name__c,
+      recordUrl: row.Record_Id__c
+        ? `/lightning/r/${row.Record_Id__c}/view`
+        : undefined,
+    }));
+  }
+
+  handleRetentionChange(event) {
+    this.retention = {
+      ...this.retention,
+      retentionDays: Number(event.target.value),
+    };
+    this.retentionDirty = true;
+    this.retentionConfirmed = false;
+  }
+
+  handleRetentionConfirm(event) {
+    this.retentionConfirmed = event.target.checked;
+  }
+
+  async handleSaveRetention() {
+    const input = this.template.querySelector("[data-retention-days]");
+    if (!input.reportValidity()) return;
+    this.submitting = true;
+    this.errorMessage = undefined;
+    try {
+      this.retention = await saveRetentionSettings({
+        retentionDays: this.retention.retentionDays,
+      });
+      this.retentionDirty = false;
+      this.dispatchEvent(
+        new ShowToastEvent({
+          title: "Retention settings saved",
+          message:
+            "Cleanup remains manual and requires confirmation for each purge.",
+          variant: "success",
+        }),
+      );
+    } catch (error) {
+      this.errorMessage = this.messageFrom(error);
+    } finally {
+      this.submitting = false;
+    }
+  }
+
+  async handlePurge() {
+    this.submitting = true;
+    this.errorMessage = undefined;
+    try {
+      const outcome = await purgeAuditRecords();
+      this.dispatchEvent(
+        new ShowToastEvent({
+          title: "Audit retention complete",
+          message: `${outcome.historiesDeleted} history and ${outcome.pendingActionsDeleted} terminal pending-action record(s) deleted.`,
+          variant: "success",
+        }),
+      );
+      this.retentionConfirmed = false;
+    } catch (error) {
+      this.errorMessage = this.messageFrom(error);
+    } finally {
+      this.submitting = false;
+    }
+  }
+
+  handleRowSelection(event) {
+    this.selectedIds = event.detail.selectedRows.map((row) => row.Id);
+  }
+
+  get hasSelection() {
+    return this.selectedIds.length > 0;
+  }
+
+  get bulkDisabled() {
+    return this.submitting || !this.hasSelection;
+  }
+
+  // Bulk decisions skip the per-action Flow contract dialog; the execution service re-validates
+  // each policy at run time and fails an invalid one closed.
+  async runSelectedRows() {
+    await this.decide(runActions, "queued");
+  }
+
+  async rejectSelectedRows() {
+    await this.decide(rejectActions, "rejected");
+  }
+
+  async decide(operation, verb) {
+    this.submitting = true;
+    this.errorMessage = undefined;
+    try {
+      const outcome = await operation({ pendingActionIds: this.selectedIds });
+      this.dispatchEvent(
+        new ShowToastEvent({
+          title: `${outcome.processed} action(s) ${verb}`,
+          message: outcome.skipped
+            ? `${outcome.skipped} no longer pending review were skipped.`
+            : undefined,
+          variant: "success",
+        }),
+      );
+      this.selectedIds = [];
+      this.selectedAction = undefined;
+      await this.loadActions();
+    } catch (error) {
+      this.errorMessage = this.messageFrom(error);
+    } finally {
+      this.submitting = false;
     }
   }
 

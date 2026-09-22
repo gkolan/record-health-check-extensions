@@ -1,3 +1,4 @@
+/* eslint-disable @lwc/lwc-platform/no-aura-libs, @lwc/lwc-platform/no-process-env -- Node CLI, not LWC runtime code. */
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -156,6 +157,10 @@ const deadLetterController = fs.readFileSync(
     path.join(metadataRoot, 'classes', 'RHCIntegrationDeadLetterController.cls'),
     'utf8'
 );
+const retentionService = fs.readFileSync(
+    path.join(metadataRoot, 'classes', 'RHCIntegrationRetentionService.cls'),
+    'utf8'
+);
 if (!routeRule.includes('BEGINS(RelativeEndpoint__c, "//")')) {
     issues.push('Relative Endpoint validation must reject authority-style // values');
 }
@@ -181,10 +186,22 @@ if (!deadLetterController.includes("FeatureManagement.checkPermission(REPLAY_PER
     || !deadLetterController.includes('Route__r.Active__c')
     || !deadLetterController.includes('WITH USER_MODE')
     || !deadLetterController.includes('FOR UPDATE')
-    || !deadLetterController.includes('update as user delivery;')
+    || !deadLetterController.includes('Security.stripInaccessible(')
+    || !deadLetterController.includes("removedField.endsWith('__' + replayField)")
+    || !deadLetterController.includes('update as user sanitizeReplayDeliveries(deliveries);')
     || deadLetterController.includes('WITH SYSTEM_MODE')
     || deadLetterController.includes('FROM Record_Health_Check_Integration_Route__c')) {
-    issues.push('dead-letter replay must retain permission-gated, one-query user-mode locking and DML');
+    issues.push(
+        'dead-letter replay must retain permission-gated, one-query locking, field sanitization, and user-mode DML'
+    );
+}
+if (!retentionService.includes("Status__c IN ('SUCCEEDED', 'DEAD_LETTER')")
+    || !retentionService.includes('CompletedAt__c < :cutoff')
+    || !retentionService.includes('LIMIT :MAX_PURGE_ROWS')
+    || !retentionService.includes('MAX_PURGE_ROWS = 1000')
+    || !retentionService.includes('Database.delete(deliveries, true, AccessLevel.USER_MODE)')
+    || retentionService.includes('Schedulable')) {
+    issues.push('delivery retention must remain manual, terminal-only, user-mode, and bounded to 1,000 rows');
 }
 for (const triggerName of [
     'RHCIntegrationResultSubscriber',

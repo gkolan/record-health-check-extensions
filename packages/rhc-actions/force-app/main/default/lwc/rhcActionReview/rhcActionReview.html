@@ -13,11 +13,28 @@
           <span>{errorMessage}</span>
         </div>
       </template>
+      <lightning-button-group class="slds-m-bottom_x-small">
+        <lightning-button
+          label="Approve selected"
+          variant="brand"
+          disabled={bulkDisabled}
+          onclick={runSelectedRows}
+          data-action="approve-selected"
+        ></lightning-button>
+        <lightning-button
+          label="Reject selected"
+          disabled={bulkDisabled}
+          onclick={rejectSelectedRows}
+          data-action="reject-selected"
+        ></lightning-button>
+      </lightning-button-group>
       <lightning-datatable
         key-field="Id"
         data={actions}
         columns={columns}
-        is-loading={loading}
+        is-loading={tableBusy}
+        max-row-selection="50"
+        onrowselection={handleRowSelection}
         onrowaction={handleRowAction}
       ></lightning-datatable>
       <template lwc:if={selectedAction}>
@@ -63,17 +80,77 @@
             ></lightning-button>
             <lightning-button
               label="Reject"
+              data-action="reject"
               variant="destructive-text"
               onclick={rejectSelected}
               disabled={submitting}
             ></lightning-button>
             <lightning-button
               label="Run Action"
+              data-action="run"
               variant="brand"
               onclick={runSelected}
               disabled={submitting}
             ></lightning-button>
           </lightning-button-group>
+        </section>
+      </template>
+      <template lwc:if={showRetention}>
+        <section
+          class="slds-box slds-m-top_medium"
+          aria-labelledby="retention-heading"
+        >
+          <h2 id="retention-heading" class="slds-text-heading_small">
+            Action audit retention
+          </h2>
+          <p class="slds-text-body_small slds-m-bottom_small">
+            Cleanup is manual. Each confirmed purge removes at most
+            {retention.maxDeleteRows} records, oldest completed Action History
+            first and then terminal Pending Actions. Active and retry-waiting
+            actions are never eligible.
+          </p>
+          <div
+            class="slds-grid slds-gutters slds-wrap slds-grid_vertical-align-end"
+          >
+            <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+              <lightning-input
+                data-retention-days
+                type="number"
+                label="Retain completed audit records for (days)"
+                min="1"
+                max="3650"
+                step="1"
+                required
+                value={retention.retentionDays}
+                onchange={handleRetentionChange}
+              ></lightning-input>
+            </div>
+            <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+              <lightning-button
+                data-action="save-retention"
+                label="Save retention settings"
+                onclick={handleSaveRetention}
+                disabled={submitting}
+              ></lightning-button>
+            </div>
+          </div>
+          <lightning-input
+            data-retention-confirm
+            class="slds-m-top_small"
+            type="checkbox"
+            label="I understand that eligible audit records will be permanently deleted."
+            checked={retentionConfirmed}
+            onchange={handleRetentionConfirm}
+          ></lightning-input>
+          <div class="slds-m-top_small">
+            <lightning-button
+              data-action="purge"
+              label="Purge eligible audit records"
+              variant="destructive"
+              onclick={handlePurge}
+              disabled={purgeDisabled}
+            ></lightning-button>
+          </div>
         </section>
       </template>
     </div>

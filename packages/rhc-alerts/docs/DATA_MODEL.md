@@ -1,8 +1,8 @@
 # RHC Alerts data model
 
-RHC Alerts owns two private custom objects. Alert Policy is administrator configuration. Alert
-Delivery is a bounded operational ledger for notification attempts; it is not a general health-check
-result store.
+RHC Alerts owns three custom objects. Alert Policy is administrator configuration. Alert Delivery is
+a private bounded operational ledger for notification attempts, not a general health-check result
+store. Alert Setting stores the package's singleton manual-retention window.
 
 ## Relationship
 
@@ -10,10 +10,12 @@ result store.
 flowchart LR
     P[Record_Health_Check_Alert_Policy__c<br/>administrator configuration]
     D[Record_Health_Check_Alert_Delivery__c<br/>operational delivery evidence]
+    S[Record_Health_Check_Alert_Setting__c<br/>manual retention configuration]
     P -->|one policy to zero or many deliveries<br/>Lookup, SetNull on delete| D
 
     style P fill:#c7d2fe,stroke:#4338ca,color:#1f2937
     style D fill:#a7f3d0,stroke:#047857,color:#1f2937
+    style S fill:#fde68a,stroke:#b45309,color:#1f2937
 ```
 
 ```text
@@ -78,9 +80,26 @@ policy field and the generic policy tab are omitted from that permission set.
 | `NextRetryAt__c`              | DateTime                    | Earliest scheduled package retry for a retryable failure                                                                                                                                                                      |
 | `CooldownKey__c`              | External ID Text(64)        | SHA-256 Policy + checked record key                                                                                                                                                                                           |
 
-Delivery records use private sharing. Both packaged permission sets are read-only on this object;
-Admin and Viewer receive View All so the Lightning history can show platform-owned rows. Runtime
-subscriber code updates only package-owned ledger rows in platform context.
+Delivery records use private sharing. Viewer is read-only and receives View All so Lightning history
+can show platform-owned rows. Admin receives read, delete, View All, and Modify All so the user-mode
+bounded purge can delete eligible terminal rows; delivery fields remain read-only. Runtime subscriber
+code updates only package-owned ledger rows in platform context.
+
+## Alert Setting fields
+
+| Field              | Type                        | Meaning and validation                                                       |
+| ------------------ | --------------------------- | ---------------------------------------------------------------------------- |
+| `Name`             | Text                        | Fixed to `Default` by validation                                             |
+| `SettingKey__c`    | Unique External ID Text(80) | Fixed to `Default`; prevents duplicate package-owned singleton records       |
+| `RetentionDays__c` | Number(4,0)                 | Required whole-day window from 1 through 3,650 used only by explicit cleanup |
+
+Alert Setting uses public read/write sharing so any assigned Alerts administrator can maintain the
+singleton without Modify All. It has no tab, report, or search surface. Viewer receives no object or
+field permission. Admin receives create/read/edit but not delete.
+
+The UI displays 90 days when no record exists, but that recommendation is not persisted and cannot
+authorize deletion. Manual cleanup deletes at most 1,000 oldest terminal delivery rows with
+`CreatedDate` before the calculated cutoff. No schedule is created and `PENDING` is never selected.
 
 ## State model
 

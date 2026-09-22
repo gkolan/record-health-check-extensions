@@ -6,7 +6,7 @@ private class RHCRunManagerAdminControllerTest {
   }
 
   @IsTest
-  static void shouldSaveAndReadDefinition_WhenInputValid() {
+  static void shouldSaveAndReadDefinitionWhenInputValid() {
     System.runAs(RHCRunManagerTestDataFactory.adminUser()) {
     Record_Health_Check_Set__mdt checkSet = RHCRunManagerTestDataFactory.accountCheckSet();
     RHCRunManagerAdminController.DefinitionInput input = new RHCRunManagerAdminController.DefinitionInput();
@@ -59,6 +59,40 @@ private class RHCRunManagerAdminControllerTest {
       missingSelectionRejected = true;
     }
     Assert.isTrue(missingSelectionRejected, 'Core resolution failures should be translated for the UI.');
+
+    Boolean missingRunDefinitionRejected = false;
+    try {
+      RHCRunManagerAdminController.runNow(null);
+    } catch (AuraHandledException error) {
+      missingRunDefinitionRejected = true;
+    }
+    Assert.isTrue(
+      missingRunDefinitionRejected,
+      'Run Now should translate a missing definition into a bounded UI error.'
+    );
+    }
+  }
+
+  @IsTest
+  static void shouldCancelActiveBatchRunAndRejectTerminalOne() {
+    System.runAs(RHCRunManagerTestDataFactory.adminUser()) {
+    Record_Health_Check_Run_Definition__c definition = RHCRunManagerTestDataFactory.createDefinition('ALL_ACCESSIBLE', 'FAIL');
+    Record_Health_Check_Batch_Run__c active = RHCRunManagerTestDataFactory.createBatchRun(definition.Id);
+
+    RHCRunManagerAdminController.cancelBatchRun(active.Id);
+
+    Record_Health_Check_Batch_Run__c cancelled = [SELECT Status__c, CompletedAt__c, ErrorSummary__c FROM Record_Health_Check_Batch_Run__c WHERE Id = :active.Id];
+    Assert.areEqual('CANCELLED', cancelled.Status__c, 'An active Batch Run becomes CANCELLED.');
+    Assert.isNotNull(cancelled.CompletedAt__c, 'Cancellation is a terminal completion.');
+    Assert.isTrue(cancelled.ErrorSummary__c.startsWith('Cancelled by '), 'The cancelling user is recorded.');
+
+    Boolean rejected = false;
+    try {
+      RHCRunManagerAdminController.cancelBatchRun(active.Id);
+    } catch (AuraHandledException error) {
+      rejected = true;
+    }
+    Assert.isTrue(rejected, 'A terminal Batch Run cannot be cancelled again.');
     }
   }
 
@@ -115,6 +149,22 @@ private class RHCRunManagerAdminControllerTest {
 
     Assert.isNotNull(scheduleId, 'The LWC facade should save human schedule inputs.');
     Assert.areEqual(scheduleId, pausedScheduleId, 'Pausing should retain the managed Schedule record.');
+    }
+  }
+
+  @IsTest
+  static void shouldManageRetentionThroughController() {
+    System.runAs(RHCRunManagerTestDataFactory.adminUser()) {
+      RHCRunManagerRetentionService.retentionPermissionOverride = true;
+
+      RHCRunManagerRetentionService.Settings recommendation = RHCRunManagerAdminController.getRetentionSettings();
+      RHCRunManagerRetentionService.Settings saved = RHCRunManagerAdminController.saveRetentionSettings(30);
+      RHCRunManagerRetentionService.PurgeOutcome outcome = RHCRunManagerAdminController.purgeOperationalRecords();
+
+      Assert.isFalse(recommendation.configured, 'An unsaved recommendation must not authorize cleanup.');
+      Assert.isTrue(saved.configured, 'The controller should return the saved singleton.');
+      Assert.areEqual(30, saved.retentionDays, 'The controller should preserve the selected window.');
+      Assert.areEqual(0, outcome.totalDeleted, 'An empty org should produce an explicit zero-row cleanup.');
     }
   }
 }

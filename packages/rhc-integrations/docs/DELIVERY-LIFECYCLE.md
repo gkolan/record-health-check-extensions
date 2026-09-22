@@ -64,18 +64,24 @@ Replay requires all of the following:
 4. The user has custom permission `RHC_Integration_Replay`.
 
 Replay resets Attempt Count and transient HTTP/error fields, increments Replay Count, preserves the
-retained payload and original Event ID, and enqueues a new Queueable. Replay is at-least-once; an
+retained payload and original Event ID, and enqueues a new Queueable. Up to 50 dead letters can be
+replayed in one request; they share one delivery chain, and an inactive route anywhere in the
+selection rejects the whole request. Replay is at-least-once; an
 earlier timed-out request may already have completed externally.
 
-Replay and delivery execution lock the ledger row before changing state, so concurrent workers do
-not both claim the same currently visible state. If a delivery worker ends with an unhandled
-exception, its Finalizer records `QUEUEABLE_UNHANDLED` as a dead letter without persisting exception
-text and continues independent remaining work. Review the corresponding Async Apex job before
+Each Queueable hop locks a slice of up to ten ledger rows in queue order, performs every callout
+of the slice, and then persists the whole slice with one update. Callouts always precede DML
+because Salesforce forbids a callout after uncommitted DML. Concurrent workers therefore never
+claim the same visible state. If a hop ends with an unhandled exception before that update, its
+Finalizer records `QUEUEABLE_UNHANDLED` on every row of the slice that is still deliverable,
+without persisting exception text, and chains the remaining work. Rows whose request had already
+been sent in that hop are resent on replay; the `Idempotency-Key` header carries the same Event ID
+so a compliant receiver does not duplicate them. Review the corresponding Async Apex job before
 authorizing replay.
 
 A delivery whose `NextAttemptAt__c` is still in the future is rotated to the end of the retained
-work list. Independent ready deliveries continue without delay; the Queueable uses a bounded delay
-only when the deferred retry is the sole remaining row.
+work list without consuming an attempt. Independent ready deliveries continue without delay; the
+Queueable uses the shortest bounded delay only when every remaining row is waiting.
 
 ## Operational interpretation
 

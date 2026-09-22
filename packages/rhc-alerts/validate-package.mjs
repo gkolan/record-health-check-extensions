@@ -1,3 +1,4 @@
+/* eslint-disable @lwc/lwc-platform/no-aura-libs, @lwc/lwc-platform/no-process-env -- Node CLI, not LWC runtime code. */
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -60,6 +61,18 @@ assert(
   nodePackage.scripts?.["test:prepackage-lock"] ===
     "node scripts/test-prepackage-lock.mjs",
   "The pre-package lock integration test must remain available."
+);
+const prepackageVerifier = read("scripts/verify-prepackage-gates.mjs");
+assert(
+  prepackageVerifier.includes("evidence?.testsPassed >= 55") &&
+    prepackageVerifier.includes("local.lwc?.testsPassed >= 19"),
+  "The pre-package lock must enforce the current 55 Apex and 19 Jest test contracts."
+);
+const releaseGates = read("docs/RELEASE-GATES.md");
+assert(
+  releaseGates.includes("all current 55 Apex test methods") &&
+    releaseGates.includes("| 19 tests and thresholds 90/80/90/90"),
+  "Release gates must document the current 55 Apex and 19 Jest test contracts."
 );
 assert(
   nodePackage.devDependencies?.["@salesforce-ux/slds-linter"] === "1.2.1",
@@ -172,6 +185,22 @@ assert(
     !admin.includes("<apexClass>RHCAlertsDeliveryService</apexClass>"),
   "Permission sets must not expose internal event or delivery services as user entry points."
 );
+assert(
+  !viewer.includes("Record_Health_Check_Alert_Setting__c"),
+  "Viewer access must not expose administrator-only retention settings."
+);
+assert(
+  admin.includes(
+    "<allowCreate>false</allowCreate><allowDelete>true</allowDelete><allowEdit>true</allowEdit><allowRead>true</allowRead><modifyAllRecords>true</modifyAllRecords><object>Record_Health_Check_Alert_Delivery__c</object>"
+  ),
+  "Admin access must satisfy Salesforce's Edit dependency for bounded delivery cleanup."
+);
+assert(
+  admin.includes(
+    "<allowCreate>true</allowCreate><allowDelete>false</allowDelete><allowEdit>true</allowEdit><allowRead>true</allowRead><modifyAllRecords>false</modifyAllRecords><object>Record_Health_Check_Alert_Setting__c</object><viewAllRecords>false</viewAllRecords>"
+  ),
+  "Admin access must permit retention configuration without generic setting deletion."
+);
 
 for (const rule of [
   "RHC_Policy_Required_Values",
@@ -185,6 +214,15 @@ for (const rule of [
     assert(
       read(relative).includes("<active>true</active>"),
       `Policy validation rule ${rule} must be active.`
+    );
+}
+for (const rule of ["RHC_Setting_Retention_Range", "RHC_Setting_Identity"]) {
+  const relative = `force-app/main/default/objects/Record_Health_Check_Alert_Setting__c/validationRules/${rule}.validationRule-meta.xml`;
+  assert(exists(relative), `Missing alert-setting validation rule ${rule}.`);
+  if (exists(relative))
+    assert(
+      read(relative).includes("<active>true</active>"),
+      `Alert-setting validation rule ${rule} must be active.`
     );
 }
 
@@ -209,6 +247,12 @@ const notificationSender = read(
 const adminController = read(
   "force-app/main/default/classes/RHCAlertsAdminController.cls"
 );
+const policyAdminService = read(
+  "force-app/main/default/classes/RHCAlertsPolicyAdminService.cls"
+);
+const retentionService = read(
+  "force-app/main/default/classes/RHCAlertsRetentionService.cls"
+);
 const coreMetadataGateway = read(
   "force-app/main/default/classes/RHCAlertsCoreMetadataGateway.cls"
 );
@@ -219,8 +263,18 @@ const policyValidator = read(
   "force-app/main/default/classes/RHCAlertsPolicyValidator.cls"
 );
 assert(
-  adminController.includes("RHCAlertsPolicyValidator.validationError(policy)"),
+  adminController.includes("RHCAlertsPolicyAdminService.savePolicy(policy)") &&
+    policyAdminService.includes(
+      "RHCAlertsPolicyValidator.validationError(policy)"
+    ),
   "Admin saves must delegate to the canonical policy validator."
+);
+assert(
+  adminController.includes("RHCAlertsRetentionService.purgeDeliveries()") &&
+    retentionService.includes("MAX_PURGE_ROWS = 1000") &&
+    retentionService.includes("Outcome__c IN :TERMINAL_OUTCOMES") &&
+    retentionService.includes("CreatedDate < :cutoff"),
+  "Delivery cleanup must remain bounded to old terminal rows."
 );
 assert(
   policyValidator.includes("CANONICAL_STATUSES") &&

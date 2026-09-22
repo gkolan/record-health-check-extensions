@@ -36,7 +36,7 @@ administrator acceptance, disable cleanup, and test uninstall/data loss.
   namespace `rhc`, the promoted 2.0.4.2 alias/04t, canonical Log event fields and behavior,
   default-off publication, and publisher permission.
 - Code Analyzer: the final Recommended scan completed on 2026-08-30 with zero findings at every
-  severity. An unsuppressed temporary-copy audit reproduced exactly the 30 reviewed findings
+  severity. An unsuppressed temporary-copy audit contract records exactly the 31 reviewed findings
   documented in `CODE-ANALYZER-SUPPRESSIONS.md`. Evidence files are local and ignored by Git. CI
   now blocks any unsuppressed severity 1–5 finding.
 - Production npm audit: 0 vulnerabilities.

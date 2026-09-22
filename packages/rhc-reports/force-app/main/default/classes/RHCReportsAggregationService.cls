@@ -2,10 +2,6 @@
  * Recomputes one local reporting day and upserts deterministic daily snapshots.
  */
 public inherited sharing class RHCReportsAggregationService {
-    private static final Integer RUN_QUERY_SAFETY_LIMIT = 15000;
-    private static final Integer RESULT_QUERY_SAFETY_LIMIT = 20000;
-    private static final Integer PRIOR_RESULT_QUERY_SAFETY_LIMIT = 5000;
-    private static final Integer SNAPSHOT_PARTITION_SAFETY_LIMIT = 5001;
     private static final Set<String> ACTIONABLE_STATUSES =
         new Set<String>{ 'FAIL', 'UNABLE_TO_EVALUATE', 'ERROR' };
     /**
@@ -18,68 +14,44 @@ public inherited sharing class RHCReportsAggregationService {
             throw new RHCReportsAggregationException('Snapshot date and time zone are required.');
         }
         validateTimeZone(timeZoneId);
-        Datetime windowStart = localMidnightUtc(snapshotDate, timeZoneId);
-        Datetime windowEnd = localMidnightUtc(snapshotDate.addDays(1), timeZoneId);
-        List<Record_Health_Check_Report_Run__c> runs = [
-            SELECT CheckSetQualifiedApiName__c, RecordId__c, Source__c,
-                PassedCount__c, FailedCount__c, SkippedCount__c,
-                UnableCount__c, SystemErrorCount__c, OccurredAt__c
-            FROM Record_Health_Check_Report_Run__c
-            WHERE OccurredAt__c >= :windowStart AND OccurredAt__c < :windowEnd
-            WITH SYSTEM_MODE
-            ORDER BY OccurredAt__c ASC
-            LIMIT :RUN_QUERY_SAFETY_LIMIT
-        ];
-        assertQueryComplete(runs.size(), RUN_QUERY_SAFETY_LIMIT, 'Run Fact candidate');
-        List<Record_Health_Check_Report_Result__c> results = [
-            SELECT CheckSetQualifiedApiName__c, CheckQualifiedApiName__c,
-                RecordId__c, Status__c, Severity__c, Source__c, OccurredAt__c
-            FROM Record_Health_Check_Report_Result__c
-            WHERE OccurredAt__c >= :windowStart AND OccurredAt__c < :windowEnd
-            WITH SYSTEM_MODE
-            ORDER BY OccurredAt__c ASC
-            LIMIT :RESULT_QUERY_SAFETY_LIMIT
-        ];
-        assertQueryComplete(
-            results.size(),
-            RESULT_QUERY_SAFETY_LIMIT,
-            'Result Fact candidate'
-        );
-        List<Record_Health_Check_Report_Result__c> targetResults =
-            new List<Record_Health_Check_Report_Result__c>();
-        Set<String> recordIds = new Set<String>();
-        Set<String> checkNames = new Set<String>();
-        for (Record_Health_Check_Report_Result__c result : results) {
-            targetResults.add(result);
-            if (String.isNotBlank(result.RecordId__c)) {
-                recordIds.add(result.RecordId__c);
-            }
-            checkNames.add(result.CheckQualifiedApiName__c);
-        }
-        Map<String, String> priorStatusByRecordCheck =
-            selectPriorStatuses(snapshotDate, timeZoneId, recordIds, checkNames);
+        AggregationWindow window = new AggregationWindow(snapshotDate, timeZoneId);
+        List<Record_Health_Check_Report_Run__c> runs =
+            RHCReportsAggregationRepository.selectRuns(window.startAt, window.endAt);
+        List<Record_Health_Check_Report_Result__c> results =
+            RHCReportsAggregationRepository.selectResults(window.startAt, window.endAt);
+        ResultKeyIndex resultKeys = new ResultKeyIndex(results);
+        resultKeys.priorStatusByRecordCheck =
+            RHCReportsAggregationRepository.selectPriorStatuses(
+                window.startAt,
+                resultKeys.recordIds,
+                resultKeys.checkNames
+            );
         Map<String, SnapshotAccumulator> accumulators =
             new Map<String, SnapshotAccumulator>();
+        accumulateRuns(accumulators, window, runs);
+        accumulateResults(
+            accumulators,
+            window,
+            resultKeys
+        );
+        RHCReportsAggregationRepository.replaceSnapshotPartition(
+            window.snapshotDate,
+            window.timeZoneId,
+            recordsFrom(accumulators.values())
+        );
+    }
+
+    private static void accumulateRuns(
+        Map<String, SnapshotAccumulator> accumulators,
+        AggregationWindow window,
+        List<Record_Health_Check_Report_Run__c> runs
+    ) {
         for (Record_Health_Check_Report_Run__c run : runs) {
-            String groupKey = groupKey(
-                'RUN',
-                run.CheckSetQualifiedApiName__c,
-                null,
-                null,
-                null,
-                run.Source__c
-            );
+            SnapshotDimension dimension = dimensionForRun(run);
             SnapshotAccumulator accumulator = getAccumulator(
                 accumulators,
-                groupKey,
-                snapshotDate,
-                timeZoneId,
-                'RUN',
-                run.CheckSetQualifiedApiName__c,
-                null,
-                null,
-                null,
-                run.Source__c
+                window,
+                dimension
             );
             accumulator.runCount++;
             accumulator.recordIds.add(run.RecordId__c);
@@ -89,26 +61,19 @@ public inherited sharing class RHCReportsAggregationService {
             accumulator.unableCount += integerValue(run.UnableCount__c);
             accumulator.systemErrorCount += integerValue(run.SystemErrorCount__c);
         }
-        for (Record_Health_Check_Report_Result__c result : targetResults) {
-            String groupKey = groupKey(
-                'RESULT',
-                result.CheckSetQualifiedApiName__c,
-                result.CheckQualifiedApiName__c,
-                result.Status__c,
-                result.Severity__c,
-                result.Source__c
-            );
+    }
+
+    private static void accumulateResults(
+        Map<String, SnapshotAccumulator> accumulators,
+        AggregationWindow window,
+        ResultKeyIndex resultKeys
+    ) {
+        for (Record_Health_Check_Report_Result__c result : resultKeys.results) {
+            SnapshotDimension dimension = dimensionForResult(result);
             SnapshotAccumulator accumulator = getAccumulator(
                 accumulators,
-                groupKey,
-                snapshotDate,
-                timeZoneId,
-                'RESULT',
-                result.CheckSetQualifiedApiName__c,
-                result.CheckQualifiedApiName__c,
-                result.Status__c,
-                result.Severity__c,
-                result.Source__c
+                window,
+                dimension
             );
             accumulator.resultCount++;
             accumulator.recordIds.add(result.RecordId__c);
@@ -117,7 +82,9 @@ public inherited sharing class RHCReportsAggregationService {
                 result.RecordId__c,
                 result.CheckQualifiedApiName__c
             );
-            String priorStatus = priorStatusByRecordCheck.get(recordCheckKey);
+            String priorStatus = resultKeys.priorStatusByRecordCheck.get(
+                recordCheckKey
+            );
             if (
                 ACTIONABLE_STATUSES.contains(result.Status__c) &&
                 ACTIONABLE_STATUSES.contains(priorStatus)
@@ -129,171 +96,34 @@ public inherited sharing class RHCReportsAggregationService {
             ) {
                 accumulator.recoveryCount++;
             }
-            priorStatusByRecordCheck.put(recordCheckKey, result.Status__c);
+            resultKeys.priorStatusByRecordCheck.put(
+                recordCheckKey,
+                result.Status__c
+            );
         }
+    }
+
+    private static List<Record_Health_Check_Daily_Snapshot__c> recordsFrom(
+        List<SnapshotAccumulator> accumulators
+    ) {
         List<Record_Health_Check_Daily_Snapshot__c> snapshots =
             new List<Record_Health_Check_Daily_Snapshot__c>();
-        for (SnapshotAccumulator accumulator : accumulators.values()) {
+        for (SnapshotAccumulator accumulator : accumulators) {
             snapshots.add(accumulator.toRecord());
         }
-        replaceSnapshotPartition(snapshotDate, timeZoneId, snapshots);
+        return snapshots;
     }
 
-    private static void replaceSnapshotPartition(
-        Date snapshotDate,
-        String timeZoneId,
-        List<Record_Health_Check_Daily_Snapshot__c> snapshots
-    ) {
-        if (snapshots.size() > Limits.getLimitDmlRows()) {
-            throw new RHCReportsAggregationException(
-                'Snapshot partition exceeds the transaction DML row limit.'
-            );
-        }
-        List<Record_Health_Check_Daily_Snapshot__c> existingSnapshots = [
-            SELECT Id
-            FROM Record_Health_Check_Daily_Snapshot__c
-            WHERE SnapshotDate__c = :snapshotDate
-                AND AggregationTimeZone__c = :timeZoneId
-            WITH SYSTEM_MODE
-            LIMIT :SNAPSHOT_PARTITION_SAFETY_LIMIT
-        ];
-        if (
-            existingSnapshots.size() >= SNAPSHOT_PARTITION_SAFETY_LIMIT ||
-            existingSnapshots.size() + snapshots.size() > Limits.getLimitDmlRows()
-        ) {
-            throw new RHCReportsAggregationException(
-                'Existing snapshot partition exceeds the transaction DML row limit.'
-            );
-        }
-        if (!existingSnapshots.isEmpty()) {
-            Database.DeleteResult[] deleteResults = Database.delete(
-                existingSnapshots,
-                false,
-                AccessLevel.SYSTEM_MODE
-            );
-            assertSuccessful(deleteResults, 'replace existing snapshots');
-        }
-        if (!snapshots.isEmpty()) {
-            Database.UpsertResult[] upsertResults = Database.upsert(
-                snapshots,
-                Record_Health_Check_Daily_Snapshot__c.Fields.SnapshotKey__c,
-                false,
-                AccessLevel.SYSTEM_MODE
-            );
-            assertSuccessful(upsertResults, 'persist replacement snapshots');
-        }
-    }
-
-    @TestVisible
-    private static void assertQueryComplete(
-        Integer rowCount,
-        Integer safetyLimit,
-        String queryLabel
-    ) {
-        if (rowCount == safetyLimit) {
-            throw new RHCReportsAggregationException(
-                queryLabel + ' query reached its transaction safety boundary. ' +
-                'No partial snapshot was written.'
-            );
-        }
-    }
-
-    private static void assertSuccessful(
-        Database.DeleteResult[] results,
-        String operation
-    ) {
-        Integer failureCount = 0;
-        for (Database.DeleteResult result : results) {
-            if (!result.isSuccess()) {
-                failureCount++;
-            }
-        }
-        if (failureCount > 0) {
-            throw new RHCReportsAggregationException(
-                'Unable to ' + operation + ': ' + failureCount + ' row(s) failed.'
-            );
-        }
-    }
-
-    private static void assertSuccessful(
-        Database.UpsertResult[] results,
-        String operation
-    ) {
-        Integer failureCount = 0;
-        for (Database.UpsertResult result : results) {
-            if (!result.isSuccess()) {
-                failureCount++;
-            }
-        }
-        if (failureCount > 0) {
-            throw new RHCReportsAggregationException(
-                'Unable to ' + operation + ': ' + failureCount + ' row(s) failed.'
-            );
-        }
-    }
-    private static Map<String, String> selectPriorStatuses(
-        Date snapshotDate,
-        String timeZoneId,
-        Set<String> recordIds,
-        Set<String> checkNames
-    ) {
-        Map<String, String> statuses = new Map<String, String>();
-        if (recordIds.isEmpty() || checkNames.isEmpty()) {
-            return statuses;
-        }
-        Datetime upperBound = localMidnightUtc(snapshotDate, timeZoneId);
-        List<Record_Health_Check_Report_Result__c> priorResults = [
-            SELECT RecordId__c, CheckQualifiedApiName__c, Status__c, OccurredAt__c
-            FROM Record_Health_Check_Report_Result__c
-            WHERE RecordId__c IN :recordIds
-                AND CheckQualifiedApiName__c IN :checkNames
-                AND OccurredAt__c < :upperBound
-            WITH SYSTEM_MODE
-            ORDER BY OccurredAt__c DESC
-            LIMIT :PRIOR_RESULT_QUERY_SAFETY_LIMIT
-        ];
-        assertQueryComplete(
-            priorResults.size(),
-            PRIOR_RESULT_QUERY_SAFETY_LIMIT,
-            'Prior Result Fact'
-        );
-        for (Record_Health_Check_Report_Result__c result : priorResults) {
-            String key = recordCheckKey(
-                result.RecordId__c,
-                result.CheckQualifiedApiName__c
-            );
-            if (!statuses.containsKey(key)) {
-                statuses.put(key, result.Status__c);
-            }
-        }
-        return statuses;
-    }
     private static SnapshotAccumulator getAccumulator(
         Map<String, SnapshotAccumulator> accumulators,
-        String groupKey,
-        Date snapshotDate,
-        String timeZoneId,
-        String grain,
-        String checkSetName,
-        String checkName,
-        String status,
-        String severity,
-        String source
+        AggregationWindow window,
+        SnapshotDimension dimension
     ) {
+        String groupKey = dimension.key();
         if (!accumulators.containsKey(groupKey)) {
             accumulators.put(
                 groupKey,
-                new SnapshotAccumulator(
-                    groupKey,
-                    snapshotDate,
-                    timeZoneId,
-                    grain,
-                    checkSetName,
-                    checkName,
-                    status,
-                    severity,
-                    source
-                )
+                new SnapshotAccumulator(window, dimension)
             );
         }
         return accumulators.get(groupKey);
@@ -332,25 +162,26 @@ public inherited sharing class RHCReportsAggregationService {
     private static String recordCheckKey(String recordId, String checkName) {
         return String.valueOf(recordId) + '|' + String.valueOf(checkName);
     }
-    private static String groupKey(
-        String grain,
-        String checkSetName,
-        String checkName,
-        String status,
-        String severity,
-        String source
+    private static SnapshotDimension dimensionForRun(
+        Record_Health_Check_Report_Run__c run
     ) {
-        return String.join(
-            new List<String>{
-                value(grain),
-                value(checkSetName),
-                value(checkName),
-                value(status),
-                value(severity),
-                value(source)
-            },
-            '|'
-        );
+        SnapshotDimension dimension = new SnapshotDimension();
+        dimension.grain = 'RUN';
+        dimension.checkSetName = run.CheckSetQualifiedApiName__c;
+        dimension.source = run.Source__c;
+        return dimension;
+    }
+    private static SnapshotDimension dimensionForResult(
+        Record_Health_Check_Report_Result__c result
+    ) {
+        SnapshotDimension dimension = new SnapshotDimension();
+        dimension.grain = 'RESULT';
+        dimension.checkSetName = result.CheckSetQualifiedApiName__c;
+        dimension.checkName = result.CheckQualifiedApiName__c;
+        dimension.status = result.Status__c;
+        dimension.severity = result.Severity__c;
+        dimension.source = result.Source__c;
+        return dimension;
     }
     private static String value(String input) {
         return input == null ? '' : input;
@@ -361,16 +192,67 @@ public inherited sharing class RHCReportsAggregationService {
             throw new RHCReportsAggregationException('Unknown time zone: ' + timeZoneId);
         }
     }
-    private class SnapshotAccumulator {
-        private String groupKeyValue;
+
+    private class AggregationWindow {
         private Date snapshotDate;
         private String timeZoneId;
+        private Datetime startAt;
+        private Datetime endAt;
+
+        private AggregationWindow(Date snapshotDate, String timeZoneId) {
+            this.snapshotDate = snapshotDate;
+            this.timeZoneId = timeZoneId;
+            this.startAt = localMidnightUtc(snapshotDate, timeZoneId);
+            this.endAt = localMidnightUtc(snapshotDate.addDays(1), timeZoneId);
+        }
+    }
+
+    private class ResultKeyIndex {
+        private List<Record_Health_Check_Report_Result__c> results;
+        private Set<String> recordIds = new Set<String>();
+        private Set<String> checkNames = new Set<String>();
+        private Map<String, String> priorStatusByRecordCheck =
+            new Map<String, String>();
+
+        private ResultKeyIndex(
+            List<Record_Health_Check_Report_Result__c> results
+        ) {
+            this.results = results;
+            for (Record_Health_Check_Report_Result__c result : results) {
+                if (String.isNotBlank(result.RecordId__c)) {
+                    recordIds.add(result.RecordId__c);
+                }
+                checkNames.add(result.CheckQualifiedApiName__c);
+            }
+        }
+    }
+
+    private class SnapshotDimension {
         private String grain;
         private String checkSetName;
         private String checkName;
         private String status;
         private String severity;
         private String source;
+
+        private String key() {
+            return String.join(
+                new List<String>{
+                    value(grain),
+                    value(checkSetName),
+                    value(checkName),
+                    value(status),
+                    value(severity),
+                    value(source)
+                },
+                '|'
+            );
+        }
+    }
+
+    private class SnapshotAccumulator {
+        private AggregationWindow window;
+        private SnapshotDimension dimension;
         private Integer runCount = 0;
         private Integer resultCount = 0;
         private Integer passedCount = 0;
@@ -382,41 +264,31 @@ public inherited sharing class RHCReportsAggregationService {
         private Integer recoveryCount = 0;
         private Set<String> recordIds = new Set<String>();
         private SnapshotAccumulator(
-            String groupKeyValue,
-            Date snapshotDate,
-            String timeZoneId,
-            String grain,
-            String checkSetName,
-            String checkName,
-            String status,
-            String severity,
-            String source
+            AggregationWindow window,
+            SnapshotDimension dimension
         ) {
-            this.groupKeyValue = groupKeyValue;
-            this.snapshotDate = snapshotDate;
-            this.timeZoneId = timeZoneId;
-            this.grain = grain;
-            this.checkSetName = checkSetName;
-            this.checkName = checkName;
-            this.status = status;
-            this.severity = severity;
-            this.source = source;
+            this.window = window;
+            this.dimension = dimension;
         }
         private Record_Health_Check_Daily_Snapshot__c toRecord() {
-            String identity = String.valueOf(snapshotDate) + '|' + timeZoneId + '|' + groupKeyValue;
+            String identity = String.valueOf(window.snapshotDate) +
+                '|' +
+                window.timeZoneId +
+                '|' +
+                dimension.key();
             String snapshotKey = EncodingUtil.convertToHex(
                 Crypto.generateDigest('SHA-256', Blob.valueOf(identity))
             );
             return new Record_Health_Check_Daily_Snapshot__c(
                 SnapshotKey__c = snapshotKey,
-                SnapshotDate__c = snapshotDate,
-                AggregationTimeZone__c = timeZoneId,
-                Grain__c = grain,
-                CheckSetQualifiedApiName__c = checkSetName,
-                CheckQualifiedApiName__c = checkName,
-                Status__c = status,
-                Severity__c = severity,
-                Source__c = source,
+                SnapshotDate__c = window.snapshotDate,
+                AggregationTimeZone__c = window.timeZoneId,
+                Grain__c = dimension.grain,
+                CheckSetQualifiedApiName__c = dimension.checkSetName,
+                CheckQualifiedApiName__c = dimension.checkName,
+                Status__c = dimension.status,
+                Severity__c = dimension.severity,
+                Source__c = dimension.source,
                 RunCount__c = runCount,
                 ResultCount__c = resultCount,
                 RecordCount__c = recordIds.size(),
@@ -430,5 +302,6 @@ public inherited sharing class RHCReportsAggregationService {
             );
         }
     }
+    /** Signals a bounded, retry-safe aggregation failure. */
     public class RHCReportsAggregationException extends Exception {}
 }

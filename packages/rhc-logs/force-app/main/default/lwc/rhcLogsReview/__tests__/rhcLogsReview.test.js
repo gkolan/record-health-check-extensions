@@ -177,4 +177,25 @@ describe('c-rhc-logs-review', () => {
         expect(element.shadowRoot.querySelector('.error-message').textContent)
             .toContain('Logs could not be loaded.');
     });
+
+    it('shows message and structured details inline for a selected row', async () => {
+        search.mockResolvedValue({
+            rows: [{ Id: 'a00000000000001AAA', Name: 'RHL-0000001', Code__c: 'SOQL_ERROR', Message__c: 'boom', StructuredDetails__c: '{"a":1}' }],
+            hasMore: false
+        });
+        const element = createElement('c-rhc-logs-review', { is: RhcLogsReview });
+        document.body.appendChild(element);
+        await flushPromises();
+        const [row] = element.shadowRoot.querySelector('lightning-datatable').data;
+        element.shadowRoot.querySelector('lightning-datatable').dispatchEvent(
+            new CustomEvent('rowaction', { detail: { action: { name: 'details' }, row } })
+        );
+        await flushPromises();
+        expect(element.shadowRoot.querySelector("[data-field='message']").textContent).toBe('boom');
+        expect(element.shadowRoot.querySelector("[data-field='details']").textContent).toBe('{"a":1}');
+        expect(mockNavigate).not.toHaveBeenCalled();
+        element.shadowRoot.querySelector('lightning-button-icon').click();
+        await flushPromises();
+        expect(element.shadowRoot.querySelector("[data-region='details']")).toBeNull();
+    });
 });

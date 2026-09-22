@@ -6,7 +6,10 @@ public with sharing class RHCRunManagerCoalescerQueueable implements Queueable, 
   private Id definitionId;
   private Integer retryAttempt;
 
-  /** @param definitionId Saved supplied-ID definition. */
+  /**
+   * Creates a first-attempt coalescer for one supplied-ID definition.
+   * @param definitionId Saved supplied-ID definition.
+   */
   public RHCRunManagerCoalescerQueueable(Id definitionId) {
     this(definitionId, 0);
   }
@@ -16,9 +19,15 @@ public with sharing class RHCRunManagerCoalescerQueueable implements Queueable, 
     this.retryAttempt = retryAttempt;
   }
 
-  /** Enqueues one delayed coalescer per definition. */
+  /**
+   * Enqueues one delayed coalescer per definition.
+   * @param definitionId Saved supplied-ID definition.
+   * @return Queueable job ID, or null when the duplicate signature already exists.
+   */
   public static Id enqueue(Id definitionId) {
-    if (definitionId == null) throw new IllegalArgumentException('Run Definition is required.');
+    if (definitionId == null) {
+      throw new IllegalArgumentException('Run Definition is required.');
+    }
     AsyncOptions options = new AsyncOptions();
     options.MinimumQueueableDelayInMinutes = coalesceDelay(definitionId);
     options.DuplicateSignature = new System.QueueableDuplicateSignature.Builder()
@@ -32,11 +41,35 @@ public with sharing class RHCRunManagerCoalescerQueueable implements Queueable, 
     }
   }
 
-  /** Drains one governor-safe page of committed pending IDs into a shared Batch launch. */
+  /**
+   * Drains one governor-safe page of committed pending IDs into a shared Batch launch.
+   * @param context Queueable execution context; null only during direct unit execution.
+   */
   public void execute(QueueableContext context) {
-    if (context != null) System.attachFinalizer(this);
+    if (context != null) {
+      System.attachFinalizer(this);
+    }
     Integer effectiveDrainSize = Math.max(1, Math.min(MAX_DRAIN_SIZE, drainSize));
-    List<Record_Health_Check_Run_Request__c> pending = [
+    List<Record_Health_Check_Run_Request__c> pending = pendingRequests(effectiveDrainSize);
+    if (pending.isEmpty()) {
+      return;
+    }
+    List<Id> targetIds = collectTargetIds(pending);
+    if (!targetIds.isEmpty()) {
+      RHCRunManagerExecutionService.Request request = new RHCRunManagerExecutionService.Request();
+      request.definitionId = definitionId;
+      request.source = 'SUPPLIED_IDS';
+      request.suppliedIds = targetIds;
+      RHCRunManagerExecutionService.start(request);
+    }
+    transitionSubmitted(pending);
+    if (pending.size() == effectiveDrainSize) {
+      System.enqueueJob(new RHCRunManagerCoalescerQueueable(definitionId));
+    }
+  }
+
+  private List<Record_Health_Check_Run_Request__c> pendingRequests(Integer effectiveDrainSize) {
+    return [
       SELECT Id, RecordId__c
       FROM Record_Health_Check_Run_Request__c
       WHERE RunDefinition__c = :definitionId AND Status__c = 'PENDING'
@@ -44,7 +77,11 @@ public with sharing class RHCRunManagerCoalescerQueueable implements Queueable, 
       LIMIT :effectiveDrainSize
       FOR UPDATE
     ];
-    if (pending.isEmpty()) return;
+  }
+
+  private static List<Id> collectTargetIds(
+    List<Record_Health_Check_Run_Request__c> pending
+  ) {
     List<Id> targetIds = new List<Id>();
     for (Record_Health_Check_Run_Request__c requestValue : pending) {
       try {
@@ -53,22 +90,27 @@ public with sharing class RHCRunManagerCoalescerQueueable implements Queueable, 
         requestValue.Status__c = 'SUBMITTED';
       }
     }
-    if (!targetIds.isEmpty()) RHCRunManagerExecutionService.start(definitionId, 'SUPPLIED_IDS', null, targetIds);
-    for (Record_Health_Check_Run_Request__c requestValue : pending) requestValue.Status__c = 'SUBMITTED';
+    return targetIds;
+  }
+
+  private static void transitionSubmitted(
+    List<Record_Health_Check_Run_Request__c> pending
+  ) {
+    for (Record_Health_Check_Run_Request__c requestValue : pending) {
+      requestValue.Status__c = 'SUBMITTED';
+    }
     List<Database.SaveResult> updateResults = Database.update(pending, false, AccessLevel.USER_MODE);
-    Integer failureCount = 0;
     for (Database.SaveResult updateResult : updateResults) {
-      if (!updateResult.isSuccess()) failureCount++;
-    }
-    if (failureCount > 0) {
-      throw new CoalescerException('One or more staged requests could not be transitioned.');
-    }
-    if (pending.size() == effectiveDrainSize) {
-      System.enqueueJob(new RHCRunManagerCoalescerQueueable(definitionId));
+      if (!updateResult.isSuccess()) {
+        throw new CoalescerException('One or more staged requests could not be transitioned.');
+      }
     }
   }
 
-  /** Retries an unhandled failure with a strict serialized attempt bound. */
+  /**
+   * Retries an unhandled failure with a strict serialized attempt bound.
+   * @param context Finalizer outcome for the completed Queueable job.
+   */
   public void execute(FinalizerContext context) {
     if (isRetryEligible(context.getResult(), retryAttempt)) {
       System.enqueueJob(new RHCRunManagerCoalescerQueueable(definitionId, retryAttempt + 1));

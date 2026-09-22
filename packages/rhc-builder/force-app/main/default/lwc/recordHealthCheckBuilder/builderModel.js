@@ -320,3 +320,36 @@ function compact(values) {
     ),
   );
 }
+
+function changedKeys(before = {}, after = {}) {
+  return [...new Set([...Object.keys(before), ...Object.keys(after)])]
+    .filter((key) => JSON.stringify(before[key]) !== JSON.stringify(after[key]))
+    .sort();
+}
+
+/**
+ * Compares two canonical versions of the same Check Set. Checks are matched by qualified API
+ * name; a check whose values differ is reported with the changed field names only, so the
+ * reviewer sees what a publication will alter without reading two JSON documents.
+ */
+export function diffVersions(baseVersion, targetVersion) {
+  const baseChecks = new Map((baseVersion?.checks || []).map((check) => [check.qualifiedApiName, check]));
+  const targetChecks = new Map((targetVersion?.checks || []).map((check) => [check.qualifiedApiName, check]));
+  const added = [...targetChecks.keys()].filter((key) => !baseChecks.has(key));
+  const removed = [...baseChecks.keys()].filter((key) => !targetChecks.has(key));
+  const changed = [...targetChecks.keys()]
+    .filter((key) => baseChecks.has(key))
+    .map((key) => ({
+      qualifiedApiName: key,
+      fields: changedKeys(baseChecks.get(key).values, targetChecks.get(key).values)
+    }))
+    .filter((entry) => entry.fields.length > 0);
+  const checkSetFields = changedKeys(baseVersion?.checkSet?.values, targetVersion?.checkSet?.values);
+  return {
+    added,
+    removed,
+    changed,
+    checkSetFields,
+    isEmpty: added.length + removed.length + changed.length + checkSetFields.length === 0
+  };
+}

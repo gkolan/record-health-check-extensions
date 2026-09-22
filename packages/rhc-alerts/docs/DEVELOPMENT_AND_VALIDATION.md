@@ -211,7 +211,21 @@ therefore also validates exact Qualified API Name behavior in a subscriber org.
 
 ## Latest verification evidence
 
-Local-only remediation verification on August 30, 2026 (no org authentication or mutation):
+Current working-tree note (2026-09-20): the package now contains 55 Apex test methods, including
+the notification-type diagnostic, send-test-alert, and retention scenarios added after the August
+evidence below. Nineteen Jest tests pass, generated metadata and package validators are current, and
+the executable pre-package lock now rejects org evidence below 55 Apex methods or local evidence
+below 19 Jest tests. The suite verification ledger records local conversion, dependency, and
+analyzer results. Fresh
+namespaced and no-namespace compilation plus execution of all 55 Apex methods remain required; the
+configured org-CI matrix has not run because no usable Dev Hub authorization is available.
+
+The current aggregate local preflight passes end to end. Retained evidence is under
+`/tmp/rhc-alerts-preflight-evidence-203406`: 19 Jest tests pass, coverage is 96.35% statements,
+81.57% branches, 97.43% functions, and 99.16% lines, the dependency audit reports zero
+vulnerabilities, source conversion succeeds, and the full Recommended scan reports zero findings.
+
+Historical local-only remediation verification on August 30, 2026 (no org authentication or mutation):
 
 - `npm run preflight:local` passed as an aggregate gate. It ran the repository validator, generated
   metadata drift check, exact-pinned formatting check, package and minimum-core contracts, XML,

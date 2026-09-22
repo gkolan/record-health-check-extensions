@@ -8,7 +8,9 @@ public class RHCRunManagerTestDataFactory {
       FROM PermissionSet
       WHERE Name IN ('RHC_Run_Manager_Admin', 'Record_Health_Check_Admin')
     ];
-    if (permissionSets.isEmpty()) return;
+    if (permissionSets.isEmpty()) {
+      return;
+    }
     User userRecord = new User(
       Alias = 'rhcrun',
       Email = 'rhc-run-manager-test@example.invalid',
@@ -31,12 +33,19 @@ public class RHCRunManagerTestDataFactory {
     insert assignments;
   }
 
-  /** Returns the permissioned user created by the test setup transaction. */
+  /**
+   * Returns the permissioned user created by the test setup transaction.
+   * @return Dedicated Run Manager administrator.
+   */
   public static User adminUser() {
     return [SELECT Id FROM User WHERE Alias = 'rhcrun' LIMIT 1];
   }
 
-  /** Creates a minimum-access user and assigns one packaged Run Manager persona. */
+  /**
+   * Creates a minimum-access user and assigns one packaged Run Manager persona.
+   * @param alias Unique short user alias.
+   * @param permissionSetName Packaged persona permission-set name.
+   */
   public static void createPersonaUser(String alias, String permissionSetName) {
     List<Profile> profiles = [
       SELECT Id
@@ -70,22 +79,33 @@ public class RHCRunManagerTestDataFactory {
     );
   }
 
-  /** Returns a persona user created by test setup. */
+  /**
+   * Returns a persona user created by test setup.
+   * @param alias Short alias assigned when the user was created.
+   * @return Matching persona user.
+   */
   public static User personaUser(String alias) {
     return [SELECT Id FROM User WHERE Alias = :alias LIMIT 1];
   }
 
-  /** Creates and optionally inserts Account records. */
-  public static List<Account> createAccounts(Integer countValue, Boolean doInsert) {
+  /**
+   * Creates and inserts Account records.
+   * @param countValue Number of Account records to create.
+   * @return Inserted Account records.
+   */
+  public static List<Account> createAccounts(Integer countValue) {
     List<Account> accounts = new List<Account>();
     for (Integer indexValue = 0; indexValue < countValue; indexValue++) {
       accounts.add(new Account(Name = 'Run Manager Account ' + indexValue));
     }
-    if (doInsert) insert accounts;
+    insert accounts;
     return accounts;
   }
 
-  /** Returns one active packaged Account Check Set fixture. */
+  /**
+   * Returns one active packaged Account Check Set fixture.
+   * @return Active Account Check Set metadata.
+   */
   public static Record_Health_Check_Set__mdt accountCheckSet() {
     return [
       SELECT QualifiedApiName, ObjectApiName__c
@@ -96,7 +116,10 @@ public class RHCRunManagerTestDataFactory {
     ];
   }
 
-  /** Returns one active Check owned by the fixture Account Check Set. */
+  /**
+   * Returns one active Check owned by the fixture Account Check Set.
+   * @return Active Account Check metadata.
+   */
   public static Record_Health_Check__mdt accountCheck() {
     return [
       SELECT QualifiedApiName, Record_Health_Check_Set__r.QualifiedApiName
@@ -107,7 +130,12 @@ public class RHCRunManagerTestDataFactory {
     ];
   }
 
-  /** Inserts a valid definition for the requested population and capture modes. */
+  /**
+   * Inserts a valid definition for the requested population and capture modes.
+   * @param populationMode Population-selection mode.
+   * @param captureMode Detailed-result capture mode.
+   * @return Inserted Run Definition.
+   */
   public static Record_Health_Check_Run_Definition__c createDefinition(
     String populationMode,
     String captureMode
@@ -131,7 +159,11 @@ public class RHCRunManagerTestDataFactory {
     return definition;
   }
 
-  /** Inserts a queued Batch Run. */
+  /**
+   * Inserts a queued Batch Run.
+   * @param definitionId Owning Run Definition ID.
+   * @return Inserted queued Batch Run.
+   */
   public static Record_Health_Check_Batch_Run__c createBatchRun(Id definitionId) {
     Record_Health_Check_Batch_Run__c batchRun = new Record_Health_Check_Batch_Run__c(
       RunDefinition__c = definitionId,

@@ -1,0 +1,139 @@
+name: Remaining Salesforce source gates
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/remaining-salesforce-validate.yml'
+      - 'packages/rhc-agent-actions/**'
+      - 'packages/rhc-alerts/**'
+      - 'packages/rhc-change-monitor/**'
+      - 'packages/rhc-integrations/**'
+      - 'packages/rhc-logs/**'
+      - 'packages/rhc-run-manager/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: remaining-salesforce-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check-dev-hub-secret:
+    runs-on: ubuntu-latest
+    outputs:
+      has-secret: ${{ steps.check.outputs.has-secret }}
+    steps:
+      - id: check
+        env:
+          SFDX_AUTH_URL: ${{ secrets.SFDX_AUTH_URL }}
+        run: |
+          if [ -z "${SFDX_AUTH_URL}" ]; then
+            echo "::warning::SFDX_AUTH_URL is not configured; remaining org validation cannot run."
+            echo "has-secret=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "has-secret=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  source-tests:
+    needs: check-dev-hub-secret
+    if: needs.check-dev-hub-secret.outputs.has-secret == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        package:
+          - rhc-agent-actions
+          - rhc-alerts
+          - rhc-change-monitor
+          - rhc-integrations
+          - rhc-logs
+          - rhc-run-manager
+        namespace_mode:
+          - namespaced
+          - no-namespace
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          package-manager-cache: false
+      - name: Install pinned Salesforce CLI
+        run: npm install --global @salesforce/cli@2.149.9
+      - name: Authenticate Dev Hub
+        env:
+          SFDX_AUTH_URL: ${{ secrets.SFDX_AUTH_URL }}
+        run: echo "$SFDX_AUTH_URL" | sf org login sfdx-url --sfdx-url-stdin --alias devhub --set-default-dev-hub --json >/dev/null
+      - name: Create disposable ${{ matrix.namespace_mode }} scratch org
+        working-directory: packages/${{ matrix.package }}
+        run: |
+          set -o pipefail
+          namespace_flags=()
+          if [ "${{ matrix.namespace_mode }}" = "no-namespace" ]; then
+            namespace_flags+=(--no-namespace)
+          fi
+          sf org create scratch \
+            --definition-file config/project-scratch-def.json \
+            --target-dev-hub devhub \
+            --alias "${{ matrix.package }}-${{ matrix.namespace_mode }}-ci" \
+            --duration-days 1 \
+            --no-track-source \
+            --wait 15 \
+            "${namespace_flags[@]}" \
+            --json > "${RUNNER_TEMP}/scratch-org-create-result.json"
+          sf org list --json | jq \
+            --arg alias "${{ matrix.package }}-${{ matrix.namespace_mode }}-ci" \
+            '[.result.scratchOrgs[]? | select(.alias == $alias)][0]' \
+            > "${RUNNER_TEMP}/scratch-org-result.json"
+      - name: Verify namespace mode
+        run: |
+          sf data query \
+            --target-org "${{ matrix.package }}-${{ matrix.namespace_mode }}-ci" \
+            --query "SELECT NamespacePrefix FROM Organization" \
+            --json > "${RUNNER_TEMP}/org-identity-result.json"
+          namespace="$(jq -r '.result.records[0].NamespacePrefix // ""' "${RUNNER_TEMP}/org-identity-result.json")"
+          if [ "${{ matrix.namespace_mode }}" = "namespaced" ] && [ "$namespace" != "rhc" ]; then
+            echo "::error::Expected the existing rhc namespace; found '${namespace:-none}'."
+            exit 1
+          fi
+          if [ "${{ matrix.namespace_mode }}" = "no-namespace" ] && [ -n "$namespace" ]; then
+            echo "::error::Expected no namespace; found '$namespace'."
+            exit 1
+          fi
+      - name: Install pinned core dependency
+        run: sf package install --package 04tak000000cZBFAA2 --target-org "${{ matrix.package }}-${{ matrix.namespace_mode }}-ci" --wait 30 --publish-wait 10 --no-prompt --json > "${RUNNER_TEMP}/core-install-result.json"
+      - name: Validate source and local Apex tests
+        working-directory: packages/${{ matrix.package }}
+        run: sf project deploy start --source-dir force-app --target-org "${{ matrix.package }}-${{ matrix.namespace_mode }}-ci" --test-level RunLocalTests --dry-run --wait 30 --json > "${RUNNER_TEMP}/deploy-validation-result.json"
+      - name: Deploy source to the disposable org
+        working-directory: packages/${{ matrix.package }}
+        run: sf project deploy start --source-dir force-app --target-org "${{ matrix.package }}-${{ matrix.namespace_mode }}-ci" --test-level NoTestRun --wait 30 --json > "${RUNNER_TEMP}/deploy-result.json"
+      - name: Run all local Apex tests with coverage
+        run: sf apex run test --target-org "${{ matrix.package }}-${{ matrix.namespace_mode }}-ci" --test-level RunLocalTests --code-coverage --wait 30 --json > "${RUNNER_TEMP}/apex-test-result.json"
+      - name: Delete disposable scratch org
+        if: always()
+        continue-on-error: true
+        run: |
+          if sf org display --target-org "${{ matrix.package }}-${{ matrix.namespace_mode }}-ci" --json >/dev/null 2>&1; then
+            sf org delete scratch --target-org "${{ matrix.package }}-${{ matrix.namespace_mode }}-ci" --no-prompt --json > "${RUNNER_TEMP}/scratch-org-delete-result.json"
+          fi
+      - name: Upload org-validation evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.package }}-${{ matrix.namespace_mode }}-salesforce-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/scratch-org-create-result.json
+            ${{ runner.temp }}/scratch-org-result.json
+            ${{ runner.temp }}/org-identity-result.json
+            ${{ runner.temp }}/core-install-result.json
+            ${{ runner.temp }}/deploy-validation-result.json
+            ${{ runner.temp }}/deploy-result.json
+            ${{ runner.temp }}/apex-test-result.json
+            ${{ runner.temp }}/scratch-org-delete-result.json
+          if-no-files-found: warn
+          retention-days: 90

@@ -1,7 +1,11 @@
 /** Bulk Flow action that stages related target IDs for cross-transaction coalescing. */
 public with sharing class RHCRunManagerSubmitIdsAction {
   @TestVisible private static Boolean suppressCoalescer = false;
-  /** Stages supplied IDs and enqueues at most one coalescer per definition. */
+  /**
+   * Stages supplied IDs and enqueues at most one coalescer per definition.
+   * @param requests Flow requests containing a Run Definition and target IDs.
+   * @return One outcome for each input request, in the original order.
+   */
   @InvocableMethod(
     label='Submit Record IDs to RHC Run Manager'
     description='Stages current, prior, or collection target IDs for one saved Run Definition.'
@@ -9,7 +13,9 @@ public with sharing class RHCRunManagerSubmitIdsAction {
   )
   public static List<Response> submit(List<Request> requests) {
     List<Response> responses = new List<Response>();
-    if (requests == null) return responses;
+    if (requests == null) {
+      return responses;
+    }
     Set<Id> requestedDefinitionIds = definitionIds(requests);
     Map<Id, Record_Health_Check_Run_Definition__c> definitionsById;
     try {
@@ -23,9 +29,14 @@ public with sharing class RHCRunManagerSubmitIdsAction {
       return rejectedResponses(requests.size(), 'DEFINITION_ACCESS_ERROR', 'Run Definitions could not be validated.');
     }
     Map<Id, Set<Id>> idsByDefinition = new Map<Id, Set<Id>>();
-    Map<String, Schema.SObjectType> globalDescribe = Schema.getGlobalDescribe();
+    ValidationContext validationContext = new ValidationContext(
+      definitionsById,
+      Schema.getGlobalDescribe(),
+      idsByDefinition
+    );
+    RequestValidator validator = new RequestValidator(validationContext);
     for (Request requestValue : requests) {
-      responses.add(validateAndCollect(requestValue, definitionsById, globalDescribe, idsByDefinition));
+      responses.add(validator.validateAndCollect(requestValue));
     }
     Savepoint stagingSavepoint = Database.setSavepoint();
     try {
@@ -47,60 +58,10 @@ public with sharing class RHCRunManagerSubmitIdsAction {
   private static Set<Id> definitionIds(List<Request> requests) {
     Set<Id> result = new Set<Id>();
     for (Request requestValue : requests) {
-      if (requestValue?.runDefinitionId != null) result.add(requestValue.runDefinitionId);
-    }
-    return result;
-  }
-
-  private static Response validateAndCollect(
-    Request requestValue,
-    Map<Id, Record_Health_Check_Run_Definition__c> definitionsById,
-    Map<String, Schema.SObjectType> globalDescribe,
-    Map<Id, Set<Id>> idsByDefinition
-  ) {
-    Response response = new Response();
-    if (requestValue == null || requestValue.runDefinitionId == null) {
-      reject(response, 'INVALID_INPUT', 'Run Definition is required.');
-      return response;
-    }
-    Record_Health_Check_Run_Definition__c definition = definitionsById.get(requestValue.runDefinitionId);
-    if (definition == null) {
-      reject(response, 'DEFINITION_UNAVAILABLE', 'Run Definition is unavailable.');
-      return response;
-    }
-    if (definition.Active__c != true || !'SUPPLIED_IDS'.equals(definition.PopulationMode__c)) {
-      reject(response, 'INVALID_DEFINITION', 'Run Definition must be active and use supplied IDs.');
-      return response;
-    }
-    Set<Id> requestIds = requestIds(requestValue);
-    if (requestIds.isEmpty()) {
-      reject(response, 'INVALID_INPUT', 'At least one Target Record ID is required.');
-      return response;
-    }
-    Schema.SObjectType expectedType = globalDescribe.get(definition.TargetObjectApiName__c);
-    if (expectedType == null) {
-      reject(response, 'INVALID_DEFINITION', 'Run Definition target object is unavailable.');
-      return response;
-    }
-    for (Id targetId : requestIds) {
-      if (targetId.getSObjectType() != expectedType) {
-        reject(response, 'INVALID_TARGET_TYPE', 'Every Target Record ID must match the Run Definition target object.');
-        return response;
+      if (requestValue?.runDefinitionId != null) {
+        result.add(requestValue.runDefinitionId);
       }
     }
-    if (!idsByDefinition.containsKey(requestValue.runDefinitionId)) {
-      idsByDefinition.put(requestValue.runDefinitionId, new Set<Id>());
-    }
-    idsByDefinition.get(requestValue.runDefinitionId).addAll(requestIds);
-    response.isSuccess = true;
-    response.acceptedRecordCount = requestIds.size();
-    return response;
-  }
-
-  private static Set<Id> requestIds(Request requestValue) {
-    Set<Id> result = new Set<Id>{ requestValue.targetRecordId, requestValue.priorTargetRecordId };
-    if (requestValue.targetRecordIds != null) result.addAll(requestValue.targetRecordIds);
-    result.remove(null);
     return result;
   }
 
@@ -115,6 +76,14 @@ public with sharing class RHCRunManagerSubmitIdsAction {
   }
 
   private static void stage(Map<Id, Set<Id>> idsByDefinition) {
+    List<Record_Health_Check_Run_Request__c> rows = buildRequestRows(idsByDefinition);
+    upsertRequestRows(rows);
+    enqueueDefinitions(idsByDefinition);
+  }
+
+  private static List<Record_Health_Check_Run_Request__c> buildRequestRows(
+    Map<Id, Set<Id>> idsByDefinition
+  ) {
     List<Record_Health_Check_Run_Request__c> rows = new List<Record_Health_Check_Run_Request__c>();
     for (Id definitionId : idsByDefinition.keySet()) {
       for (Id targetId : idsByDefinition.get(definitionId)) {
@@ -127,23 +96,31 @@ public with sharing class RHCRunManagerSubmitIdsAction {
         ));
       }
     }
-    if (!rows.isEmpty()) {
-      List<Database.UpsertResult> results = Database.upsert(
-        rows,
-        Record_Health_Check_Run_Request__c.Fields.RequestKey__c,
-        false,
-        AccessLevel.USER_MODE
-      );
-      Integer failureCount = 0;
-      for (Database.UpsertResult result : results) {
-        if (!result.isSuccess()) failureCount++;
-      }
-      if (failureCount > 0) {
+    return rows;
+  }
+
+  private static void upsertRequestRows(List<Record_Health_Check_Run_Request__c> rows) {
+    if (rows.isEmpty()) {
+      return;
+    }
+    List<Database.UpsertResult> results = Database.upsert(
+      rows,
+      Record_Health_Check_Run_Request__c.Fields.RequestKey__c,
+      false,
+      AccessLevel.USER_MODE
+    );
+    for (Database.UpsertResult result : results) {
+      if (!result.isSuccess()) {
         throw new StagingException('One or more supplied IDs could not be staged.');
       }
     }
+  }
+
+  private static void enqueueDefinitions(Map<Id, Set<Id>> idsByDefinition) {
     for (Id definitionId : idsByDefinition.keySet()) {
-      if (!suppressCoalescer && !idsByDefinition.get(definitionId).isEmpty()) RHCRunManagerCoalescerQueueable.enqueue(definitionId);
+      if (!suppressCoalescer && !idsByDefinition.get(definitionId).isEmpty()) {
+        RHCRunManagerCoalescerQueueable.enqueue(definitionId);
+      }
     }
   }
 
@@ -155,6 +132,116 @@ public with sharing class RHCRunManagerSubmitIdsAction {
   }
 
   private class StagingException extends Exception {}
+
+  private class ValidationContext {
+    private Map<Id, Record_Health_Check_Run_Definition__c> definitionsById;
+    private Map<String, Schema.SObjectType> globalDescribe;
+    private Map<Id, Set<Id>> idsByDefinition;
+
+    private ValidationContext(
+      Map<Id, Record_Health_Check_Run_Definition__c> definitionsById,
+      Map<String, Schema.SObjectType> globalDescribe,
+      Map<Id, Set<Id>> idsByDefinition
+    ) {
+      this.definitionsById = definitionsById;
+      this.globalDescribe = globalDescribe;
+      this.idsByDefinition = idsByDefinition;
+    }
+  }
+
+  private class RequestValidator {
+    private ValidationContext validationContext;
+
+    private RequestValidator(ValidationContext validationContext) {
+      this.validationContext = validationContext;
+    }
+
+    private Response validateAndCollect(Request requestValue) {
+      Response response = new Response();
+      Record_Health_Check_Run_Definition__c definition = validateDefinition(requestValue, response);
+      if (definition == null) {
+        return response;
+      }
+      Set<Id> targetIds = requestIds(requestValue);
+      if (!validateTargetIds(targetIds, definition, response)) {
+        return response;
+      }
+      collect(requestValue.runDefinitionId, targetIds);
+      response.isSuccess = true;
+      response.acceptedRecordCount = targetIds.size();
+      return response;
+    }
+
+    private Record_Health_Check_Run_Definition__c validateDefinition(
+      Request requestValue,
+      Response response
+    ) {
+      if (requestValue == null || requestValue.runDefinitionId == null) {
+        reject(response, 'INVALID_INPUT', 'Run Definition is required.');
+        return null;
+      }
+      Record_Health_Check_Run_Definition__c definition = validationContext.definitionsById.get(
+        requestValue.runDefinitionId
+      );
+      if (definition == null) {
+        reject(response, 'DEFINITION_UNAVAILABLE', 'Run Definition is unavailable.');
+        return null;
+      }
+      if (definition.Active__c != true || !'SUPPLIED_IDS'.equals(definition.PopulationMode__c)) {
+        reject(response, 'INVALID_DEFINITION', 'Run Definition must be active and use supplied IDs.');
+        return null;
+      }
+      return definition;
+    }
+
+    private Boolean validateTargetIds(
+      Set<Id> targetIds,
+      Record_Health_Check_Run_Definition__c definition,
+      Response response
+    ) {
+      if (targetIds.isEmpty()) {
+        reject(response, 'INVALID_INPUT', 'At least one Target Record ID is required.');
+        return false;
+      }
+      Schema.SObjectType expectedType = validationContext.globalDescribe.get(
+        definition.TargetObjectApiName__c
+      );
+      if (expectedType == null) {
+        reject(response, 'INVALID_DEFINITION', 'Run Definition target object is unavailable.');
+        return false;
+      }
+      if (!allIdsMatchType(targetIds, expectedType)) {
+        reject(response, 'INVALID_TARGET_TYPE', 'Every Target Record ID must match the Run Definition target object.');
+        return false;
+      }
+      return true;
+    }
+
+    private Set<Id> requestIds(Request requestValue) {
+      Set<Id> result = new Set<Id>{ requestValue.targetRecordId, requestValue.priorTargetRecordId };
+      if (requestValue.targetRecordIds != null) {
+        result.addAll(requestValue.targetRecordIds);
+      }
+      result.remove(null);
+      return result;
+    }
+
+    private Boolean allIdsMatchType(Set<Id> targetIds, Schema.SObjectType expectedType) {
+      for (Id targetId : targetIds) {
+        if (targetId.getSObjectType() != expectedType) {
+          return false;
+        }
+      }
+      return true;
+    }
+
+    private void collect(Id definitionId, Set<Id> targetIds) {
+      if (!validationContext.idsByDefinition.containsKey(definitionId)) {
+        validationContext.idsByDefinition.put(definitionId, new Set<Id>());
+      }
+      validationContext.idsByDefinition.get(definitionId).addAll(targetIds);
+    }
+  }
 
   /** Flow inputs. Current and prior IDs support related-record change handling. */
   public class Request {

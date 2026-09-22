@@ -1,35 +1,87 @@
 /** Creates and safely replaces Run Manager-owned scheduled jobs. */
 public with sharing class RHCRunManagerScheduleService {
+  /** Cohesive human-schedule values accepted by the scheduling service. */
+  public class Request {
+    public Id scheduleId;
+    public Id definitionId;
+    public Boolean active;
+    public String frequency;
+    public String preferredStartTime;
+    public String dayOfWeek;
+    public Date startDate;
+    public Date endDate;
+  }
+
   /** Invalid recurrence or unsafe schedule operation. */
   public class ScheduleException extends Exception {
   }
 
   /**
    * Creates or updates a human schedule and its exact owned CronTrigger.
-   * @param scheduleId Existing Schedule ID or null.
-   * @param definitionId Saved Run Definition.
-   * @param active Whether the platform schedule is active.
-   * @param frequency DAILY, WEEKDAYS, or WEEKLY.
-   * @param preferredStartTime HH:mm in the scheduling user's time zone.
-   * @param dayOfWeek Required for WEEKLY.
-   * @param startDate Optional first eligible local date.
-   * @param endDate Optional last eligible local date.
+   * @param request Validated human-schedule values from the administrator facade.
    * @return Saved Schedule ID.
    */
-  public static Id save(
-    Id scheduleId,
-    Id definitionId,
-    Boolean active,
-    String frequency,
-    String preferredStartTime,
-    String dayOfWeek,
-    Date startDate,
-    Date endDate
-  ) {
-    String cron = cronExpression(frequency, preferredStartTime, dayOfWeek);
+  public static Id save(Request request) {
+    if (request == null) {
+      throw new ScheduleException('Schedule input is required.');
+    }
+    String cron = cronExpression(request.frequency, request.preferredStartTime, request.dayOfWeek);
+    validateDateWindow(request.startDate, request.endDate);
+    validateSchedulableDefinition(request.definitionId);
+    Record_Health_Check_Schedule__c scheduleRecord = loadSchedule(request.scheduleId);
+    String oldCronTriggerId = scheduleRecord.CronTriggerId__c;
+    scheduleRecord.RunDefinition__c = request.definitionId;
+    scheduleRecord.Active__c = request.active == true;
+    scheduleRecord.Frequency__c = request.frequency;
+    scheduleRecord.PreferredStartTime__c = request.preferredStartTime;
+    scheduleRecord.DayOfWeek__c = request.dayOfWeek;
+    scheduleRecord.StartDate__c = request.startDate;
+    scheduleRecord.EndDate__c = request.endDate;
+    saveScheduleRecord(scheduleRecord);
+
+    String newCronTriggerId = scheduleIfActive(scheduleRecord, cron);
+    replaceOwnedJob(scheduleRecord.Id, oldCronTriggerId);
+    scheduleRecord.CronTriggerId__c = newCronTriggerId;
+    Database.update(scheduleRecord, AccessLevel.USER_MODE);
+    return scheduleRecord.Id;
+  }
+
+  /**
+   * Deactivates one saved schedule and removes only its exact owned platform job.
+   * @param scheduleId Saved Schedule ID.
+   * @return Paused Schedule ID.
+   */
+  public static Id pause(Id scheduleId) {
+    if (scheduleId == null) {
+      throw new ScheduleException('Choose a schedule.');
+    }
+    Record_Health_Check_Schedule__c existing = [
+      SELECT Id, RunDefinition__c, Frequency__c, PreferredStartTime__c, DayOfWeek__c,
+        StartDate__c, EndDate__c
+      FROM Record_Health_Check_Schedule__c
+      WHERE Id = :scheduleId
+      WITH USER_MODE
+      LIMIT 1
+    ];
+    Request request = new Request();
+    request.scheduleId = existing.Id;
+    request.definitionId = existing.RunDefinition__c;
+    request.active = false;
+    request.frequency = existing.Frequency__c;
+    request.preferredStartTime = existing.PreferredStartTime__c;
+    request.dayOfWeek = existing.DayOfWeek__c;
+    request.startDate = existing.StartDate__c;
+    request.endDate = existing.EndDate__c;
+    return save(request);
+  }
+
+  private static void validateDateWindow(Date startDate, Date endDate) {
     if (startDate != null && endDate != null && startDate > endDate) {
       throw new ScheduleException('Start Date must be on or before End Date.');
     }
+  }
+
+  private static void validateSchedulableDefinition(Id definitionId) {
     List<Record_Health_Check_Run_Definition__c> definitions = [
       SELECT Id, Active__c, PopulationMode__c
       FROM Record_Health_Check_Run_Definition__c
@@ -43,42 +95,44 @@ public with sharing class RHCRunManagerScheduleService {
     if ('SUPPLIED_IDS'.equals(definitions[0].PopulationMode__c)) {
       throw new ScheduleException('Supplied-ID definitions are launched by Flow and cannot be scheduled.');
     }
-    Record_Health_Check_Schedule__c scheduleRecord;
-    String oldCronTriggerId;
-    if (scheduleId == null) {
-      scheduleRecord = new Record_Health_Check_Schedule__c();
-    } else {
-      scheduleRecord = [
-        SELECT Id, CronTriggerId__c
-        FROM Record_Health_Check_Schedule__c
-        WHERE Id = :scheduleId
-        WITH USER_MODE
-        LIMIT 1
-      ];
-      oldCronTriggerId = scheduleRecord.CronTriggerId__c;
-    }
-    scheduleRecord.RunDefinition__c = definitionId;
-    scheduleRecord.Active__c = active == true;
-    scheduleRecord.Frequency__c = frequency;
-    scheduleRecord.PreferredStartTime__c = preferredStartTime;
-    scheduleRecord.DayOfWeek__c = dayOfWeek;
-    scheduleRecord.StartDate__c = startDate;
-    scheduleRecord.EndDate__c = endDate;
-    if (scheduleRecord.Id == null) Database.insert(scheduleRecord, AccessLevel.USER_MODE);
-    else Database.update(scheduleRecord, AccessLevel.USER_MODE);
+  }
 
-    String newCronTriggerId;
-    if (active == true) {
-      newCronTriggerId = System.schedule(
+  private static Record_Health_Check_Schedule__c loadSchedule(Id scheduleId) {
+    if (scheduleId == null) {
+      return new Record_Health_Check_Schedule__c();
+    }
+    return [
+      SELECT Id, CronTriggerId__c
+      FROM Record_Health_Check_Schedule__c
+      WHERE Id = :scheduleId
+      WITH USER_MODE
+      LIMIT 1
+    ];
+  }
+
+  private static void saveScheduleRecord(Record_Health_Check_Schedule__c scheduleRecord) {
+    if (scheduleRecord.Id == null) {
+      Database.insert(scheduleRecord, AccessLevel.USER_MODE);
+    } else {
+      Database.update(scheduleRecord, AccessLevel.USER_MODE);
+    }
+  }
+
+  private static String scheduleIfActive(Record_Health_Check_Schedule__c scheduleRecord, String cron) {
+    if (scheduleRecord.Active__c == true) {
+      return System.schedule(
         'RHC Run Manager ' + scheduleRecord.Id + ' ' + Datetime.now().getTime(),
         cron,
         new RHCRunManagerScheduled(scheduleRecord.Id)
       );
     }
-    if (String.isNotBlank(oldCronTriggerId)) abortOwned(scheduleRecord.Id, oldCronTriggerId);
-    scheduleRecord.CronTriggerId__c = newCronTriggerId;
-    Database.update(scheduleRecord, AccessLevel.USER_MODE);
-    return scheduleRecord.Id;
+    return null;
+  }
+
+  private static void replaceOwnedJob(Id scheduleId, String oldCronTriggerId) {
+    if (String.isNotBlank(oldCronTriggerId)) {
+      abortOwned(scheduleId, oldCronTriggerId);
+    }
   }
 
   @TestVisible
@@ -92,8 +146,12 @@ public with sharing class RHCRunManagerScheduleService {
     }
     List<String> timeParts = preferredStartTime.split(':');
     String prefix = '0 ' + Integer.valueOf(timeParts[1]) + ' ' + Integer.valueOf(timeParts[0]);
-    if ('DAILY'.equals(frequency)) return prefix + ' * * ?';
-    if ('WEEKDAYS'.equals(frequency)) return prefix + ' ? * MON-FRI';
+    if ('DAILY'.equals(frequency)) {
+      return prefix + ' * * ?';
+    }
+    if ('WEEKDAYS'.equals(frequency)) {
+      return prefix + ' ? * MON-FRI';
+    }
     if ('WEEKLY'.equals(frequency) && new Set<String>{ 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN' }.contains(dayOfWeek)) {
       return prefix + ' ? * ' + dayOfWeek;
     }

@@ -1,3 +1,4 @@
+/* eslint-disable @lwc/lwc-platform/no-aura-libs, @lwc/lwc-platform/no-process-env -- Node CLI, not LWC runtime code. */
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -69,6 +70,16 @@ for (const invariant of [
 ]) {
   check(capture.includes(invariant), `Capture resilience invariant is missing: ${invariant}`);
 }
+check(
+  capture.match(/@SuppressWarnings\('PMD\.AvoidDebugStatements'\)/g)?.length === 1,
+  'Capture may retain exactly one reviewed sanitized-debug suppression'
+);
+const securityGuidance = read('docs/SECURITY_AND_AUTHORIZATION.md');
+check(
+  securityGuidance.includes('fixed error-level debug message')
+    && securityGuidance.includes('does not roll back already captured'),
+  'Security guidance must explain the best-effort capture-audit fallback'
+);
 const subscriber = read('force-app/main/default/classes/RHCActionResultSubscriberHandler.cls');
 check(subscriber.includes('setResumeCheckpoint'), 'Platform Event subscriber must set resume checkpoints');
 check(subscriber.includes('EventBus.RetryableException'), 'First-chunk transient failures must request bounded retry');
@@ -90,13 +101,27 @@ const review = read('force-app/main/default/classes/RHCActionReviewController.cl
 check(review.includes('WITH USER_MODE'), 'Review visibility and locking must remain user-mode');
 check(review.includes('AccessLevel.SYSTEM_MODE'), 'Authorized review transitions must use package-state DML');
 
+const retention = read('force-app/main/default/classes/RHCActionRetentionService.cls');
+for (const invariant of [
+  'public without sharing class RHCActionRetentionService',
+  "RHC_Actions_Manage_Retention",
+  'MAX_PURGE_ROWS = 1000',
+  "'SUCCEEDED', 'FAILED', 'SUPPRESSED', 'REJECTED'",
+  'WITH SYSTEM_MODE',
+  'AccessLevel.SYSTEM_MODE'
+]) {
+  check(retention.includes(invariant), `Retention containment invariant is missing: ${invariant}`);
+}
+
 const permissions = Object.fromEntries(['Admin', 'Approver', 'Runtime', 'Viewer'].map(role => [
   role,
   read(`force-app/main/default/permissionsets/RHC_Actions_${role}.permissionset-meta.xml`)
 ]));
 check(
-  editableFields(permissions.Admin).every(field => field.startsWith('RHC_Action_Policy__c.')),
-  'Admin may edit policy fields only; pending and history state are package-owned'
+  editableFields(permissions.Admin).every(field =>
+    field.startsWith('RHC_Action_Policy__c.') || field.startsWith('RHC_Action_Setting__c.')
+  ),
+  'Admin may edit policy and retention-setting fields only; pending and history state are package-owned'
 );
 check(
   !objectPermissions(permissions.Admin, 'RHC_Action_Policy__c').includes('<modifyAllRecords>true</modifyAllRecords>'),
@@ -122,6 +147,22 @@ check(
   permissions.Runtime.includes('<name>RHC_Actions_Automatic_Execution</name>'),
   'Runtime must carry the automatic execution permission'
 );
+check(
+  permissions.Admin.includes('<name>RHC_Actions_Manage_Retention</name>'),
+  'Admin must carry the retention-management permission'
+);
+for (const role of ['Approver', 'Runtime', 'Viewer']) {
+  check(
+    !permissions[role].includes('<name>RHC_Actions_Manage_Retention</name>'),
+    `${role} must not carry the retention-management permission`
+  );
+}
+for (const objectName of ['RHC_Pending_Action__c', 'RHC_Action_History__c']) {
+  check(
+    objectPermissions(permissions.Admin, objectName).includes('<allowDelete>false</allowDelete>'),
+    `Admin must not receive direct delete CRUD on ${objectName}`
+  );
+}
 
 const project = JSON.parse(read('sfdx-project.json'));
 check(project.namespace === 'rhc', 'Package namespace must remain rhc');

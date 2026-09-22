@@ -4,7 +4,7 @@ This page is the stable entry point for Salesforce administrators. The detailed 
 split into focused runbooks so an administrator can stop, verify, and resume without searching one
 very long page.
 
-Last verified against source: **August 25, 2026**, RHC Actions `0.1.0.NEXT`.
+Last verified against source: **September 20, 2026**, RHC Actions `0.1.0.NEXT`.
 
 ## Complete first-time setup
 
@@ -16,6 +16,9 @@ Follow every guide in order:
 4. [Create `Account_Has_Primary_Contact` manual policy](docs/admin/CREATE_MANUAL_POLICY.md)
 5. [Run Maya's end-to-end manual approval test](docs/admin/TEST_MANUAL_APPROVAL.md)
 6. [Monitor the queue and troubleshoot failures](docs/admin/MONITOR_AND_TROUBLESHOOT.md)
+
+That monitoring guide also covers the Admin-only, explicitly confirmed retention cleanup. Agree
+the retention period with legal, audit, security, and storage owners before saving it or purging.
 
 Then run the complete sandbox demonstration:
 
@@ -55,5 +58,6 @@ it does not invent a Contact or silently edit the Account.
 - RHC Actions can validate Flow variables but cannot prove the Flow's internal side effects.
 - Duplicate Event ID, retry, and cooldown protections must remain enabled.
 - The package sends no human alerts and performs no external callouts.
+- Retention cleanup is manual, terminal-only, capped at 1,000 combined rows, and never scheduled.
 
 For the package's internal design, use the [maintainer documentation](docs/README.md).

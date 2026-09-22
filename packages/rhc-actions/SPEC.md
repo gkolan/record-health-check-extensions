@@ -32,6 +32,7 @@ event, but a caller using publication `NONE` is invisible to Actions.
   retry limit, active state, and allow-listed input mapping.
 - Pending Action: one reviewable response for one policy and core Event ID.
 - Action History: approver/initiator, Flow interview ID, times, outcome, and bounded error details.
+- Action Setting: one explicitly saved whole-day retention window for manual audit cleanup.
 - Idempotency, cooldown, approval, and loop-guard state.
 
 Only active autolaunched Flows satisfying the versioned input contract are selectable.
@@ -65,6 +66,12 @@ Actions owns approved same-org Flow execution. It does not schedule Checks, send
 create analytical datasets, or perform outbound callouts. A Flow selected for corrective action
 must not be used to bypass those package boundaries.
 
+Actions does not schedule retention. An administrator with the dedicated retention permission can
+manually delete at most 1,000 old completed audit rows per confirmed request. Completed History is
+selected first; remaining capacity can delete only `SUCCEEDED`, `FAILED`, `SUPPRESSED`, or
+`REJECTED` Pending Actions. Nonterminal states are never eligible, and no packaged role receives
+direct delete CRUD on Pending Action or Action History.
+
 ## Acceptance criteria
 
 1. It installs with core and without another extension.
@@ -73,3 +80,5 @@ must not be used to bypass those package boundaries.
 4. Input mapping rejects unapproved values and incompatible Flow variables.
 5. Loop guards prevent unbounded evaluate-correct-evaluate behavior.
 6. Removing Actions leaves core and other extensions operational.
+7. Retention cannot run until the administrator saves a 1–3,650-day window and explicitly confirms
+   the request; one request cannot delete more than 1,000 combined records.

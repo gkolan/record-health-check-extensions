@@ -8,7 +8,7 @@ another commit, an earlier metadata shape, or an uncommitted workspace are not t
 
 | Evidence | Value |
 | --- | --- |
-| Commit SHA | `PENDING` — this workspace does not currently resolve a Git `HEAD` |
+| Commit SHA | `PENDING` for a release candidate. Repository HEAD is `08f377d952996873d739d6832736355a42494b19` and matches its upstream, but the scoped Integrations source is currently modified and uncommitted. |
 | Package version | `0.1.0.NEXT` |
 | Source API | `66.0` |
 | Core dependency | `Record Health Check@2.0.4-2` / `04tak000000cZBFAA2` |
@@ -20,8 +20,8 @@ hardening work.
 
 ## Local source evidence — August 30, 2026
 
-These checks validate the current workspace but are not revision-bound until the source has a
-commit SHA and the same gates pass in CI.
+These checks describe the August 30 source and are not transferable to the current working tree.
+A release candidate requires the same gates to pass for one clean commit in CI.
 
 | Gate | Result | Evidence |
 | --- | --- | --- |
@@ -33,14 +33,53 @@ commit SHA and the same gates pass in CI.
 | Dependency audit | PASS | `npm audit --audit-level=high`: 0 vulnerabilities |
 | Recommended analyzer | PASS WITH SCOPE LIMIT | Isolated CLI 2.149.9 / Code Analyzer 5.15.0 artifact `code-analyzer-results-20260830-071600-v515.json`: 0 severity 1–3, 100 low; executed PMD, ESLint, CPD, RetireJS, and Regex |
 | Dedicated SFGE security analyzer | INCOMPLETE / BLOCKING | Isolated CLI 2.149.9 / Code Analyzer 5.15.0 artifacts `code-analyzer-security-results-20260830-071300-v515.json` and `code-analyzer-security-20260830-071300-v515.log`: 0 reported violations, but only 27/28 entry points completed; internal execution error on `RHCIntegrationDeadLetterController.replay`; strict log gate correctly failed. The supported 5.15.0 version reproduces 5.14.0. Isolated scans proved the one-query user-mode lock completes at 28/28 and that adding replay DML triggers the engine defect. No suppression is committed. |
-| Revision evidence manifest | PASS IN ISOLATED FIXTURE / EXPECTED WORKSPACE FAIL | A clean committed `/tmp` fixture with matching `GITHUB_SHA` produced a release-ready SHA-256 manifest. Separate runs failed closed for a mismatched CI SHA and dirty package source. The real workspace run hashed all three analyzer artifacts but failed as designed because this workspace has no Git `HEAD`. CI uploads the manifest with commit, workflow-run, package, dependency, core-ref, toolchain, cleanliness, and artifact-digest evidence. |
+| Revision evidence manifest | PASS IN ISOLATED FIXTURE / EXPECTED WORKSPACE FAIL | A clean committed `/tmp` fixture with matching `GITHUB_SHA` produced a release-ready SHA-256 manifest. Separate runs failed closed for a mismatched CI SHA and dirty package source. A current 2026-09-20 run resolved HEAD correctly and failed closed because the scoped Integrations source and shared validation workflow are dirty (`/tmp/rhc-integrations-current-identity-20260920.json`). CI uploads the manifest with commit, workflow-run, package, dependency, core-ref, toolchain, cleanliness, and artifact-digest evidence. |
 
-The repository-wide validator is not a package pass/fail signal at this time: it stops on four
-missing Apex metadata companions under `packages/rhc-alerts`, outside this package.
+## Current working-tree security evidence — September 20, 2026
+
+The dedicated Code Analyzer 5.15.0 security scan was rerun against the current `force-app` with
+explicit workspace scope and fix metadata enabled. The first run exposed one high
+`ApexFlsViolation` at `RHCIntegrationDeadLetterController.saveRetentionSettings` in
+`/tmp/rhc-integrations-security-20260920-201258.json`. The retention service now checks setting-field
+access explicitly and passes writes through `Security.stripInaccessible` before user-mode DML.
+
+The final follow-up result `/tmp/rhc-integrations-security-20260920-202747.json` contains zero findings,
+but the gate remains **incomplete and blocking**:
+
+- the log `/tmp/rhc-integrations-security-20260920-202747.log` records internal SFGE execution
+  errors at both `replay` and `replayAll` (now lines 48 and 63);
+- SFGE identified 32 entry points but analyzed only 30; and
+- `npm run validate:analyzer-log -- /tmp/rhc-integrations-security-20260920-202747.log sfge`
+  correctly rejected the incomplete engine output.
+
+Replay now also passes its mutated records through `Security.stripInaccessible`, rejects any
+removed replay-state field, and retains user-mode DML. Its focused Recommended scan is clean
+(`/tmp/rhc-integrations-replay-20260920-202728.json`), but the same two SFGE internal errors remain;
+this is therefore analyzer incompleteness after an explicit sanitizer, not permission to suppress
+the paths. No generated autofix or analyzer suppression was applied. The dedicated scan must
+complete every identified entry point before this gate can pass. A focused Recommended scan of the
+hardened retention service is also clean
+(`/tmp/rhc-integrations-retention-20260920-201811.json`). Local source validation, XML parsing,
+Metadata API conversion, 15 Jest tests with 100% coverage, and the high-severity dependency audit
+pass. Apex execution is unavailable because no target org is currently authorized.
+
+The subsequent rerun reproduced the same 30/32 internal error in
+`/tmp/rhc-integrations-security-current.log`. Next-line and stack directives were then tested at the
+replay DML and sanitizer with both the v5 display name and legacy internal rule name; the post-test
+logs `/tmp/rhc-integrations-security-post-directive-v2.log` and
+`/tmp/rhc-integrations-security-post-stack-internal.log` remained incomplete. Making the sanitized
+list an explicit local before user-mode DML also remained incomplete in
+`/tmp/rhc-integrations-security-explicit-sanitized-list.log`. None of these experiments bypassed the
+Custom Permission, locked `WITH USER_MODE` read, fail-closed `stripInaccessible` result, or user-mode
+DML. No ineffective suppression or no-op source rewrite was retained. The gate remains blocking.
+
+The repository-wide validator now passes the current nine-project structure and enforces static,
+npm, and org-validation CI mappings. That suite contract is necessary but does not make the
+uncommitted Integrations candidate revision-bound or release-ready.
 
 ## No-namespace source deployment evidence — August 30, 2026
 
-The current source was check-only validated and then deployed as unmanaged, non-namespaced metadata
+The August 30 source was check-only validated and then deployed as unmanaged, non-namespaced metadata
 to shared Developer scratch org `rhc-change-monitor-nons-shared-20260830` (`00DRL00000UKhkO2AT`).
 This org is useful for source compatibility and cross-extension regression, but it is not a clean
 core-only subscriber: its installed-package list contains Record Health Check 2.0.4.2
@@ -67,7 +106,7 @@ authorized packaging or purpose-built org work.
 | Gate | Status |
 | --- | --- |
 | Compile all metadata against promoted core only | `PENDING` |
-| Run all 21 Apex tests and capture class-by-class coverage | `VERIFIED FOR NO-NAMESPACE SOURCE` — run `707RL00001eHCnq`; package-version isolation remains pending |
+| Run all current 28 Apex tests and capture class-by-class coverage | `PENDING FOR CURRENT SOURCE`; historical 21-test no-namespace run `707RL00001eHCnq` passed, while bulk replay and retention additions still require execution |
 | Exercise Platform Event subscribers at realistic batch and route fan-out | `PENDING` |
 | Verify Finalizer recovery and concurrent replay/worker row locking | `PENDING` |
 | Verify Named Credential callouts, retries, and receiver idempotency | `PENDING` |

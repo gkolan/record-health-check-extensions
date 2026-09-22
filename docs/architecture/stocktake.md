@@ -96,8 +96,11 @@ transient `*ChangeEvent` payload and does not belong in Alerts, Run Manager, or 
 
 Change Monitor now has a local Salesforce DX implementation preview that makes object-specific
 adapter intake, stable replay identity, least-privilege execution principal, and bulk-limit
-hypotheses executable. It still has no package container, and none of those feasibility gates is
-considered passed merely because source exists. The repository contains eight package projects.
+hypotheses executable. Its effective-principal gate passed on 2026-09-18 using a package-owned
+dispatch event and subscriber-owned `PlatformEventSubscriberConfig`. Replay/redelivery,
+adapter-packaging, measured-load, and package-lifecycle evidence remain open. A local generator now
+creates the subscriber-owned CDC channel member and thin trigger without creating or deploying a
+package. The repository contains nine package projects.
 
 ## Delivery sequence
 

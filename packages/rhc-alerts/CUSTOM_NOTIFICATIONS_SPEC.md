@@ -172,3 +172,7 @@ specified multi-channel mode. Silent fallback changes audience expectations and 
 
 The implementation must recheck `Messaging.CustomNotification` methods and current limits during
 release validation.
+
+The setup assistant reports `NOTIFICATION_TYPE_UNAVAILABLE` when an active bell policy exists but
+the packaged type cannot be resolved. Unit tests exercise that diagnostic through a pure availability
+seam; clean-subscriber installation remains the authoritative proof that packaged metadata resolves.

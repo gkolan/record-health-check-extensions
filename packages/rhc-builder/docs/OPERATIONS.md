@@ -49,6 +49,8 @@ misrepresent the immutable version itself.
 1. Do not repeatedly select Publish, Activate, or Rollback.
 2. Record the Check Set label, version number, fingerprint, operation token, operation kind, status,
    metadata request ID, requested/completed times, and result summary from **Recent operations**.
+   The result summary lists up to ten rejected components as `<component>: <Salesforce message>`;
+   that is usually enough to classify the failure without leaving Builder.
 3. In Setup **Quick Find**, enter `Deployment Status`.
 4. Select **Deployment Status**.
 5. Find the metadata deployment whose request ID and time match the Builder operation.

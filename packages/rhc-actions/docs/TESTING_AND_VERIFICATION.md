@@ -10,8 +10,8 @@ version.
 | XML validation        | Metadata files are well-formed                                                                    |
 | Metadata conversion   | Source can be converted to Metadata API format                                                    |
 | Source deployment     | Salesforce compiles every component against promoted core                                         |
-| Apex tests            | Authorization, bulk behavior, event capture, Flow contract, retries, cooldown, and audit behavior |
-| Jest tests            | Review UI loading, approval, rejection, and safe failure behavior                                 |
+| Apex tests            | Authorization, bulk behavior, event capture, Flow contract, retries, cooldown, audit, and bounded retention behavior |
+| Jest tests            | Review UI loading, approval, rejection, retention confirmation, and safe failure behavior                   |
 | Code Analyzer         | Recommended static rules have no unreviewed critical/high findings                                |
 | Source policy gates   | Permissions, execution authorization, event resilience, dependency, and core-contract invariants |
 | 2GP version creation  | Dependency and package metadata resolve in the Dev Hub                                            |
@@ -47,6 +47,8 @@ The suite must cover:
 - Maya's validate-and-queue path;
 - fail-closed invalid contract behavior; and
 - rejection without Flow execution.
+- retention controls hidden without capability, settings validation, explicit confirmation, and
+  surfaced save/purge failures.
 
 Run coverage when changing the component:
 
@@ -66,7 +68,7 @@ SF_DISABLE_LOG_FILE=true sf project deploy start \
   --wait 30
 
 SF_DISABLE_LOG_FILE=true sf apex run test \
-  --class-names RHCActionPolicyServiceTest,RHCActionCaptureServiceTest,RHCActionExecutionServiceTest,RHCActionReviewControllerTest \
+  --class-names RHCActionPolicyServiceTest,RHCActionCaptureServiceTest,RHCActionExecutionServiceTest,RHCActionReviewControllerTest,RHCActionRetentionServiceTest \
   --target-org <actions-test-org> \
   --result-format human \
   --code-coverage \
@@ -93,6 +95,8 @@ Minimum behavioral coverage:
 - transient capture classification, checkpoint behavior, and finalizer recovery;
 - missing Flow interview output fails closed; and
 - empty Queueable input is harmless.
+- retention rejects missing permission, invalid/unsaved settings, and deletes only old completed
+  evidence; nonterminal and recent records survive; one request is capped at 1,000 rows.
 
 The Apex test suite creates its records with `RHCActionTestDataFactory`. That factory is test-only
 and is deliberately unavailable to administrators. For reusable subscriber-org demonstration data,
@@ -165,7 +169,7 @@ The Dev Hub created container `0Hoak0000005M6LCAU`, but its daily package-versio
 creation of the first installable `04t`. Repeat packaging and the clean-org install after the quota
 resets; do not describe the container alone as an installable release.
 
-## Current source-only evidence
+## August 30 source-only evidence
 
 On August 30, 2026, after the authorization, permission, event-resilience, and recovery changes:
 
@@ -212,3 +216,23 @@ copy/paste finding remain.
 
 Real subscriber identity configuration, production Flow execution, package creation, clean package
 install, upgrade, and uninstall remain release gates.
+
+## Current retention-change evidence
+
+On September 20, 2026, for the current source diff:
+
+- 11 of 11 Jest tests passed;
+- Jest coverage is 91.58% statements, 70.83% branches, 92.30% functions, and 92.85% lines;
+- source/least-privilege validation, XML parsing, Metadata API conversion, dependency audit, root
+  documentation/link validation, and diff whitespace validation passed;
+- the validator proves Admin alone receives Manage Retention, Admin still lacks direct delete CRUD
+  on Pending Action and Action History, and the service retains its terminal-state/system-mode cap;
+- Apex tests were added for settings authorization, eligibility, preservation, and the 1,000-row
+  limit; and
+- the current package-source Recommended scan reports zero findings
+  (`/tmp/rhc-actions-recommended-20260921-0220.json`); all test scenarios use explicit principals,
+  public and virtual methods have complete contracts, and duplicated Flow/test assertions use
+  shared fixtures; and
+- an Apex run covering all five test classes stopped before submission because no default or target
+  org is configured, so current Salesforce compilation and execution remain unverified. No package
+  container, package version, namespace, deploy, or release artifact was created by this change.

@@ -1,8 +1,9 @@
 # RHC Change Monitor administrator guide
 
 > [!WARNING]
-> This is a proposed workflow for implementation and acceptance testing. There is no installable RHC
-> Change Monitor package yet.
+> This workflow describes the current implementation preview and its acceptance testing. There is
+> no installable RHC Change Monitor package yet, and the remaining release gates still prohibit
+> production use.
 
 ## Roles
 
@@ -28,7 +29,7 @@ every Record Health Check user can enable CDC or author Apex.
 6. Decide whether result publication should be `NONE`, `ACTIONABLE`, or `ALL`.
 7. Name the operations owner who will respond to gaps and terminal failures.
 
-## Proposed setup workflow
+## Setup workflow for source and subscriber-adapter testing
 
 ### 1. Enable Salesforce CDC deliberately
 
@@ -38,14 +39,48 @@ plan outside the package.
 
 ### 2. Install or deploy the intake adapter
 
-The setup assistant must state whether the entity has a packaged adapter. If Release 1 uses the
-preferred subscriber-owned model, a developer copies the package's exact trigger template, binds it
-to the entity's change-event type, adds the contract test, and deploys it through the organization's
-normal lifecycle. An administrator cannot manufacture this Apex from a text field.
+The package intentionally has no object-specific adapter. A developer can generate the exact CDC
+channel member and thin trigger in the subscriber repository:
+
+```bash
+cd packages/rhc-change-monitor
+npm run adapter:generate -- \
+  --object Account \
+  --output /path/to/subscriber-repo/force-app/main/default
+```
+
+The generator uses the installed `rhc` namespace by default. `--namespace none` exists only for
+source-deployment verification. Review the generated source, add the object-specific contract test,
+and deploy it through the organization's normal lifecycle. The command refuses to overwrite existing
+files unless `--force` is explicit. An administrator cannot manufacture or deploy this Apex from a
+text field.
 
 ### 3. Establish the runtime principal
 
-Run the setup identity probe. It must show:
+Change-event triggers, and any Queueable they start, always run as **Automated Process**. Assigning
+permission sets to that user does not grant it custom permissions (verified 2026-09-18), so the
+intake trigger only records claims and publishes the package's `Record Health Check Change
+Dispatch` event. The dispatch event's trigger, `RHCChangeMonitorDispatchSubscriber`, is where the
+principal is chosen:
+
+1. Create a dedicated integration user (no interactive login needed) and assign
+   **RHC Change Monitor Runtime** plus core **Record Health Check User**.
+2. Deploy a `PlatformEventSubscriberConfig` for `RHCChangeMonitorDispatchSubscriber` naming that
+   user (template: `subscriber-app/main/default/platformEventSubscriberConfigs/`). Never put a
+   username in package metadata.
+3. If the trigger was already active before the config existed, deactivate and reactivate it once
+   so the subscription restarts under the configured user.
+4. Open the **RHC Change Monitor** app. The console shows a warning while claims fail with
+   `RUNTIME_PERMISSION_MISSING`; after the config is in place, use **Retry failed claims**.
+
+Intake and retry treat immediate rejection of the package dispatch event as a failed transaction.
+New claims are rolled back, and retried claims keep their prior failed state, so the console never
+reports work as pending solely because Salesforce rejected the wake-up signal synchronously.
+If pending claims later remain while no dispatcher is queued, use **Dispatch pending claims** to
+publish another data-free wake-up signal. This is an idempotent recovery request; it does not edit
+claims and is not a substitute for reconciling a CDC gap.
+
+Then confirm in the console or the setup identity probe:
 
 - effective User ID and user type;
 - core Apex access;
@@ -80,7 +115,7 @@ Activation stays unavailable until all errors are resolved. Warnings require exp
 - no UPDATE field filter on a high-volume entity;
 - subscriber-owned adapter requiring lifecycle ownership;
 - unsupported DELETE behavior; and
-- no automated ledger retention job.
+- manual retention cleanup only; no automated ledger deletion job.
 
 ### 6. Test in a sandbox
 
@@ -110,6 +145,11 @@ downstream automation completed.
   changes.
 - Pause policies before large data loads unless the load is an intentional evaluation source.
 - Do not purge active incident evidence until the operations owner has reconciled missed records.
+- In **Change Evaluation retention**, save the approved 1–3,650-day window before cleanup. The
+  displayed 90-day recommendation does not authorize deletion until it is saved.
+- Review the cutoff and acknowledge permanent deletion for each purge. One run deletes at most
+  1,000 oldest terminal evaluations; repeat only after reviewing the remaining evidence. `PENDING`
+  claims are never eligible.
 - Use a scheduled portfolio run when recovery requires proving the current state of every record;
   CDC replay alone is not a permanent audit or reconciliation mechanism.
 
@@ -121,4 +161,3 @@ downstream automation completed.
 4. Remove subscriber-owned change-event triggers through the subscriber repository.
 5. Disable CDC for the entity only when no other subscriber depends on it.
 6. Uninstalling Change Monitor must not disable CDC automatically and must not modify core metadata.
-

@@ -97,6 +97,7 @@
             disabled={loading}
             required
             label="Notification channel"
+            field-level-help="Salesforce notification (bell) sends an asynchronous Custom Notification to the desktop bell and the mobile app. Email sends one plain-text message per recipient."
             data-field="NotificationChannel__c"
             value={policy.NotificationChannel__c}
             options={channels}
@@ -176,6 +177,56 @@
           Publication coverage analysis found no gaps.
         </div></template
       >
+      <section aria-label="Delivery retention" class="slds-var-m-top_large">
+        <h2 class="slds-text-heading_small">Delivery retention</h2>
+        <p class="slds-var-m-top_x-small">
+          Cleanup is manual. Each run permanently deletes at most
+          {retention.maxDeleteRows} of the oldest terminal delivery records
+          outside the saved window. Pending delivery work is never deleted.
+        </p>
+        <div class="slds-grid slds-wrap slds-gutters slds-var-m-top_small">
+          <div class="slds-col slds-size_1-of-1 slds-large-size_1-of-2">
+            <lightning-input
+              data-retention-days
+              disabled={loading}
+              required
+              min="1"
+              max="3650"
+              step="1"
+              type="number"
+              label="Retention days"
+              value={retention.retentionDays}
+              onchange={handleRetentionDays}
+            ></lightning-input>
+          </div>
+        </div>
+        <div class="slds-var-m-top_small">
+          <lightning-button
+            data-action="save-retention"
+            disabled={loading}
+            label="Save retention settings"
+            onclick={handleSaveRetention}
+          ></lightning-button>
+        </div>
+        <lightning-input
+          class="slds-var-m-top_medium"
+          data-retention-confirm
+          disabled={loading}
+          type="checkbox"
+          label="I understand this permanently deletes eligible delivery history."
+          checked={retentionConfirmed}
+          onchange={handleRetentionConfirm}
+        ></lightning-input>
+        <div class="slds-var-m-top_small">
+          <lightning-button
+            data-action="purge-deliveries"
+            disabled={purgeDisabled}
+            variant="destructive-text"
+            label="Purge eligible deliveries"
+            onclick={handlePurge}
+          ></lightning-button>
+        </div>
+      </section>
       <template lwc:if={hasPolicies}
         ><section aria-label="Existing policies" class="slds-var-m-top_large">
           <h2 class="slds-text-heading_small slds-var-m-bottom_small">
@@ -185,6 +236,7 @@
             key-field="Id"
             data={policies}
             columns={policyColumns}
+            onrowaction={handlePolicyAction}
             hide-checkbox-column
           ></lightning-datatable></section
       ></template>

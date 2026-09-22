@@ -2,9 +2,10 @@
 
 ## Ownership and sharing
 
-RHC Actions owns three private custom objects. Core and other extensions own none of these records.
-All three objects use private organization-wide sharing. Access comes from the packaged Permission
-Sets plus the org's role, sharing, and administrative model.
+RHC Actions owns three private operational objects and one public-read/write settings object. Core
+and other extensions own none of these records. Access comes from the packaged Permission Sets plus
+the org's role, sharing, and administrative model. The settings object is not a substitute for the
+service's custom-permission and user-mode checks.
 
 ```mermaid
 %%{init: {"flowchart": {"nodeSpacing": 70, "rankSpacing": 65}} }%%
@@ -12,6 +13,7 @@ flowchart LR
     POLICY["RHC_Action_Policy__c<br/>configuration"]
     PENDING["RHC_Pending_Action__c<br/>one policy/event proposal"]
     HISTORY["RHC_Action_History__c<br/>one execution attempt"]
+    SETTING["RHC_Action_Setting__c<br/>retention singleton"]
     USER["User<br/>approver or initiator"]
 
     POLICY -->|"one policy creates many"| PENDING
@@ -19,10 +21,13 @@ flowchart LR
     PENDING -->|"one proposal has attempts"| HISTORY
     USER -->|"Approved_By__c"| PENDING
     USER -->|"Approved_By__c / Initiated_By__c"| HISTORY
+    SETTING -.->|"manual retention window"| HISTORY
+    SETTING -.->|"terminal-only cleanup"| PENDING
 
     style POLICY fill:#fde68a,stroke:#b45309,color:#1f2937
     style PENDING fill:#fde68a,stroke:#b45309,color:#1f2937
     style HISTORY fill:#fde68a,stroke:#b45309,color:#1f2937
+    style SETTING fill:#dbeafe,stroke:#1d4ed8,color:#1f2937
     style USER fill:#ddd6fe,stroke:#6d28d9,color:#1f2937
 ```
 
@@ -36,10 +41,29 @@ Corrective Action Policy 1 ───────< many Pending Actions
 
 User ──> Pending Action.Approved By
 User ──> Action History.Approved By / Initiated By
+
+Action Setting ──manual retention window──> completed History + terminal Pending Actions
 ```
 
 Relationships are lookups, not master-detail. Package uninstall removes package-owned objects and
 their data; it does not remove core.
+
+## Action Setting
+
+API name: `RHC_Action_Setting__c`
+
+The service supports one record with Name and `Setting_Key__c` equal to `Default`.
+
+| Field | Type | Meaning and validation |
+| --- | --- | --- |
+| `Setting_Key__c` | Unique external-ID Text | Package-owned singleton identity; validation requires `Default` |
+| `Retention_Days__c` | Number(4,0) | Required whole-day window from 1 through 3,650 |
+
+The unsaved UI recommendation is 365 days. It does not authorize deletion until an administrator
+saves the singleton. Cleanup is manual and capped at 1,000 combined rows per request. History is
+selected first by `Completed_At__c`; remaining capacity can select only terminal Pending Actions
+(`SUCCEEDED`, `FAILED`, `SUPPRESSED`, or `REJECTED`) by `Completed_At__c`. Nonterminal records are
+never eligible.
 
 ## Corrective Action Policy
 

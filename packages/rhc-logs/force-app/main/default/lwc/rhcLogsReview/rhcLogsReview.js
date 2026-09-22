@@ -10,7 +10,8 @@ const COLUMNS = [
     { label: 'Run ID', fieldName: 'RunId__c' },
     { label: 'Check Set', fieldName: 'CheckSetDeveloperName__c' },
     { label: 'Check', fieldName: 'CheckDeveloperName__c' },
-    { label: 'Record ID', fieldName: 'RecordId__c' }
+    { label: 'Record ID', fieldName: 'RecordId__c' },
+    { type: 'action', typeAttributes: { rowActions: [{ label: 'Show details', name: 'details' }] } }
 ];
 
 export default class RhcLogsReview extends NavigationMixin(LightningElement) {
@@ -21,6 +22,7 @@ export default class RhcLogsReview extends NavigationMixin(LightningElement) {
     filters = { pageSize: 100 };
     nextCursor;
     hasMore = false;
+    selectedRow;
 
     connectedCallback() {
         this.load();
@@ -69,7 +71,28 @@ export default class RhcLogsReview extends NavigationMixin(LightningElement) {
         return !this.loading && !this.errorMessage && this.rows.length === 0;
     }
 
+    // Message and structured details are shown inline so an investigator can scan several rows
+    // without leaving the filtered list; fields the user cannot read are simply absent.
+    get selectedDetails() {
+        if (!this.selectedRow) {
+            return undefined;
+        }
+        return {
+            ...this.selectedRow,
+            hasMessage: this.selectedRow.Message__c !== undefined,
+            hasStructuredDetails: this.selectedRow.StructuredDetails__c !== undefined
+        };
+    }
+
+    closeDetails() {
+        this.selectedRow = undefined;
+    }
+
     handleRowAction(event) {
+        if (event.detail.action.name === 'details') {
+            this.selectedRow = event.detail.row;
+            return;
+        }
         if (event.detail.action.name !== 'open') {
             return;
         }

@@ -1,7 +1,10 @@
 /** LWC facade for Run Definition administration, scheduling, and monitoring. */
 public with sharing class RHCRunManagerAdminController {
-  /** Returns saved definitions visible to the current user. */
-  @AuraEnabled(cacheable=true)
+  /**
+   * Returns saved definitions visible to the current user.
+   * @return Visible Run Definitions.
+   */
+  @AuraEnabled
   public static List<Record_Health_Check_Run_Definition__c> getDefinitions() {
     return [
       SELECT Id, Name, DisplayName__c, Active__c, SelectionType__c, QualifiedApiName__c,
@@ -14,7 +17,11 @@ public with sharing class RHCRunManagerAdminController {
     ];
   }
 
-  /** Returns active core selections for the metadata-driven picker. */
+  /**
+   * Returns active core selections for the metadata-driven picker.
+   * @param selectionType CHECK_SET or CHECK.
+   * @return Active core selections of the requested type.
+   */
   @AuraEnabled(cacheable=true)
   public static List<RHCRunManagerCoreMetadataGateway.SelectionOption> getSelections(String selectionType) {
     try {
@@ -24,8 +31,11 @@ public with sharing class RHCRunManagerAdminController {
     }
   }
 
-  /** Returns schedules visible to the current administrator. */
-  @AuraEnabled(cacheable=true)
+  /**
+   * Returns schedules visible to the current administrator.
+   * @return Visible Run Manager schedules.
+   */
+  @AuraEnabled
   public static List<Record_Health_Check_Schedule__c> getSchedules() {
     return [
       SELECT Id, Name, RunDefinition__c, RunDefinition__r.DisplayName__c,
@@ -39,10 +49,16 @@ public with sharing class RHCRunManagerAdminController {
     ];
   }
 
-  /** Returns scope Runs owned by one Batch Run. */
-  @AuraEnabled(cacheable=true)
+  /**
+   * Returns scope Runs owned by one Batch Run.
+   * @param batchRunId Owning Batch Run ID.
+   * @return Scope Runs for the selected Batch Run.
+   */
+  @AuraEnabled
   public static List<Record_Health_Check_Run__c> getRuns(Id batchRunId) {
-    if (batchRunId == null) throw handled('Choose a Batch Run.');
+    if (batchRunId == null) {
+      throw handled('Choose a Batch Run.');
+    }
     return [
       SELECT Id, Name, ScopeNumber__c, Status__c, RecordCount__c,
         PassedCount__c, FailedCount__c, SkippedCount__c, UnableCount__c,
@@ -55,10 +71,16 @@ public with sharing class RHCRunManagerAdminController {
     ];
   }
 
-  /** Returns retained Results owned by one scope Run. */
-  @AuraEnabled(cacheable=true)
+  /**
+   * Returns retained Results owned by one scope Run.
+   * @param runId Owning scope Run ID.
+   * @return Retained Results for the selected scope Run.
+   */
+  @AuraEnabled
   public static List<Record_Health_Check_Run_Result__c> getResults(Id runId) {
-    if (runId == null) throw handled('Choose a scope Run.');
+    if (runId == null) {
+      throw handled('Choose a scope Run.');
+    }
     return [
       SELECT Id, Name, RecordId__c, CheckQualifiedApiName__c, Status__c,
         Severity__c, ReasonCode__c, DiagnosticSummary__c, RecommendedAction__c,
@@ -71,14 +93,17 @@ public with sharing class RHCRunManagerAdminController {
     ];
   }
 
-  /** Returns recent owned Batch Runs for monitoring. */
-  @AuraEnabled(cacheable=true)
+  /**
+   * Returns recent owned Batch Runs for monitoring.
+   * @return Recent Run Manager Batch Runs.
+   */
+  @AuraEnabled
   public static List<Record_Health_Check_Batch_Run__c> getBatchRuns() {
     return [
       SELECT Id, Name, RunDefinition__c, RunDefinition__r.Name, Source__c,
         Status__c, AsyncApexJobId__c, SubmittedRecordCount__c,
-        ProcessedRecordCount__c, FailedScopeCount__c, StartedAt__c,
-        CompletedAt__c, ErrorSummary__c
+        ProcessedRecordCount__c, FailedScopeCount__c, PassedCount__c, FailedCount__c,
+        UnableCount__c, SystemErrorCount__c, StartedAt__c, CompletedAt__c, ErrorSummary__c
       FROM Record_Health_Check_Batch_Run__c
       WITH USER_MODE
       ORDER BY CreatedDate DESC
@@ -86,7 +111,40 @@ public with sharing class RHCRunManagerAdminController {
     ];
   }
 
-  /** Resolves selection identity for immediate administrator feedback. */
+  /**
+   * Returns explicit manual-retention settings and current-user capability.
+   * @return Current retention settings and current-user capability.
+   */
+  @AuraEnabled
+  public static RHCRunManagerRetentionService.Settings getRetentionSettings() {
+    return RHCRunManagerRetentionService.getSettings();
+  }
+
+  /**
+   * Saves the whole-day retention window without running cleanup.
+   * @param retentionDays Whole-day retention window.
+   * @return Saved retention settings.
+   */
+  @AuraEnabled
+  public static RHCRunManagerRetentionService.Settings saveRetentionSettings(Integer retentionDays) {
+    return RHCRunManagerRetentionService.saveSettings(retentionDays);
+  }
+
+  /**
+   * Runs one confirmed, bounded cleanup request.
+   * @return Counts removed by object type and in total.
+   */
+  @AuraEnabled
+  public static RHCRunManagerRetentionService.PurgeOutcome purgeOperationalRecords() {
+    return RHCRunManagerRetentionService.purge();
+  }
+
+  /**
+   * Resolves selection identity for immediate administrator feedback.
+   * @param selectionType CHECK_SET or CHECK.
+   * @param qualifiedApiName Exact core metadata identity.
+   * @return Resolved selection and target-object identity.
+   */
   @AuraEnabled(cacheable=true)
   public static RHCRunManagerCoreMetadataGateway.DefinitionInfo resolveSelection(
     String selectionType,
@@ -99,7 +157,12 @@ public with sharing class RHCRunManagerAdminController {
     }
   }
 
-  /** Returns readable/filterable fields for the guided-filter picker. */
+  /**
+   * Returns readable/filterable fields for the guided-filter picker.
+   * @param selectionType CHECK_SET or CHECK.
+   * @param qualifiedApiName Exact core metadata identity.
+   * @return Sorted fields available to the guided-filter builder.
+   */
   @AuraEnabled(cacheable=true)
   public static List<FieldOption> getTargetFields(
     String selectionType,
@@ -122,105 +185,54 @@ public with sharing class RHCRunManagerAdminController {
     return options;
   }
 
-  /** Saves a validated Day-1 Run Definition. */
+  /**
+   * Saves a validated Day-1 Run Definition.
+   * @param input Administrator-supplied definition values.
+   * @return Saved Run Definition ID.
+   */
   @AuraEnabled
   public static Id saveDefinition(DefinitionInput input) {
-    if (input == null) throw handled('Run Definition input is required.');
-    try {
-      validateDefinitionInput(input);
-      RHCRunManagerCoreMetadataGateway.DefinitionInfo coreInfo = RHCRunManagerCoreMetadataGateway.resolve(
-        input.selectionType,
-        input.qualifiedApiName
-      );
-      RHCRunManagerFilterService.validate(coreInfo.targetObjectApiName, input.populationMode, input.filterJson);
-      Record_Health_Check_Run_Definition__c definition = new Record_Health_Check_Run_Definition__c(
-        Id = input.id,
-        DisplayName__c = input.displayName?.trim(),
-        Active__c = input.active,
-        SelectionType__c = input.selectionType,
-        QualifiedApiName__c = coreInfo.qualifiedApiName,
-        TargetObjectApiName__c = coreInfo.targetObjectApiName,
-        PopulationMode__c = input.populationMode,
-        FilterJson__c = input.filterJson,
-        BatchSize__c = input.batchSize,
-        CaptureMode__c = input.captureMode,
-        CoalesceDelayMinutes__c = input.coalesceDelayMinutes
-      );
-      if (definition.Id == null) Database.insert(definition, AccessLevel.USER_MODE);
-      else Database.update(definition, AccessLevel.USER_MODE);
-      return definition.Id;
-    } catch (AuraHandledException error) {
-      throw error;
-    } catch (Exception error) {
-      throw handled('The Run Definition could not be saved.');
-    }
+    return RHCRunManagerAdminCommandService.saveDefinition(input);
   }
 
-  /** Starts Run Now through the shared execution path. */
+  /**
+   * Starts Run Now through the shared execution path.
+   * @param definitionId Saved Run Definition ID.
+   * @return Created Batch Run ID.
+   */
   @AuraEnabled
   public static Id runNow(Id definitionId) {
-    try {
-      return RHCRunManagerExecutionService.runNow(definitionId);
-    } catch (Exception error) {
-      throw handled('The Run Definition could not be started.');
-    }
+    return RHCRunManagerAdminCommandService.runNow(definitionId);
   }
 
-  /** Saves a human recurrence without accepting CRON. */
+  /**
+   * Aborts the owned platform job of an active Batch Run and records the cancellation.
+   * @param batchRunId Active owned Batch Run ID.
+   * @return Cancelled Batch Run ID.
+   */
+  @AuraEnabled
+  public static Id cancelBatchRun(Id batchRunId) {
+    return RHCRunManagerAdminCommandService.cancelBatchRun(batchRunId);
+  }
+
+  /**
+   * Saves a human recurrence without accepting CRON.
+   * @param input Administrator-supplied schedule values.
+   * @return Saved Schedule ID.
+   */
   @AuraEnabled
   public static Id saveSchedule(ScheduleInput input) {
-    if (input == null) throw handled('Schedule input is required.');
-    try {
-      return RHCRunManagerScheduleService.save(
-        input.id,
-        input.runDefinitionId,
-        input.active,
-        input.frequency,
-        input.preferredStartTime,
-        input.dayOfWeek,
-        input.startDate,
-        input.endDate
-      );
-    } catch (Exception error) {
-      throw handled('The schedule could not be saved.');
-    }
+    return RHCRunManagerAdminCommandService.saveSchedule(input);
   }
 
-  /** Deactivates a schedule and safely removes only its owned platform job. */
+  /**
+   * Deactivates a schedule and safely removes only its owned platform job.
+   * @param scheduleId Owned Schedule ID.
+   * @return Paused Schedule ID.
+   */
   @AuraEnabled
   public static Id pauseSchedule(Id scheduleId) {
-    if (scheduleId == null) throw handled('Choose a schedule.');
-    try {
-      Record_Health_Check_Schedule__c existing = [
-        SELECT Id, RunDefinition__c, Frequency__c, PreferredStartTime__c, DayOfWeek__c,
-          StartDate__c, EndDate__c
-        FROM Record_Health_Check_Schedule__c
-        WHERE Id = :scheduleId
-        WITH USER_MODE
-        LIMIT 1
-      ];
-      return RHCRunManagerScheduleService.save(
-        existing.Id,
-        existing.RunDefinition__c,
-        false,
-        existing.Frequency__c,
-        existing.PreferredStartTime__c,
-        existing.DayOfWeek__c,
-        existing.StartDate__c,
-        existing.EndDate__c
-      );
-    } catch (Exception error) {
-      throw handled('The schedule could not be paused.');
-    }
-  }
-
-  private static void validateDefinitionInput(DefinitionInput input) {
-    if (String.isBlank(input.displayName) || input.displayName.trim().length() > 80) throw handled('Name is required and must be 80 characters or fewer.');
-    if (!new Set<String>{ 'CHECK_SET', 'CHECK' }.contains(input.selectionType)) throw handled('Selection Type is invalid.');
-    if (!new Set<String>{ 'ALL_ACCESSIBLE', 'GUIDED_FILTERED', 'SUPPLIED_IDS' }.contains(input.populationMode)) throw handled('Population Mode is invalid.');
-    if (!new Set<String>{ 'PASS', 'FAIL', 'BOTH' }.contains(input.captureMode)) throw handled('Capture Mode is invalid.');
-    if (input.batchSize == null || input.batchSize < 1 || input.batchSize > 200 || input.batchSize != input.batchSize.setScale(0)) throw handled('Batch Size must be a whole number from 1 through 200.');
-    if (input.coalesceDelayMinutes == null || input.coalesceDelayMinutes < 1 || input.coalesceDelayMinutes > 10 || input.coalesceDelayMinutes != input.coalesceDelayMinutes.setScale(0)) throw handled('Coalesce delay must be a whole number from 1 through 10.');
+    return RHCRunManagerAdminCommandService.pauseSchedule(scheduleId);
   }
 
   private static AuraHandledException handled(String message) {
@@ -259,7 +271,11 @@ public with sharing class RHCRunManagerAdminController {
     @AuraEnabled public String value;
     @AuraEnabled public String dataType;
 
-    /** Sorts by user-facing label. */
+    /**
+     * Sorts by user-facing label.
+     * @param other Field option being compared.
+     * @return Lexicographic comparison result.
+     */
     public Integer compareTo(Object other) {
       return label.toLowerCase().compareTo(((FieldOption) other).label.toLowerCase());
     }

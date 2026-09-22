@@ -23,27 +23,7 @@ private class RHCActionExecutionServiceTest {
     }
 
     public override FlowDescriptor describeActive(String flowApiName) {
-      FlowDescriptor descriptor = new FlowDescriptor();
-      descriptor.apiName = flowApiName;
-      descriptor.activeVersionId = RHCActionTestDataFactory.syntheticId('301');
-      descriptor.processType = 'AutoLaunchedFlow';
-      for (String name : RHCActionConstants.allowedFlowInputs()) {
-        VariableDescriptor variable = new VariableDescriptor();
-        variable.apiName = name;
-        variable.dataType = 'String';
-        variable.isInput = true;
-        variable.isOutput = false;
-        variable.isCollection = false;
-        descriptor.variablesByName.put(name, variable);
-      }
-      VariableDescriptor interview = new VariableDescriptor();
-      interview.apiName = 'rhcInterviewGuidV1';
-      interview.dataType = 'String';
-      interview.isInput = false;
-      interview.isOutput = true;
-      interview.isCollection = false;
-      descriptor.variablesByName.put(interview.apiName, interview);
-      return descriptor;
+      return RHCActionTestDataFactory.flowDescriptor(flowApiName);
     }
 
     public override String start(
@@ -235,7 +215,11 @@ private class RHCActionExecutionServiceTest {
       actionsById.get(longAction.Id).Queue_Status__c,
       'History inside the policy-specific cutoff must suppress execution.'
     );
-    Assert.areEqual(1, starts, 'Only the short-cooldown action should execute.');
+    Assert.areEqual(
+      1,
+      starts,
+      'Only the short-cooldown action should execute.'
+    );
   }
 
   @IsTest
@@ -247,30 +231,11 @@ private class RHCActionExecutionServiceTest {
     ];
     policy.Active__c = false;
     update policy;
-    starts = 0;
-    GatewayStub gateway = new GatewayStub(false);
-    RHCActionPolicyService.gateway = gateway;
-    RHCActionExecutionService.gateway = gateway;
     Id actionId = [SELECT Id FROM RHC_Pending_Action__c LIMIT 1].Id;
-
-    Test.startTest();
     System.runAs(new User(Id = UserInfo.getUserId())) {
-      RHCActionExecutionService.execute(new List<Id>{ actionId });
+      assertAuthorizationFailure(actionId);
     }
-    Test.stopTest();
-
-    RHC_Pending_Action__c action = [
-      SELECT Queue_Status__c, Last_Error_Code__c
-      FROM RHC_Pending_Action__c
-      WHERE Id = :actionId
-    ];
     Assert.areEqual(0, starts, 'A deactivated policy must never start Flow.');
-    Assert.areEqual('FAILED', action.Queue_Status__c, 'The action must fail closed.');
-    Assert.areEqual(
-      'EXECUTION_AUTHORIZATION_REVOKED',
-      action.Last_Error_Code__c,
-      'The terminal reason must identify authorization revocation.'
-    );
   }
 
   @IsTest
@@ -292,53 +257,48 @@ private class RHCActionExecutionServiceTest {
     action.Approved_At__c = null;
     update action;
     RHCActionExecutionService.automaticPermissionOverride = false;
-    starts = 0;
-    GatewayStub gateway = new GatewayStub(false);
-    RHCActionPolicyService.gateway = gateway;
-    RHCActionExecutionService.gateway = gateway;
-
-    Test.startTest();
     System.runAs(new User(Id = UserInfo.getUserId())) {
-      RHCActionExecutionService.execute(new List<Id>{ action.Id });
+      assertAuthorizationFailure(action.Id);
     }
-    Test.stopTest();
-
-    action = [
-      SELECT Queue_Status__c, Last_Error_Code__c
-      FROM RHC_Pending_Action__c
-      WHERE Id = :action.Id
-    ];
-    Assert.areEqual(0, starts, 'Revoked automatic permission must prevent Flow.');
-    Assert.areEqual('FAILED', action.Queue_Status__c, 'The action must fail closed.');
     Assert.areEqual(
-      'EXECUTION_AUTHORIZATION_REVOKED',
-      action.Last_Error_Code__c,
-      'The terminal reason must identify authorization revocation.'
+      0,
+      starts,
+      'Revoked automatic permission must prevent Flow.'
     );
   }
 
   @IsTest
   static void shouldFailClosedWhenApproverPermissionIsRevoked() {
     RHCActionExecutionService.approvalPermissionOverride = false;
+    Id actionId = [SELECT Id FROM RHC_Pending_Action__c LIMIT 1].Id;
+    System.runAs(new User(Id = UserInfo.getUserId())) {
+      assertAuthorizationFailure(actionId);
+    }
+    Assert.areEqual(
+      0,
+      starts,
+      'Revoked approval permission must prevent Flow.'
+    );
+  }
+
+  private static void assertAuthorizationFailure(Id actionId) {
     starts = 0;
     GatewayStub gateway = new GatewayStub(false);
     RHCActionPolicyService.gateway = gateway;
     RHCActionExecutionService.gateway = gateway;
-    Id actionId = [SELECT Id FROM RHC_Pending_Action__c LIMIT 1].Id;
-
     Test.startTest();
-    System.runAs(new User(Id = UserInfo.getUserId())) {
-      RHCActionExecutionService.execute(new List<Id>{ actionId });
-    }
+    RHCActionExecutionService.execute(new List<Id>{ actionId });
     Test.stopTest();
-
     RHC_Pending_Action__c action = [
       SELECT Queue_Status__c, Last_Error_Code__c
       FROM RHC_Pending_Action__c
       WHERE Id = :actionId
     ];
-    Assert.areEqual(0, starts, 'Revoked approval permission must prevent Flow.');
-    Assert.areEqual('FAILED', action.Queue_Status__c, 'The action must fail closed.');
+    Assert.areEqual(
+      'FAILED',
+      action.Queue_Status__c,
+      'The action must fail closed.'
+    );
     Assert.areEqual(
       'EXECUTION_AUTHORIZATION_REVOKED',
       action.Last_Error_Code__c,
@@ -358,9 +318,7 @@ private class RHCActionExecutionServiceTest {
     ];
     List<Id> firstRetry;
     System.runAs(new User(Id = UserInfo.getUserId())) {
-      firstRetry = RHCActionExecutionService.execute(
-        new List<Id>{ action.Id }
-      );
+      firstRetry = RHCActionExecutionService.execute(new List<Id>{ action.Id });
     }
     Assert.areEqual(
       1,
@@ -413,107 +371,192 @@ private class RHCActionExecutionServiceTest {
     }
     Test.stopTest();
 
-    Assert.areEqual(1, asyncStub.enqueueCount, 'A retryable failure should enqueue once.');
-    Assert.areEqual(1, asyncStub.lastPendingIds.size(), 'The failed action should be retried.');
-    Assert.areEqual(1, asyncStub.lastDelayMinutes, 'Retry delay must be one minute.');
+    Assert.areEqual(
+      1,
+      asyncStub.enqueueCount,
+      'A retryable failure should enqueue once.'
+    );
+    Assert.areEqual(
+      1,
+      asyncStub.lastPendingIds.size(),
+      'The failed action should be retried.'
+    );
+    Assert.areEqual(
+      1,
+      asyncStub.lastDelayMinutes,
+      'Retry delay must be one minute.'
+    );
   }
 
   @IsTest
   static void shouldRecoverQueueableInfrastructureFailureWithinRetryLimit() {
-    RHCActionTestDataFactory.AsyncGatewayStub asyncStub = new RHCActionTestDataFactory.AsyncGatewayStub();
-    RHCActionExecutionFinalizer.asyncGateway = asyncStub;
-    Id actionId = [SELECT Id FROM RHC_Pending_Action__c LIMIT 1].Id;
+    System.runAs(new User(Id = UserInfo.getUserId())) {
+      RHCActionTestDataFactory.AsyncGatewayStub asyncStub = new RHCActionTestDataFactory.AsyncGatewayStub();
+      RHCActionExecutionFinalizer.asyncGateway = asyncStub;
+      Id actionId = [SELECT Id FROM RHC_Pending_Action__c LIMIT 1].Id;
 
-    Test.startTest();
-    new RHCActionExecutionFinalizer(new List<Id>{ actionId }).recoverAfterFailure();
-    Test.stopTest();
+      Test.startTest();
+      new RHCActionExecutionFinalizer(new List<Id>{ actionId })
+        .recoverAfterFailure();
+      Test.stopTest();
 
-    RHC_Pending_Action__c action = [
-      SELECT Queue_Status__c, Available_At__c, Last_Error_Code__c
-      FROM RHC_Pending_Action__c
-      WHERE Id = :actionId
-    ];
-    Assert.areEqual('RETRY_WAIT', action.Queue_Status__c, 'Infrastructure failure should be recoverable.');
-    Assert.isNotNull(action.Available_At__c, 'Recovery must be delayed.');
-    Assert.areEqual('ASYNC_EXECUTION_RETRYABLE', action.Last_Error_Code__c, 'The failure must be classified.');
-    Assert.areEqual(1, asyncStub.enqueueCount, 'Recovery should enqueue exactly once.');
-    Assert.areEqual(1, asyncStub.lastDelayMinutes, 'Recovery delay must be one minute.');
+      RHC_Pending_Action__c action = [
+        SELECT Queue_Status__c, Available_At__c, Last_Error_Code__c
+        FROM RHC_Pending_Action__c
+        WHERE Id = :actionId
+      ];
+      Assert.areEqual(
+        'RETRY_WAIT',
+        action.Queue_Status__c,
+        'Infrastructure failure should be recoverable.'
+      );
+      Assert.isNotNull(action.Available_At__c, 'Recovery must be delayed.');
+      Assert.areEqual(
+        'ASYNC_EXECUTION_RETRYABLE',
+        action.Last_Error_Code__c,
+        'The failure must be classified.'
+      );
+      Assert.areEqual(
+        1,
+        asyncStub.enqueueCount,
+        'Recovery should enqueue exactly once.'
+      );
+      Assert.areEqual(
+        1,
+        asyncStub.lastDelayMinutes,
+        'Recovery delay must be one minute.'
+      );
+    }
   }
 
   @IsTest
   static void shouldFailQueueableInfrastructureFailureAtRetryLimit() {
-    RHC_Pending_Action__c action = [
-      SELECT Id, Attempt_Count__c
-      FROM RHC_Pending_Action__c
-      LIMIT 1
-    ];
-    action.Attempt_Count__c = 2;
-    update action;
+    System.runAs(new User(Id = UserInfo.getUserId())) {
+      RHC_Pending_Action__c action = [
+        SELECT Id, Attempt_Count__c
+        FROM RHC_Pending_Action__c
+        LIMIT 1
+      ];
+      action.Attempt_Count__c = 2;
+      update action;
 
-    Test.startTest();
-    new RHCActionExecutionFinalizer(new List<Id>{ action.Id }).recoverAfterFailure();
-    Test.stopTest();
+      Test.startTest();
+      new RHCActionExecutionFinalizer(new List<Id>{ action.Id })
+        .recoverAfterFailure();
+      Test.stopTest();
 
-    action = [
-      SELECT Queue_Status__c, Available_At__c, Completed_At__c, Last_Error_Code__c
-      FROM RHC_Pending_Action__c
-      WHERE Id = :action.Id
-    ];
-    Assert.areEqual('FAILED', action.Queue_Status__c, 'An exhausted recovery must be terminal.');
-    Assert.isNull(action.Available_At__c, 'A terminal action must not remain schedulable.');
-    Assert.isNotNull(action.Completed_At__c, 'A terminal action must record completion.');
-    Assert.areEqual('ASYNC_EXECUTION_FAILED', action.Last_Error_Code__c, 'The terminal reason must be bounded.');
+      action = [
+        SELECT
+          Queue_Status__c,
+          Available_At__c,
+          Completed_At__c,
+          Last_Error_Code__c
+        FROM RHC_Pending_Action__c
+        WHERE Id = :action.Id
+      ];
+      Assert.areEqual(
+        'FAILED',
+        action.Queue_Status__c,
+        'An exhausted recovery must be terminal.'
+      );
+      Assert.isNull(
+        action.Available_At__c,
+        'A terminal action must not remain schedulable.'
+      );
+      Assert.isNotNull(
+        action.Completed_At__c,
+        'A terminal action must record completion.'
+      );
+      Assert.areEqual(
+        'ASYNC_EXECUTION_FAILED',
+        action.Last_Error_Code__c,
+        'The terminal reason must be bounded.'
+      );
+    }
   }
 
   @IsTest
   static void shouldFailClosedWhenRecoveryCannotBeEnqueued() {
-    RHCActionExecutionFinalizer.asyncGateway = new ThrowingAsyncGatewayStub();
-    Id actionId = [SELECT Id FROM RHC_Pending_Action__c LIMIT 1].Id;
+    System.runAs(new User(Id = UserInfo.getUserId())) {
+      RHCActionExecutionFinalizer.asyncGateway = new ThrowingAsyncGatewayStub();
+      Id actionId = [SELECT Id FROM RHC_Pending_Action__c LIMIT 1].Id;
 
-    Test.startTest();
-    new RHCActionExecutionFinalizer(new List<Id>{ actionId }).recoverAfterFailure();
-    Test.stopTest();
+      Test.startTest();
+      new RHCActionExecutionFinalizer(new List<Id>{ actionId })
+        .recoverAfterFailure();
+      Test.stopTest();
 
-    RHC_Pending_Action__c action = [
-      SELECT Queue_Status__c, Available_At__c, Completed_At__c, Last_Error_Code__c
-      FROM RHC_Pending_Action__c
-      WHERE Id = :actionId
-    ];
-    Assert.areEqual('FAILED', action.Queue_Status__c, 'A failed recovery submission must fail closed.');
-    Assert.isNull(action.Available_At__c, 'A failed submission must not remain schedulable.');
-    Assert.isNotNull(action.Completed_At__c, 'A failed submission must record completion.');
-    Assert.areEqual(
-      'ASYNC_RECOVERY_ENQUEUE_FAILED',
-      action.Last_Error_Code__c,
-      'The enqueue failure must be classified without leaking exception detail.'
-    );
+      RHC_Pending_Action__c action = [
+        SELECT
+          Queue_Status__c,
+          Available_At__c,
+          Completed_At__c,
+          Last_Error_Code__c
+        FROM RHC_Pending_Action__c
+        WHERE Id = :actionId
+      ];
+      Assert.areEqual(
+        'FAILED',
+        action.Queue_Status__c,
+        'A failed recovery submission must fail closed.'
+      );
+      Assert.isNull(
+        action.Available_At__c,
+        'A failed submission must not remain schedulable.'
+      );
+      Assert.isNotNull(
+        action.Completed_At__c,
+        'A failed submission must record completion.'
+      );
+      Assert.areEqual(
+        'ASYNC_RECOVERY_ENQUEUE_FAILED',
+        action.Last_Error_Code__c,
+        'The enqueue failure must be classified without leaking exception detail.'
+      );
+    }
   }
 
   @IsTest
   static void shouldIgnoreEmptyFinalizerRecovery() {
-    Test.startTest();
-    new RHCActionExecutionFinalizer(null).recoverAfterFailure();
-    Test.stopTest();
-    Assert.areEqual(
-      1,
-      [SELECT COUNT() FROM RHC_Pending_Action__c WHERE Queue_Status__c = 'QUEUED'],
-      'An empty recovery request must not mutate pending actions.'
-    );
+    System.runAs(new User(Id = UserInfo.getUserId())) {
+      Test.startTest();
+      new RHCActionExecutionFinalizer(null).recoverAfterFailure();
+      Test.stopTest();
+      Assert.areEqual(
+        1,
+        [
+          SELECT COUNT()
+          FROM RHC_Pending_Action__c
+          WHERE Queue_Status__c = 'QUEUED'
+        ],
+        'An empty recovery request must not mutate pending actions.'
+      );
+    }
   }
 
   @IsTest
   static void shouldEnqueueImmediateAsyncExecution() {
-    Test.startTest();
-    Id jobId = new RHCActionAsyncGateway().enqueue(new List<Id>(), 0);
-    Test.stopTest();
-    Assert.isNotNull(jobId, 'Immediate execution must return its Queueable job ID.');
+    System.runAs(new User(Id = UserInfo.getUserId())) {
+      Test.startTest();
+      Id jobId = new RHCActionAsyncGateway().enqueue(new List<Id>(), 0);
+      Test.stopTest();
+      Assert.isNotNull(
+        jobId,
+        'Immediate execution must return its Queueable job ID.'
+      );
+    }
   }
 
   @IsTest
   static void shouldEnqueueDelayedAsyncExecution() {
-    Test.startTest();
-    Id jobId = new RHCActionAsyncGateway().enqueue(new List<Id>(), 1);
-    Test.stopTest();
-    Assert.isNotNull(jobId, 'Delayed execution must return its Queueable job ID.');
+    System.runAs(new User(Id = UserInfo.getUserId())) {
+      Test.startTest();
+      Id jobId = new RHCActionAsyncGateway().enqueue(new List<Id>(), 1);
+      Test.stopTest();
+      Assert.isNotNull(
+        jobId,
+        'Delayed execution must return its Queueable job ID.'
+      );
+    }
   }
 }

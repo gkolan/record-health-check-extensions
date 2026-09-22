@@ -5,10 +5,12 @@
 1. Open **RHC Run Manager** from the App Launcher.
 2. Open **3. Monitoring**.
 3. Click the refresh icon.
-4. Review newest Batch Runs first.
+4. Review newest Batch Runs first. Pass, Fail, Unable, and Error totals are rolled up from the
+   completed scopes, so a run's business outcome is visible without opening each scope.
 5. Investigate any Batch Run with `PARTIAL_FAILURE`, or one that remains unexpectedly queued or
    processing, before changing its definition.
 6. Use **View scopes** to find the affected scope.
+   Use **Cancel** on a `QUEUED` or `PROCESSING` Batch Run that targets the wrong population.
 7. Use **View retained results** to inspect business outcomes retained by Capture Mode.
 
 ## Status interpretation
@@ -21,6 +23,8 @@
 | `PROCESSING` | Batch start executed; scopes may be running | Refresh later; do not submit duplicates |
 | `COMPLETED` | All Batch scopes completed without caught system exception | Review counts/results as needed |
 | `PARTIAL_FAILURE` | At least one scope threw; earlier successful scopes remain committed | Inspect failed scope/error summary and target data/access |
+| `ERROR` | Population could not be discovered; no scope ran | Correct the definition or filter, then Run Now |
+| `CANCELLED` | An administrator used **Cancel**; the owned platform job was aborted and the cancelling user is in the error summary | Scopes committed before the abort remain; rerun when ready |
 
 ### Scope Run
 
@@ -109,9 +113,23 @@ Capture Mode controls detailed history volume:
 - use **Both** during controlled validation or when full detail is a firm requirement;
 - use **Pass** only when passing evidence is specifically needed.
 
-Run Manager does not silently delete history. Establish an organization-approved retention process
-for Batch Runs, Runs, Results, and submitted Requests. Preserve lookup order when deleting: Results
-before Runs, Runs before Batch Runs; do not delete active configuration referenced by schedules.
+Run Manager does not silently or automatically delete history. An Admin can save a 1–3,650 day
+window on the **Retention** tab and then run a separately confirmed cleanup. The displayed 365-day
+recommendation does not authorize deletion until saved.
+
+Each request deletes at most 1,000 package-owned rows in this order:
+
+1. Results whose parent scope and Batch Run are terminal and whose Batch Run completed before the
+   cutoff;
+2. terminal scope Runs outside the window only after all of their Results are gone;
+3. terminal Batch Runs outside the window only after all of their scope Runs are gone; and
+4. submitted Requests outside the window.
+
+`QUEUED` and `PROCESSING` Batch Runs, `IN_PROGRESS` scope Runs, and `PENDING` Requests are excluded
+regardless of age. Deletion uses user-mode access and is additionally gated by the
+`RHC_Run_Manager_Manage_Retention` custom permission included only in the Admin permission set.
+Saving a changed window disables cleanup until that value is saved, and every cleanup requires a
+fresh permanent-deletion acknowledgment. Export evidence required by policy before purging.
 
 For package uninstall, export required history first. The package lifecycle handler aborts only
 Run Manager-owned active Batch, coalescer, and named scheduled jobs so those jobs do not block

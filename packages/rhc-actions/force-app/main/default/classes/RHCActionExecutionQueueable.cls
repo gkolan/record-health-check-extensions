@@ -7,6 +7,7 @@ public with sharing class RHCActionExecutionQueueable implements Queueable {
   private final List<Id> pendingIds;
 
   /**
+   * Creates a Queueable for the supplied pending actions.
    * @param pendingIds Pending action identities
    */
   public RHCActionExecutionQueueable(List<Id> pendingIds) {
@@ -16,6 +17,7 @@ public with sharing class RHCActionExecutionQueueable implements Queueable {
   }
 
   /**
+   * Executes the action slice and submits any bounded retries.
    * @param context Queueable context
    */
   public void execute(QueueableContext context) {

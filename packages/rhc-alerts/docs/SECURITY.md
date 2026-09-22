@@ -19,7 +19,7 @@ an inbox, or that a notification recipient can access the checked record.
 
 | Permission set              | Policy object                                 | Delivery object                                        | Lightning access                                                | Intended user                                    |
 | --------------------------- | --------------------------------------------- | ------------------------------------------------------ | --------------------------------------------------------------- | ------------------------------------------------ |
-| `RHC Alerts Admin`          | Create/read/edit/delete, View All, Modify All | Read and View All                                      | Administration, history, object tabs                            | Configuration owners and incident administrators |
+| `RHC Alerts Admin`          | Create/read/edit/delete, View All, Modify All | Read/delete and View All/Modify All                    | Administration, history, object tabs                            | Configuration owners and incident administrators |
 | `RHC Alerts Viewer Runtime` | Read/View All for policy display name only    | Read/View All for the bounded history field allow list | History tab only; administration and generic object tabs hidden | Auditors and support viewers                     |
 
 Neither permission set grants access to checked business objects. A recipient follows their existing
@@ -36,25 +36,33 @@ It grants only `RHCAlertsViewerController`, whose sole endpoint uses `WITH USER_
 reviewed operational fields. Policy `DisplayName__c` remains readable so history can name its policy;
 recipient-directory and policy-administration endpoints are not on the Viewer Apex surface.
 
+The package-owned Alert Setting object has public read/write sharing but no tab, report, search, or
+Viewer permission. Admin receives create/read/edit without delete. Its unique `Default` key and
+validation rules enforce one supported retention record and a 1–3,650 day window. The Admin
+controller performs delivery deletion with sharing and user-mode SOQL/DML, so its bounded purge
+requires the Admin object's delete access.
+
 ## Threats and controls
 
-| Threat                                                                   | Control                                                                                                                                                                  |
-| ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Duplicate Platform Event delivery creates duplicate messages             | Unique SHA-256 Event ID + Policy claim; duplicate insert becomes terminal `DUPLICATE` evidence and is never enqueued                                                     |
-| Namespace normalization routes the wrong Check                           | Full Qualified API Name compared exactly and case-sensitively; picker reads core `QualifiedApiName` directly                                                             |
-| Restricted result data reaches recipients                                | Message body is compiled from identity, status, and severity only; no payload/value/detail field exists in the ledger                                                    |
-| Exception or stack-trace disclosure                                      | Recipient messages never include errors; ledger keeps only closed failure classes and bounded package error codes                                                        |
-| Arbitrary recipient or channel injection                                 | Restricted picklists plus server validation permit only User/Regular Public Group and Custom Notification/email                                                          |
-| Public Group expands into unintended principals                          | Resolver accepts only `Group.Type = 'Regular'` and only direct active User member IDs; nested groups, roles, queues, and inactive users are ignored                      |
-| Recipient amplification exceeds platform limits                          | Package caps of 500 Custom Notification recipients and 10 email recipients; resolver and Queueable queries are bounded                                                   |
-| One event matches an unbounded number of policies                        | Subscriber inserts at most 2,000 claims per trigger transaction and adds one `FAILED / LIMIT / EVENT_POLICY_FANOUT_LIMIT` evidence row when more work is dropped         |
-| Alert storm across repeated events                                       | Per-policy and checked-record cooldown using canonical occurrence time plus policy row locking                                                                           |
-| Queue dispatch or unhandled Queueable failure strands `PENDING` rows     | Dispatch failure is converted to `QUEUE_ENQUEUE_FAILED`; a Queueable Finalizer converts rows still pending after an unhandled exception to `QUEUEABLE_UNHANDLED_FAILURE` |
-| Partial email audience succeeds while ledger says the attempt failed     | Email submission uses all-or-none platform acceptance for the policy audience                                                                                            |
-| Checked record mutation                                                  | No business-object dynamic DML or update path; `RecordId__c` is text correlation and optional notification target only                                                   |
-| Cross-extension privilege coupling                                       | Sole 2GP dependency is core; no Run Manager, Reports, Actions, Integrations, or Builder metadata/API reference                                                           |
-| External exfiltration                                                    | No HTTP, Named Credential, webhook, callout, Slack, or system-to-system delivery path                                                                                    |
-| Viewer cannot see platform-owned ledger rows, or receives edit privilege | Viewer gets View All only on the two private package objects; create/edit/delete/Modify All remain false                                                                 |
+| Threat                                                                   | Control                                                                                                                                                                          |
+| ------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Duplicate Platform Event delivery creates duplicate messages             | Unique SHA-256 Event ID + Policy claim; duplicate insert becomes terminal `DUPLICATE` evidence and is never enqueued                                                             |
+| Namespace normalization routes the wrong Check                           | Full Qualified API Name compared exactly and case-sensitively; picker reads core `QualifiedApiName` directly                                                                     |
+| Restricted result data reaches recipients                                | Message body is compiled from identity, status, and severity only; no payload/value/detail field exists in the ledger                                                            |
+| Exception or stack-trace disclosure                                      | Recipient messages never include errors; ledger keeps only closed failure classes and bounded package error codes                                                                |
+| Arbitrary recipient or channel injection                                 | Restricted picklists plus server validation permit only User/Regular Public Group and Custom Notification/email                                                                  |
+| Public Group expands into unintended principals                          | Resolver accepts only `Group.Type = 'Regular'` and only direct active User member IDs; nested groups, roles, queues, and inactive users are ignored                              |
+| Recipient amplification exceeds platform limits                          | Package caps of 500 Custom Notification recipients and 10 email recipients; resolver and Queueable queries are bounded                                                           |
+| One event matches an unbounded number of policies                        | Subscriber inserts at most 2,000 claims per trigger transaction and adds one `FAILED / LIMIT / EVENT_POLICY_FANOUT_LIMIT` evidence row when more work is dropped                 |
+| Alert storm across repeated events                                       | Per-policy and checked-record cooldown using canonical occurrence time plus policy row locking                                                                                   |
+| Queue dispatch or unhandled Queueable failure strands `PENDING` rows     | Dispatch failure is converted to `QUEUE_ENQUEUE_FAILED`; a Queueable Finalizer converts rows still pending after an unhandled exception to `QUEUEABLE_UNHANDLED_FAILURE`         |
+| Partial email audience succeeds while ledger says the attempt failed     | Email submission uses all-or-none platform acceptance for the policy audience                                                                                                    |
+| Checked record mutation                                                  | No business-object dynamic DML or update path; `RecordId__c` is text correlation and optional notification target only                                                           |
+| Cross-extension privilege coupling                                       | Sole 2GP dependency is core; no Run Manager, Reports, Actions, Integrations, or Builder metadata/API reference                                                                   |
+| External exfiltration                                                    | No HTTP, Named Credential, webhook, callout, Slack, or system-to-system delivery path                                                                                            |
+| Viewer cannot see platform-owned ledger rows, or receives edit privilege | Viewer gets View All only on the two private package objects; create/edit/delete/Modify All remain false                                                                         |
+| Cleanup deletes active work or an unbounded history set                  | Only terminal outcomes older than the saved window are queried, oldest first, with a hard 1,000-row cap; `PENDING` is excluded and every run requires explicit UI acknowledgment |
+| Retention cleanup runs without a current administrator decision          | No scheduler is included; the displayed 90-day default cannot purge until saved, and each deletion is initiated manually                                                         |
 
 ## Message contract
 
@@ -82,7 +90,8 @@ still enforces the recipient's access when they try to open it.
   current core definition and Regular public group were selected.
 - The package does not provide a read receipt, escalation chain, acknowledgment workflow, or pager
   integration.
-- The package has no automated ledger purge in `0.1.0`; storage retention is an org governance task.
+- The package has no automated ledger purge in `0.1.0`; administrators must govern, approve, and
+  explicitly run each bounded cleanup.
 
 ## Security review checklist
 

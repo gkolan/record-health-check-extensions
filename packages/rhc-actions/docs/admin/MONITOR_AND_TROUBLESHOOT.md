@@ -109,6 +109,25 @@ monitoring for technical detail.
 Do not reduce cooldown merely to make a suppressed test run. Wait for the approved period or use a
 different sandbox record.
 
+## Manual audit retention
+
+Only a user assigned **RHC Actions Admin** should see **Action audit retention** on **RHC Actions
+Review**. Before using it, obtain the approved retention period and confirm there is no incident,
+investigation, legal hold, or pending evidence export.
+
+1. Enter a whole number from 1 through 3,650 in **Retain completed audit records for (days)**.
+2. Click **Save retention settings**. The initial 365-day display is only a recommendation and
+   cannot authorize cleanup until saved.
+3. Recheck the saved value. An unsaved change disables the purge button.
+4. Select the permanent-deletion acknowledgment.
+5. Click **Purge eligible audit records**.
+6. Record the returned History and terminal Pending Action counts in the change ticket.
+
+One run deletes at most 1,000 combined rows: oldest completed History first, then old Pending
+Actions in `SUCCEEDED`, `FAILED`, `SUPPRESSED`, or `REJECTED`. It never selects `PENDING_REVIEW`,
+`QUEUED`, `RUNNING`, or `RETRY_WAIT`, and it does not run on a schedule. If the section is absent,
+verify the Admin assignment; do not grant direct Delete or Modify All as a workaround.
+
 ## Queueable delay
 
 If QUEUED or RETRY WAIT is older than the operational threshold, or RUNNING is persisted at all:

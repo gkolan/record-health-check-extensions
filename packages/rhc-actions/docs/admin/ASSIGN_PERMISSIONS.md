@@ -23,7 +23,7 @@ shared generic user without an owner, license, and credential lifecycle.
 
 | Permission Set       | Package capabilities                                                                    | Does not automatically grant                            |
 | -------------------- | --------------------------------------------------------------------------------------- | ------------------------------------------------------- |
-| RHC Actions Admin    | Configure package records, approve, and hold automatic-execution Custom Permission      | Access to every customer Flow or business object        |
+| RHC Actions Admin    | Configure policies/retention, approve, and run bounded audit cleanup                     | Automatic execution, direct audit-record delete CRUD, or access to every customer Flow/business object |
 | RHC Actions Approver | View queue/history and approve or reject                                                | Task create, Account read, Flow execution, queue access |
 | RHC Actions Runtime  | Consume core event and create/update execution audit; holds automatic Custom Permission | Customer Flow and business-object access                |
 | RHC Actions Viewer   | Read package records                                                                    | Approval, edits, customer-record visibility             |
@@ -43,6 +43,9 @@ shared generic user without an owner, license, and credential lifecycle.
 11. Click **Done**.
 
 **What you should see:** the package administrator appears under Current Assignments.
+
+Admin includes **Manage RHC Actions Retention**. It does not expose direct Delete on Pending Action
+or Action History; the review page offers only the bounded, explicitly confirmed retention path.
 
 ## Step 2: Assign RHC Actions Approver to Maya
 
@@ -139,6 +142,8 @@ Have each user refresh Salesforce or sign out and back in.
 2. Open **Corrective Action Policies**.
 3. Confirm **New** is available.
 4. Cancel without saving.
+5. Open **RHC Actions Review** and confirm **Action audit retention** is visible.
+6. Do not save or purge until the retention window and evidence-disposition procedure are approved.
 
 ### Maya approver test
 
@@ -167,5 +172,6 @@ verifies the subscriber configuration and runtime behavior during automatic-mode
 - [ ] Runtime assigned to a dedicated active user with an accountable owner.
 - [ ] Viewer users remain read-only.
 - [ ] No user received System Administrator merely to make the example work.
+- [ ] Only approved Admin users can see retention controls; Approver, Runtime, and Viewer cannot.
 
 Next: [Build the corrective Flow](BUILD_CORRECTIVE_FLOW.md).

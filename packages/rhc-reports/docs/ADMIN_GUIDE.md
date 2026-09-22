@@ -171,7 +171,8 @@ backup. Deleted source records can leave historical facts containing only their 
 2. In **Quick Find**, enter `Scheduled Jobs`.
 3. Click **Scheduled Jobs**.
 4. Find **RHC Reports Daily Maintenance**.
-5. Confirm it has a future **Next Scheduled Run**.
+5. Confirm it has a future **Next Scheduled Run**. To aggregate immediately instead of waiting for
+   the schedule, click **Run aggregation now** on the setup page.
 
 The job is registered for 2:15 AM in the scheduling administrator's Salesforce time zone. Snapshot
 date assignment separately uses the **Aggregation time zone** saved in the assistant. Daily

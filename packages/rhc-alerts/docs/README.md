@@ -17,7 +17,7 @@ material and maintainers can find the package contract without reverse-engineeri
 | Document                                                            | Contents                                                                                                             |
 | ------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
 | [Architecture](ARCHITECTURE.md)                                     | Package boundary, event-to-delivery sequence, components, transactions, bulk behavior, and extension independence    |
-| [Data model](DATA_MODEL.md)                                         | Policy and delivery object fields, keys, relationships, state vocabulary, and retention boundary                     |
+| [Data model](DATA_MODEL.md)                                         | Policy, delivery, and setting fields, keys, relationships, state vocabulary, and retention boundary                  |
 | [Security and threat model](SECURITY.md)                            | Trust boundaries, access model, data minimization, threats, controls, and residual risks                             |
 | [Development and package validation](DEVELOPMENT_AND_VALIDATION.md) | Local setup, metadata generation, tests, analyzer workflow, clean-org validation, 2GP creation, and acceptance gates |
 | [Release gate ledger](RELEASE-GATES.md)                             | Executable pre-package lock, evidence schema, current blockers, and candidate-only gates                             |

@@ -46,6 +46,20 @@
         <template lwc:if={hasRuns}><div class="slds-var-p-around_small slds-text-heading_small">Scopes for {selectedBatchName}</div><lightning-datatable key-field="Id" data={runs} columns={runColumns} onrowaction={handleRunAction} hide-checkbox-column></lightning-datatable></template>
         <template lwc:if={hasResults}><div class="slds-var-p-around_small slds-text-heading_small">Retained results for {selectedRunName}</div><lightning-datatable key-field="Id" data={results} columns={resultColumns} hide-checkbox-column></lightning-datatable></template>
       </lightning-tab>
+      <template lwc:if={showRetention}>
+        <lightning-tab label="4. Retention">
+          <section class="slds-var-p-around_medium" aria-labelledby="retention-heading">
+            <h2 id="retention-heading" class="slds-text-heading_small">Operational-record retention</h2>
+            <p class="slds-text-body_small slds-var-m-bottom_small">Cleanup is manual. Each confirmed purge removes at most {retention.maxDeleteRows} package-owned rows. It drains retained Results before empty terminal Runs and Batch Runs, then old submitted Requests. Active work and pending Requests are never eligible.</p>
+            <lightning-layout multiple-rows vertical-align="end">
+              <lightning-layout-item size="12" medium-device-size="6" padding="around-small"><lightning-input data-retention-days type="number" label="Retain completed operational records for (days)" min="1" max="3650" step="1" required value={retention.retentionDays} onchange={handleRetentionChange}></lightning-input></lightning-layout-item>
+              <lightning-layout-item size="12" medium-device-size="6" padding="around-small"><lightning-button data-action="save-retention" label="Save retention settings" onclick={handleSaveRetention} disabled={isLoading}></lightning-button></lightning-layout-item>
+              <lightning-layout-item size="12" padding="around-small"><lightning-input data-retention-confirm type="checkbox" label="I understand that eligible Run Manager records will be permanently deleted." checked={retentionConfirmed} onchange={handleRetentionConfirm}></lightning-input></lightning-layout-item>
+              <lightning-layout-item size="12" padding="around-small"><lightning-button data-action="purge" label="Purge eligible operational records" variant="destructive" onclick={handlePurge} disabled={purgeDisabled}></lightning-button></lightning-layout-item>
+            </lightning-layout>
+          </section>
+        </lightning-tab>
+      </template>
     </lightning-tabset>
   </lightning-card>
 </template>

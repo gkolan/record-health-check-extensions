@@ -6,7 +6,7 @@ private class RHCRunManagerCoreMetadataGatewayTest {
   }
 
   @IsTest
-  static void shouldResolveCheckSet_WhenQualifiedIdentityExists() {
+  static void shouldResolveCheckSetWhenQualifiedIdentityExists() {
     System.runAs(RHCRunManagerTestDataFactory.adminUser()) {
     Record_Health_Check_Set__mdt fixture = RHCRunManagerTestDataFactory.accountCheckSet();
     Test.startTest();
@@ -18,7 +18,7 @@ private class RHCRunManagerCoreMetadataGatewayTest {
   }
 
   @IsTest
-  static void shouldResolveOwningSet_WhenCheckSelected() {
+  static void shouldResolveOwningSetWhenCheckSelected() {
     System.runAs(RHCRunManagerTestDataFactory.adminUser()) {
     Record_Health_Check__mdt fixture = RHCRunManagerTestDataFactory.accountCheck();
     RHCRunManagerCoreMetadataGateway.DefinitionInfo result = RHCRunManagerCoreMetadataGateway.resolve('CHECK', fixture.QualifiedApiName);
@@ -28,7 +28,7 @@ private class RHCRunManagerCoreMetadataGatewayTest {
   }
 
   @IsTest
-  static void shouldRejectInvalidSelectionType_WhenUnknown() {
+  static void shouldRejectInvalidSelectionTypeWhenUnknown() {
     System.runAs(RHCRunManagerTestDataFactory.adminUser()) {
     Test.startTest();
     try {

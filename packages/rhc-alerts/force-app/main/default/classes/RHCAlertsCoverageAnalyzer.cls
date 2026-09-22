@@ -8,14 +8,18 @@ public with sharing class RHCAlertsCoverageAnalyzer {
    */
   public static List<RHCAlertsCoreMetadataGateway.CoverageGap> analyzeCoverage() {
     List<Record_Health_Check_Alert_Policy__c> policies = [
-      SELECT SelectionType__c, QualifiedApiName__c
+      SELECT SelectionType__c, QualifiedApiName__c, NotificationChannel__c
       FROM Record_Health_Check_Alert_Policy__c
       WHERE Active__c = TRUE
       WITH USER_MODE
       ORDER BY QualifiedApiName__c
       LIMIT 2000
     ];
-    return analyzePolicies(policies, activeChecksByName());
+    return analyzePolicies(
+      policies,
+      activeChecksByName(),
+      notificationTypeAvailable()
+    );
   }
 
   @TestVisible
@@ -23,12 +27,32 @@ public with sharing class RHCAlertsCoverageAnalyzer {
     List<Record_Health_Check_Alert_Policy__c> policies,
     Map<String, Record_Health_Check__mdt> checksByName
   ) {
+    return analyzePolicies(policies, checksByName, true);
+  }
+
+  @TestVisible
+  private static List<RHCAlertsCoreMetadataGateway.CoverageGap> analyzePolicies(
+    List<Record_Health_Check_Alert_Policy__c> policies,
+    Map<String, Record_Health_Check__mdt> checksByName,
+    Boolean notificationTypeIsAvailable
+  ) {
     List<RHCAlertsCoreMetadataGateway.CoverageGap> gaps = new List<RHCAlertsCoreMetadataGateway.CoverageGap>();
     Map<String, Set<String>> policyNames = policyNames(policies);
     addCheckGaps(gaps, policyNames.get('CHECK'), checksByName);
     addCheckSetGaps(gaps, policyNames.get('CHECK_SET'), checksByName);
+    addNotificationTypeGap(gaps, policies, notificationTypeIsAvailable);
     addContractNotes(gaps, policies, policyNames.get('CHECK_SET'));
     return gaps;
+  }
+
+  private static Boolean notificationTypeAvailable() {
+    return ![
+        SELECT Id
+        FROM CustomNotificationType
+        WHERE DeveloperName = 'RHC_Alert'
+        LIMIT 1
+      ]
+      .isEmpty();
   }
 
   private static Map<String, Set<String>> policyNames(
@@ -158,6 +182,28 @@ public with sharing class RHCAlertsCoverageAnalyzer {
           'Set Run contract 1.0 has no canonical severity. Check Set alert status and severity matching therefore uses Result events; Set Run events are recorded as suppressed contract gaps.'
         )
       );
+    }
+  }
+
+  private static void addNotificationTypeGap(
+    List<RHCAlertsCoreMetadataGateway.CoverageGap> gaps,
+    List<Record_Health_Check_Alert_Policy__c> policies,
+    Boolean notificationTypeIsAvailable
+  ) {
+    if (notificationTypeIsAvailable == true) {
+      return;
+    }
+    for (Record_Health_Check_Alert_Policy__c policy : policies) {
+      if ('CUSTOM_NOTIFICATION'.equals(policy.NotificationChannel__c)) {
+        gaps.add(
+          gap(
+            'ERROR',
+            'NOTIFICATION_TYPE_UNAVAILABLE',
+            'The packaged RHC_Alert Custom Notification Type is unavailable. Repair the RHC Alerts installation before activating Salesforce notification policies.'
+          )
+        );
+        return;
+      }
     }
   }
 

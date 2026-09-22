@@ -34,6 +34,27 @@
             <lightning-datatable if:true={rows.length} key-field="Id" data={rows} columns={columns}
                 hide-checkbox-column onrowaction={handleRowAction}>
             </lightning-datatable>
+            <section if:true={selectedDetails} class="slds-box slds-m-top_medium" aria-label="Log details" data-region="details">
+                <div class="slds-grid slds-grid_align-spread">
+                    <h2 class="slds-text-heading_small">{selectedDetails.Name} · {selectedDetails.Code__c}</h2>
+                    <lightning-button-icon icon-name="utility:close" alternative-text="Close details"
+                        onclick={closeDetails}></lightning-button-icon>
+                </div>
+                <dl class="slds-list_horizontal slds-wrap slds-m-vertical_small">
+                    <dt class="slds-item_label">Event ID</dt><dd class="slds-item_detail">{selectedDetails.EventId__c}</dd>
+                    <dt class="slds-item_label">Exception</dt><dd class="slds-item_detail">{selectedDetails.ExceptionType__c}</dd>
+                    <dt class="slds-item_label">Running user</dt><dd class="slds-item_detail">{selectedDetails.RunningUserId__c}</dd>
+                    <dt class="slds-item_label">Ingested at</dt><dd class="slds-item_detail"><lightning-formatted-date-time value={selectedDetails.IngestedAt__c}></lightning-formatted-date-time></dd>
+                </dl>
+                <template if:true={selectedDetails.hasMessage}>
+                    <h3 class="slds-text-title_caps">Message</h3>
+                    <pre class="slds-text-body_small slds-scrollable" data-field="message">{selectedDetails.Message__c}</pre>
+                </template>
+                <template if:true={selectedDetails.hasStructuredDetails}>
+                    <h3 class="slds-text-title_caps slds-m-top_small">Structured details</h3>
+                    <pre class="slds-text-body_small slds-scrollable" data-field="details">{selectedDetails.StructuredDetails__c}</pre>
+                </template>
+            </section>
             <div if:true={hasMore} class="slds-align_absolute-center slds-m-top_medium">
                 <lightning-button label="Load More Logs" onclick={loadMore} disabled={loading}>
                 </lightning-button>

@@ -1,3 +1,4 @@
+/* eslint-disable @lwc/lwc-platform/no-aura-libs, @lwc/lwc-platform/no-process-env -- Node CLI, not LWC runtime code. */
 import fs from "node:fs";
 
 function percentage(covered, total) {
@@ -15,14 +16,20 @@ function summarizeCounters(counterGroups) {
 export function readJestEvidence(filePath) {
   const report = JSON.parse(fs.readFileSync(filePath, "utf8"));
   if (report.success !== true || report.numFailedTests !== 0) {
-    throw new Error("Jest evidence does not report a successful zero-failure run");
+    throw new Error(
+      "Jest evidence does not report a successful zero-failure run"
+    );
   }
 
   const files = Object.values(report.coverageMap ?? {});
   if (files.length === 0) throw new Error("Jest evidence has no coverage map");
 
-  const statements = summarizeCounters(files.map((file) => Object.values(file.s ?? {})));
-  const functions = summarizeCounters(files.map((file) => Object.values(file.f ?? {})));
+  const statements = summarizeCounters(
+    files.map((file) => Object.values(file.s ?? {}))
+  );
+  const functions = summarizeCounters(
+    files.map((file) => Object.values(file.f ?? {}))
+  );
   const branches = summarizeCounters(
     files.flatMap((file) => Object.values(file.b ?? {}))
   );

@@ -1,6 +1,6 @@
-@isTest
+@IsTest
 private class RHCIntegrationDeadLetterControllerTest {
-    @isTest
+    @IsTest
     static void shouldListAndReplayWhenAdministratorHasCustomPermission() {
         User administrator = createAuthorizedAdministrator('rhcadmin');
         Test.setMock(HttpCalloutMock.class, new RHCIntegrationHttpMock(200, '{}'));
@@ -28,7 +28,30 @@ private class RHCIntegrationDeadLetterControllerTest {
         }
     }
 
-    @isTest
+    @IsTest
+    static void shouldReplaySelectionInOneChainAndSkipNonDeadLetters() {
+        User administrator = createAuthorizedAdministrator('rhcbulk');
+        Test.setMock(HttpCalloutMock.class, new RHCIntegrationHttpMock(200, '{}'));
+        System.runAs(administrator) {
+            Record_Health_Check_Integration_Route__c route = RHCIntegrationTestDataFactory.createExampleRoute();
+            Record_Health_Check_Integration_Delivery__c first = RHCIntegrationTestDataFactory.createDelivery(route.Id, 'DEAD_LETTER');
+            Record_Health_Check_Integration_Delivery__c second = RHCIntegrationTestDataFactory.createDelivery(route.Id, 'DEAD_LETTER');
+            Record_Health_Check_Integration_Delivery__c done = RHCIntegrationTestDataFactory.createDelivery(route.Id, 'SUCCEEDED');
+
+            Test.startTest();
+            Integer replayed = RHCIntegrationDeadLetterController.replayAll(new List<Id>{ first.Id, second.Id, done.Id });
+            Test.stopTest();
+
+            Assert.areEqual(2, replayed, 'Only dead letters are replayed; the succeeded row is skipped.');
+            Assert.areEqual(
+                2,
+                [SELECT COUNT() FROM Record_Health_Check_Integration_Delivery__c WHERE Id IN (:first.Id, :second.Id) AND Status__c = 'SUCCEEDED' AND ReplayCount__c = 1],
+                'Both replayed rows are delivered by the single chain.'
+            );
+        }
+    }
+
+    @IsTest
     static void shouldRejectReplayWhenDeliveryIsNoLongerDeadLettered() {
         User administrator = createAuthorizedAdministrator('rhcstate');
         System.runAs(administrator) {
@@ -55,7 +78,7 @@ private class RHCIntegrationDeadLetterControllerTest {
         }
     }
 
-    @isTest
+    @IsTest
     static void shouldRejectReplayWhenRouteIsInactive() {
         User administrator = createAuthorizedAdministrator('rhcroute');
         System.runAs(administrator) {
@@ -84,7 +107,7 @@ private class RHCIntegrationDeadLetterControllerTest {
         }
     }
 
-    @isTest
+    @IsTest
     static void shouldRejectReplayWhenUserLacksCustomPermission() {
         User viewer = createUser('rhcviewer');
         System.runAs(viewer) {
@@ -97,6 +120,113 @@ private class RHCIntegrationDeadLetterControllerTest {
             }
             Test.stopTest();
         }
+    }
+
+    @IsTest
+    static void shouldSaveValidateAndRequireRetentionSettings() {
+        User administrator = createAuthorizedAdministrator('rhcret');
+        System.runAs(administrator) {
+            RHCIntegrationRetentionService.Settings recommended =
+                RHCIntegrationDeadLetterController.getRetentionSettings();
+            Assert.isTrue(recommended.canManage, 'The administrator can manage retention.');
+            Assert.areEqual(false, recommended.configured, 'The default is not purge authorization.');
+            Assert.areEqual(90, recommended.retentionDays, 'The recommended window is 90 days.');
+            Assert.areEqual(1000, recommended.maxDeleteRows, 'A purge transaction is bounded.');
+
+            Boolean unsavedRejected = false;
+            try {
+                RHCIntegrationDeadLetterController.purgeDeliveries();
+            } catch (AuraHandledException expected) {
+                unsavedRejected = true;
+            }
+            Assert.isTrue(unsavedRejected, 'A recommendation alone never authorizes deletion.');
+
+            RHCIntegrationDeadLetterController.saveRetentionSettings(45);
+            Assert.areEqual(
+                45,
+                RHCIntegrationDeadLetterController.getRetentionSettings().retentionDays,
+                'The saved retention window is returned.'
+            );
+            RHCIntegrationDeadLetterController.saveRetentionSettings(60);
+            Assert.areEqual(
+                1,
+                [SELECT COUNT() FROM Record_Health_Check_Integration_Setting__c],
+                'Saving again updates rather than duplicates the singleton.'
+            );
+
+            assertRetentionRejected(null);
+            assertRetentionRejected(0);
+            assertRetentionRejected(3651);
+        }
+    }
+
+    @IsTest
+    static void shouldPurgeOnlyOldCompletedTerminalDeliveries() {
+        User administrator = createAuthorizedAdministrator('rhcpurge');
+        System.runAs(administrator) {
+            Record_Health_Check_Integration_Route__c route =
+                RHCIntegrationTestDataFactory.createExampleRoute();
+            Datetime oldCompletion = System.now().addDays(-40);
+            Datetime recentCompletion = System.now().addDays(-5);
+            List<Record_Health_Check_Integration_Delivery__c> deliveries = new List<Record_Health_Check_Integration_Delivery__c>{
+                RHCIntegrationTestDataFactory.createDelivery(route.Id, 'SUCCEEDED'),
+                RHCIntegrationTestDataFactory.createDelivery(route.Id, 'DEAD_LETTER'),
+                RHCIntegrationTestDataFactory.createDelivery(route.Id, 'SUCCEEDED'),
+                RHCIntegrationTestDataFactory.createDelivery(route.Id, 'PENDING'),
+                RHCIntegrationTestDataFactory.createDelivery(route.Id, 'RETRY_WAIT')
+            };
+            deliveries[0].CompletedAt__c = oldCompletion;
+            deliveries[1].CompletedAt__c = oldCompletion;
+            deliveries[2].CompletedAt__c = recentCompletion;
+            deliveries[3].CompletedAt__c = oldCompletion;
+            deliveries[4].CompletedAt__c = oldCompletion;
+            update deliveries;
+            RHCIntegrationDeadLetterController.saveRetentionSettings(30);
+
+            Test.startTest();
+            Integer purged = RHCIntegrationDeadLetterController.purgeDeliveries();
+            Test.stopTest();
+
+            Assert.areEqual(2, purged, 'Only old completed terminal deliveries are purged.');
+            Assert.areEqual(
+                3,
+                [SELECT COUNT() FROM Record_Health_Check_Integration_Delivery__c],
+                'Recent and nonterminal deliveries remain.'
+            );
+            Assert.areEqual(
+                2,
+                [SELECT COUNT() FROM Record_Health_Check_Integration_Delivery__c
+                    WHERE Status__c IN ('PENDING', 'RETRY_WAIT')],
+                'Operational deliveries are never purged even when their timestamp is old.'
+            );
+        }
+    }
+
+    @IsTest
+    static void shouldHideAndRejectRetentionManagementWithoutObjectAccess() {
+        User viewer = createUser('rhcretvw');
+        System.runAs(viewer) {
+            RHCIntegrationRetentionService.Settings settings =
+                RHCIntegrationDeadLetterController.getRetentionSettings();
+            Assert.isFalse(settings.canManage, 'A viewer does not receive retention management controls.');
+            Boolean rejected = false;
+            try {
+                RHCIntegrationDeadLetterController.saveRetentionSettings(30);
+            } catch (AuraHandledException expected) {
+                rejected = true;
+            }
+            Assert.isTrue(rejected, 'The server rejects retention changes without object access.');
+        }
+    }
+
+    private static void assertRetentionRejected(Integer retentionDays) {
+        Boolean rejected = false;
+        try {
+            RHCIntegrationDeadLetterController.saveRetentionSettings(retentionDays);
+        } catch (AuraHandledException expected) {
+            rejected = true;
+        }
+        Assert.isTrue(rejected, 'Unsupported retention values must be rejected.');
     }
 
     private static User createAuthorizedAdministrator(String prefix) {

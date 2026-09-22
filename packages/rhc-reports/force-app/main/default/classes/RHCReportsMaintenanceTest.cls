@@ -1,7 +1,9 @@
-@isTest
+@IsTest
 private class RHCReportsMaintenanceTest {
-    @isTest
-    static void shouldRecordCompletedDate_WhenAggregationQueueableRuns() {
+    @IsTest
+    static void shouldRecordCompletedDateWhenAggregationQueueableRuns() {
+        User principal = RHCReportsTestDataFactory.createStandardUser('reports.queueday');
+        System.runAs(principal) {
         Date snapshotDate = Date.today().addDays(-1);
 
         Test.startTest();
@@ -26,10 +28,13 @@ private class RHCReportsMaintenanceTest {
             setting.LastAggregationAttemptAt__c,
             'The Queueable Finalizer must record the latest attempt time.'
         );
+        }
     }
 
-    @isTest
-    static void shouldExitWithoutAsyncWork_WhenMaintenanceIsDisabled() {
+    @IsTest
+    static void shouldExitWithoutAsyncWorkWhenMaintenanceIsDisabled() {
+        User principal = RHCReportsTestDataFactory.createStandardUser('reports.disabled');
+        System.runAs(principal) {
         upsert new Record_Health_Check_Report_Setting__c(
             SetupOwnerId = UserInfo.getOrganizationId(),
             DailyAggregationEnabled__c = false,
@@ -46,10 +51,13 @@ private class RHCReportsMaintenanceTest {
             [SELECT COUNT() FROM AsyncApexJob WHERE JobType IN ('BatchApex', 'Queueable')],
             'Disabled maintenance must not consume asynchronous-job limits.'
         );
+        }
     }
 
-    @isTest
-    static void shouldNotRegressCompletedWatermark_WhenOlderDayIsRecomputed() {
+    @IsTest
+    static void shouldNotRegressCompletedWatermarkWhenOlderDayIsRecomputed() {
+        User principal = RHCReportsTestDataFactory.createStandardUser('reports.watermark');
+        System.runAs(principal) {
         Date currentWatermark = Date.today().addDays(-1);
         upsert new Record_Health_Check_Report_Setting__c(
             SetupOwnerId = UserInfo.getOrganizationId(),
@@ -71,10 +79,13 @@ private class RHCReportsMaintenanceTest {
             Record_Health_Check_Report_Setting__c.getOrgDefaults().LastAggregatedDate__c,
             'A manual historical recompute must not move the catch-up watermark backward.'
         );
+        }
     }
 
-    @isTest
-    static void shouldResumeAfterLastCompletedDate_WhenMaintenanceHasGap() {
+    @IsTest
+    static void shouldResumeAfterLastCompletedDateWhenMaintenanceHasGap() {
+        User principal = RHCReportsTestDataFactory.createStandardUser('reports.catchup');
+        System.runAs(principal) {
         Date latestCompletedDate = Date.valueOf(
             Datetime.now().format('yyyy-MM-dd', 'GMT')
         ).addDays(-1);
@@ -105,10 +116,13 @@ private class RHCReportsMaintenanceTest {
             setting.LastAggregatedDate__c,
             'Catch-up must advance through every missed day to the latest completed date.'
         );
+        }
     }
 
-    @isTest
-    static void shouldRejectUnknownRetentionTarget_WhenBatchStarts() {
+    @IsTest
+    static void shouldRejectUnknownRetentionTargetWhenBatchStarts() {
+        User principal = RHCReportsTestDataFactory.createStandardUser('reports.target');
+        System.runAs(principal) {
         Test.startTest();
         try {
             new RHCReportsRetentionBatch(
@@ -124,5 +138,6 @@ private class RHCReportsMaintenanceTest {
             );
         }
         Test.stopTest();
+        }
     }
 }

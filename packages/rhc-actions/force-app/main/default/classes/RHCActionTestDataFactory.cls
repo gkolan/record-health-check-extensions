@@ -20,6 +20,38 @@ public class RHCActionTestDataFactory {
   }
 
   /**
+   * Builds the complete active Flow descriptor used by execution and review tests.
+   * @param flowApiName Flow API name to retain on the descriptor
+   * @return Active autolaunched Flow descriptor with the version-one contract
+   */
+  public static RHCActionFlowGateway.FlowDescriptor flowDescriptor(
+    String flowApiName
+  ) {
+    RHCActionFlowGateway.FlowDescriptor descriptor = new RHCActionFlowGateway.FlowDescriptor();
+    descriptor.apiName = flowApiName;
+    descriptor.activeVersionId = syntheticId('301');
+    descriptor.processType = 'AutoLaunchedFlow';
+    for (String name : RHCActionConstants.allowedFlowInputs()) {
+      RHCActionFlowGateway.VariableDescriptor variable = new RHCActionFlowGateway.VariableDescriptor();
+      variable.apiName = name;
+      variable.dataType = 'String';
+      variable.isInput = true;
+      variable.isOutput = false;
+      variable.isCollection = false;
+      descriptor.variablesByName.put(name, variable);
+    }
+    RHCActionFlowGateway.VariableDescriptor interview = new RHCActionFlowGateway.VariableDescriptor();
+    interview.apiName = 'rhcInterviewGuidV1';
+    interview.dataType = 'String';
+    interview.isInput = false;
+    interview.isOutput = true;
+    interview.isCollection = false;
+    descriptor.variablesByName.put(interview.apiName, interview);
+    return descriptor;
+  }
+
+  /**
+   * Builds a stable descriptor-only synthetic identifier.
    * @param keyPrefix Three-character Salesforce key prefix
    * @return Stable synthetic 18-character ID for descriptor-only test data
    */
@@ -67,6 +99,7 @@ public class RHCActionTestDataFactory {
   }
 
   /**
+   * Builds an unsaved valid manual policy.
    * @return Unsaved valid manual policy
    */
   public static RHC_Action_Policy__c policy() {
@@ -92,6 +125,7 @@ public class RHCActionTestDataFactory {
   }
 
   /**
+   * Inserts a queued pending action governed by the supplied policy.
    * @param policyId Governing policy
    * @param suffix Unique test suffix
    * @return Inserted queued pending action
@@ -118,6 +152,7 @@ public class RHCActionTestDataFactory {
   }
 
   /**
+   * Builds a finalized core Result event for subscriber tests.
    * @param eventId Stable event identity
    * @return Finalized core Result event
    */

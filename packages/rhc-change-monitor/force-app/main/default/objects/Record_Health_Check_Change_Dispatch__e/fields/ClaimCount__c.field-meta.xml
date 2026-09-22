@@ -1,0 +1,2 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata"><fullName>ClaimCount__c</fullName><label>Claim Count</label><description>Number of pending claims persisted by the publishing intake transaction.</description><precision>9</precision><scale>0</scale><type>Number</type></CustomField>

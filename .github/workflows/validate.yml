@@ -21,6 +21,14 @@ jobs:
         with:
           node-version: 22
           package-manager-cache: false
+      - name: Validate GitHub Actions workflows
+        run: |
+          curl --fail --location --silent --show-error \
+            https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_amd64.tar.gz \
+            --output "${RUNNER_TEMP}/actionlint.tar.gz"
+          echo "8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8  ${RUNNER_TEMP}/actionlint.tar.gz" | sha256sum --check
+          tar --extract --gzip --file "${RUNNER_TEMP}/actionlint.tar.gz" --directory "${RUNNER_TEMP}" actionlint
+          "${RUNNER_TEMP}/actionlint" -color=false .github/workflows/*.yml
       - name: Validate package contracts and documentation links
         run: node scripts/validate-repository.mjs
 
@@ -332,6 +340,7 @@ jobs:
           - rhc-actions
           - rhc-alerts
           - rhc-builder
+          - rhc-change-monitor
           - rhc-integrations
           - rhc-logs
           - rhc-reports
@@ -350,10 +359,55 @@ jobs:
           cache-dependency-path: packages/${{ matrix.package }}/package-lock.json
       - name: Install locked dependencies
         run: npm ci
+      - name: Run Change Monitor adapter-generator tests
+        if: matrix.package == 'rhc-change-monitor'
+        run: npm run test:adapter-generator
       - name: Run LWC tests and coverage thresholds
         run: npm run test:coverage
       - name: Audit development dependencies
         run: npm audit --audit-level=high
+
+  remaining-salesforce-static:
+    name: Static source gate (${{ matrix.package }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        package:
+          - rhc-change-monitor
+          - rhc-agent-actions
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          package-manager-cache: false
+      - name: Install pinned Salesforce CLI and Code Analyzer
+        run: |
+          npm install --global @salesforce/cli@2.149.9
+          echo y | sf plugins install code-analyzer@5.15.0
+      - name: Verify Change Monitor generated metadata is current
+        if: matrix.package == 'rhc-change-monitor'
+        working-directory: packages/rhc-change-monitor
+        run: npm run metadata:generate -- --check
+      - name: Validate metadata XML
+        working-directory: packages/${{ matrix.package }}
+        run: python3 -c "import pathlib,xml.etree.ElementTree as ET; [ET.parse(path) for path in pathlib.Path('force-app').rglob('*.xml')]"
+      - name: Validate Salesforce source conversion
+        working-directory: packages/${{ matrix.package }}
+        run: sf project convert source --root-dir force-app --output-dir "${RUNNER_TEMP}/${{ matrix.package }}-mdapi"
+      - name: Enforce the repository Code Analyzer policy
+        run: sf code-analyzer run --workspace "packages/${{ matrix.package }}/force-app/main/default" --config-file code-analyzer.yml --severity-threshold 5 --output-file "${RUNNER_TEMP}/${{ matrix.package }}-code-analyzer.json"
+      - name: Upload analyzer evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.package }}-code-analyzer-${{ github.sha }}
+          path: ${{ runner.temp }}/${{ matrix.package }}-code-analyzer.json
+          if-no-files-found: error
+          retention-days: 90
 
   builder-static-analysis:
     name: RHC Builder static and source gates
@@ -374,8 +428,6 @@ jobs:
         run: |
           sf --version
           sf plugins --core
-      - name: Install pinned Salesforce Code Analyzer
-        run: echo y | sf plugins install code-analyzer@5.14.0
       - name: Run blocking Recommended analysis
         run: sf code-analyzer run --workspace packages/rhc-builder --target packages/rhc-builder/force-app --rule-selector Recommended --severity-threshold 3
       - name: Validate Salesforce source conversion
@@ -396,8 +448,10 @@ jobs:
         with:
           node-version: 22
           package-manager-cache: false
-      - name: Install pinned Salesforce CLI
-        run: npm install --global @salesforce/cli@2.149.9
+      - name: Install pinned Salesforce CLI and Code Analyzer
+        run: |
+          npm install --global @salesforce/cli@2.149.9
+          echo y | sf plugins install code-analyzer@5.15.0
       - name: Verify generated metadata is current
         run: npm run metadata:check
       - name: Validate package XML

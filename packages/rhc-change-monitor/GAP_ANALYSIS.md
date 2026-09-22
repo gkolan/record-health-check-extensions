@@ -2,10 +2,10 @@
 
 ## Decision summary
 
-The capability belongs outside core, but an on-platform package is not yet proven feasible. Core's
-public record-ID API is sufficient for evaluation. A local, non-release SFDX implementation now
-exists to make the adapter, replay-identity, principal, and limit hypotheses executable. It is
-feasibility source, not evidence that the hypotheses passed.
+The capability belongs outside core, but an on-platform package is not yet release-ready. Core's
+public record-ID API is sufficient for evaluation. A local, non-release SFDX implementation makes
+the adapter, replay-identity, principal, and limit hypotheses executable. Gate 3 passed on
+2026-09-18; Gates 1, 2, and 4 remain open, so source presence alone is not release evidence.
 
 Do not create a 2GP package container, package version, or production release until Gates 1–4, the
 no-namespace validation matrix, all other pre-registration checks, and an explicit
@@ -81,16 +81,25 @@ dispatcher but failed closed with `RUNTIME_PERMISSION_MISSING`. A valid
 next real delivery still ran as Automated Process. Therefore that platform-event subscriber
 control is not a principal solution for this CDC trigger.
 
-Gate 3 is blocked. Do not remove the custom-permission check and do not assign an administrator
-permission set to Automated Process as a shortcut. The next design review must either prove a
+Gate 3 was blocked at this point. Do not remove the custom-permission check and do not assign an
+administrator permission set to Automated Process as a shortcut. The next design review must either prove a
 least-privilege permission model for Automated Process or select the separately authenticated
 Pub/Sub worker boundary described above.
 
-The source now includes `RHC_Change_Monitor_Runtime`, which grants only policy reads, evaluation
-create/read/edit, and runtime Apex access. It validated and deployed unassigned in the shared org.
-The narrowest remaining on-platform experiment is pairing it with core's
-`Record_Health_Check_User` permission set on Automated Process. That is still a persistent security
-change and is not authorized merely by deploying the source.
+### Gate 3 resolution — 2026-09-18
+
+The narrowest experiment was run: `RHC_Change_Monitor_Runtime` and core `Record_Health_Check_User`
+were assigned to Automated Process (the insert succeeds). Real CREATE and UPDATE deliveries still
+failed with `RUNTIME_PERMISSION_MISSING`; `FeatureManagement.checkPermission` does not honor
+permission sets on that user. The assignments were reverted.
+
+The supported design was then implemented and proven: the CDC trigger persists claims and publishes
+`Record_Health_Check_Change_Dispatch__e`; its trigger `RHCChangeMonitorDispatchSubscriber` runs
+under a subscriber-owned `PlatformEventSubscriberConfig` naming a least-privilege runtime user. With
+that config in place, a real Account UPDATE reached `EVALUATED / ACCEPTED` with run ID
+`cm-v1-d60fed50…` and dispatcher job created by the configured user; **Retry failed claims** then
+re-dispatched the seven historical `RUNTIME_PERMISSION_MISSING` rows to `EVALUATED`. Gate 3 is
+passed for the on-platform runtime; the Pub/Sub worker alternative is no longer required.
 
 ## Gate 4: transaction and limit behavior
 
@@ -118,8 +127,8 @@ After the earlier gates pass, but before any package is created:
 5. close or explicitly disposition every security, analyzer, operations, and limits finding;
 6. complete security, operations, data-model, development, and release-evidence documentation;
 7. record an explicit release-worthiness decision; and
-8. update repository validation from seven to eight package projects only when the real SFDX
-   project exists.
+8. keep repository validation synchronized with the real package-project inventory (nine projects
+   as of 2026-09-20).
 
 The current maintainer decision does not authorize registration of a 2GP container or creation of
 a package version after this review. A later explicit exception would be required to create a

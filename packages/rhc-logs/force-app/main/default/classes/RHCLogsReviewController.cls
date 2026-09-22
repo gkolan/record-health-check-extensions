@@ -108,7 +108,7 @@ public with sharing class RHCLogsReviewController {
             Object requestedValue = valuesByField.get(fieldName);
             if (requestedValue != null
                 && String.isNotBlank(String.valueOf(requestedValue))
-                && !fields.get(fieldName).getDescribe().isAccessible()) {
+                && !localField(fields, fieldName).getDescribe().isAccessible()) {
                 throw sanitized('You do not have access to one or more requested log filters.');
             }
         }
@@ -175,11 +175,26 @@ public with sharing class RHCLogsReviewController {
                 .getDescribe(SObjectDescribeOptions.DEFERRED).fields.getMap();
         List<String> readable = new List<String>();
         for (String candidate : candidates) {
-            if (candidate == 'Id' || candidate == 'Name' || fields.get(candidate).getDescribe().isAccessible()) {
+            if (candidate == 'Id' || candidate == 'Name' || localField(fields, candidate).getDescribe().isAccessible()) {
                 readable.add(candidate);
             }
         }
         return readable;
+    }
+
+    private static Schema.SObjectField localField(
+        Map<String, Schema.SObjectField> fields,
+        String localName
+    ) {
+        String normalizedName = localName.toLowerCase();
+        for (String apiName : fields.keySet()) {
+            String normalizedApiName = apiName.toLowerCase();
+            if (normalizedApiName == normalizedName
+                || normalizedApiName.endsWith('__' + normalizedName)) {
+                return fields.get(apiName);
+            }
+        }
+        return null;
     }
 
     private static AuraHandledException sanitized(String message) {

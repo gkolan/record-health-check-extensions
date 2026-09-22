@@ -60,7 +60,7 @@ or call external systems.
 Choose publication deliberately. Broader reporting coverage creates more Platform Event traffic and
 stored facts.
 
-## Get started
+## First run
 
 1. Install the required Record Health Check core version.
 2. Install an approved RHC Reports subscriber package version in a sandbox.
@@ -72,6 +72,8 @@ stored facts.
 
 Follow the [click-by-click setup](docs/CLICK_BY_CLICK_SETUP.md) or the
 [demo data and functional test](docs/DEMO_TEST_DATA.md).
+The suite [install, first-run, and uninstall checklist](../../docs/FIRST_RUN.md) defines the common
+package lifecycle and reporting evidence.
 
 ### Current availability
 

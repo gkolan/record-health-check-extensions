@@ -72,7 +72,7 @@ One owned Batch Apex job and the top-level monitoring envelope.
 | `Schedule__c` | Schedule source when applicable |
 | `AsyncApexJobId__c` | Exact Salesforce asynchronous job ID |
 | `Source__c` | `RUN_NOW`, `SCHEDULED`, or `SUPPLIED_IDS` |
-| `Status__c` | `QUEUED`, `PROCESSING`, `COMPLETED`, or `PARTIAL_FAILURE` |
+| `Status__c` | `QUEUED`, `PROCESSING`, `COMPLETED`, `PARTIAL_FAILURE`, `ERROR`, or `CANCELLED` |
 | `SubmittedRecordCount__c` | Records delivered to scopes |
 | `ProcessedRecordCount__c` | Records whose scopes completed evaluation |
 | `FailedScopeCount__c` | Scopes that threw an exception |
@@ -131,6 +131,20 @@ One retained canonical core evaluation detail.
 
 Detailed rows are capture-mode dependent. `SKIPPED` is summary-only.
 
+## Record Health Check Run Setting
+
+API name: `Record_Health_Check_Run_Setting__c`
+
+Package-owned singleton for explicit manual-retention configuration.
+
+| Field | Meaning |
+| --- | --- |
+| `SettingKey__c` | Unique singleton identity; validation requires `Default` |
+| `RetentionDays__c` | Whole-day window from 1 through 3,650 |
+
+The default 365-day recommendation exists only in the UI/service response. No settings row means
+cleanup is not configured and cannot run.
+
 ## Relationship and deletion order
 
 ```text
@@ -142,6 +156,7 @@ Run Definition
         └── Run Result
 ```
 
-For an approved retention process, delete children before parents. Never delete a Run Definition
-while an active Schedule or pending supplied-ID workflow depends on it.
-
+The packaged retention service deletes children before parents and caps each request at 1,000
+explicit rows. It never deletes definitions, schedules, active Runs, active Batch Runs, or pending
+Requests. Never directly delete a Run Definition while an active Schedule or pending supplied-ID
+workflow depends on it.

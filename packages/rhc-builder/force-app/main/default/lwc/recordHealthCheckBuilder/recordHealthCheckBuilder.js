@@ -13,6 +13,7 @@ import publishCheckSetVersion from "@salesforce/apex/RHCBuilderController.publis
 import activateCheckSetVersion from "@salesforce/apex/RHCBuilderController.activateCheckSetVersion";
 import rollbackToCheckSetVersion from "@salesforce/apex/RHCBuilderController.rollbackToCheckSetVersion";
 import {
+  diffVersions,
   buildCanonicalVersion,
   applyCardExperience,
   apiNameFromLabel,
@@ -42,6 +43,7 @@ export default class RecordHealthCheckBuilder extends LightningElement {
   isWorking = false;
   currentStep = "design";
   selectedVersion;
+  activeVersionForSelected;
   apiNameEdited = false;
   nextCheckKey = 1;
   saveOperationKey;
@@ -863,13 +865,39 @@ export default class RecordHealthCheckBuilder extends LightningElement {
     return undefined;
   }
 
+  // The active version of the same Check Set is the publication baseline, so the review shows
+  // exactly what activating the selected version would change in core.
+  get versionDiff() {
+    if (!this.selectedVersion || !this.activeVersionForSelected) return undefined;
+    const diff = diffVersions(this.activeVersionForSelected.version, this.selectedVersion.version);
+    return {
+      ...diff,
+      baseVersionNumber: this.activeVersionForSelected.versionNumber,
+      changed: diff.changed.map((entry) => ({ ...entry, fieldList: entry.fields.join(", ") })),
+      hasAdded: diff.added.length > 0,
+      hasRemoved: diff.removed.length > 0,
+      hasChanged: diff.changed.length > 0,
+      hasCheckSetFields: diff.checkSetFields.length > 0,
+      checkSetFieldList: diff.checkSetFields.join(", ")
+    };
+  }
+
   async reviewSavedVersion(event) {
     this.isWorking = true;
     this.clearMessages();
     try {
-      this.selectedVersion = await getCheckSetVersion({
-        checkSetVersionId: event.currentTarget.dataset.versionId,
-      });
+      const versionId = event.currentTarget.dataset.versionId;
+      this.selectedVersion = await getCheckSetVersion({ checkSetVersionId: versionId });
+      const selectedMeta = this.home.versions.find((item) => item.versionId === versionId);
+      const active = this.home.versions.find(
+        (item) =>
+          item.isActive &&
+          item.versionId !== versionId &&
+          item.checkSetQualifiedApiName === selectedMeta?.checkSetQualifiedApiName,
+      );
+      this.activeVersionForSelected = active
+        ? await getCheckSetVersion({ checkSetVersionId: active.versionId })
+        : undefined;
     } catch (error) {
       this.errorMessage = this.messageFrom(error);
     } finally {

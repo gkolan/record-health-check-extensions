@@ -1,3 +1,4 @@
+/* eslint-disable @lwc/lwc-platform/no-aura-libs, @lwc/lwc-platform/no-process-env -- Node CLI, not LWC runtime code. */
 import assert from "node:assert/strict";
 import crypto from "node:crypto";
 import fs from "node:fs";
@@ -32,7 +33,7 @@ function passedOrg(orgShape, orgId) {
     orgId,
     dryRunJobId: "0Af000000000000",
     apexTestRunId: "707000000000000",
-    testsPassed: 40,
+    testsPassed: 55,
     testsFailed: 0,
     packageCoverage: 75,
     resultTriggerCoverage: 1,
@@ -81,7 +82,7 @@ try {
       sourceConversion: "PASSED",
       lwc: {
         status: "PASSED",
-        testsPassed: 11,
+        testsPassed: 19,
         statements: 90,
         branches: 80,
         functions: 90,
@@ -116,6 +117,22 @@ try {
   assert.match(
     counterfeitResult.stderr,
     /Repository has no Git HEAD|sourceCommit must equal the current Git HEAD/
+  );
+
+  const underCounted = structuredClone(counterfeit);
+  underCounted.local.lwc.testsPassed = 18;
+  underCounted.namespacedSource.testsPassed = 54;
+  const underCountedPath = path.join(temporaryRoot, "under-counted.json");
+  fs.writeFileSync(
+    underCountedPath,
+    `${JSON.stringify(underCounted, null, 2)}\n`
+  );
+  const underCountedResult = invoke(["--evidence", underCountedPath]);
+  assert.equal(underCountedResult.status, 1);
+  assert.match(underCountedResult.stderr, /At least 19 LWC tests must pass/);
+  assert.match(
+    underCountedResult.stderr,
+    /Namespaced source: at least 55 Apex test methods must pass/
   );
 
   console.log("RHC Alerts pre-package lock integration tests passed.");

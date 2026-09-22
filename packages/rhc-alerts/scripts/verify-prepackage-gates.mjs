@@ -1,3 +1,4 @@
+/* eslint-disable @lwc/lwc-platform/no-aura-libs, @lwc/lwc-platform/no-process-env -- Node CLI, not LWC runtime code. */
 import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
@@ -88,8 +89,8 @@ function verifyOrgShape(label, expectedShape, evidence, sourceCommit) {
     `${label}: apexTestRunId is missing or invalid`
   );
   check(
-    evidence?.testsPassed >= 40,
-    `${label}: at least 40 Apex test methods must pass`
+    evidence?.testsPassed >= 55,
+    `${label}: at least 55 Apex test methods must pass`
   );
   check(evidence?.testsFailed === 0, `${label}: Apex failures must be zero`);
   check(
@@ -173,7 +174,7 @@ for (const [key, label] of Object.entries({
   check(passed(local[key]), `Local ${label} must be PASSED`);
 }
 check(passed(local.lwc?.status), "LWC gate status must be PASSED");
-check(local.lwc?.testsPassed >= 11, "At least 11 LWC tests must pass");
+check(local.lwc?.testsPassed >= 19, "At least 19 LWC tests must pass");
 check(
   local.lwc?.statements >= 90,
   "LWC statement coverage must be at least 90%"

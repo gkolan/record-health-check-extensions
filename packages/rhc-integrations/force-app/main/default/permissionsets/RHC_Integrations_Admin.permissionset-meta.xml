@@ -6,8 +6,9 @@
     <classAccesses><apexClass>RHCIntegrationEventHandler</apexClass><enabled>true</enabled></classAccesses>
     <classAccesses><apexClass>RHCIntegrationPayloadBuilder</apexClass><enabled>true</enabled></classAccesses>
     <classAccesses><apexClass>RHCIntegrationRouteSelector</apexClass><enabled>true</enabled></classAccesses>
+    <classAccesses><apexClass>RHCIntegrationRetentionService</apexClass><enabled>true</enabled></classAccesses>
     <customPermissions><enabled>true</enabled><name>RHC_Integration_Replay</name></customPermissions>
-    <description>Configure routes, inspect delivery operations, and replay dead letters after correcting external configuration. Named Credential principals remain administrator-owned and separately assigned.</description>
+    <description>Configure routes and retention, inspect or purge delivery operations, and replay corrected dead letters. Named Credential principals remain administrator-owned and separately assigned.</description>
     <applicationVisibilities><application>RHC_Integrations</application><visible>true</visible></applicationVisibilities>
     <fieldPermissions><editable>true</editable><field>Record_Health_Check_Integration_Route__c.Active__c</field><readable>true</readable></fieldPermissions>
     <fieldPermissions><editable>true</editable><field>Record_Health_Check_Integration_Route__c.MinimumSeverity__c</field><readable>true</readable></fieldPermissions>
@@ -21,10 +22,13 @@
     <fieldPermissions><editable>true</editable><field>Record_Health_Check_Integration_Delivery__c.HttpClassification__c</field><readable>true</readable></fieldPermissions>
     <fieldPermissions><editable>true</editable><field>Record_Health_Check_Integration_Delivery__c.ErrorCode__c</field><readable>true</readable></fieldPermissions>
     <fieldPermissions><editable>true</editable><field>Record_Health_Check_Integration_Delivery__c.ErrorDetail__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>true</editable><field>Record_Health_Check_Integration_Setting__c.RetentionDays__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>true</editable><field>Record_Health_Check_Integration_Setting__c.SettingKey__c</field><readable>true</readable></fieldPermissions>
     <hasActivationRequired>false</hasActivationRequired>
     <label>RHC Integrations Admin</label>
     <objectPermissions><allowCreate>true</allowCreate><allowDelete>true</allowDelete><allowEdit>true</allowEdit><allowRead>true</allowRead><modifyAllRecords>true</modifyAllRecords><object>Record_Health_Check_Integration_Route__c</object><viewAllRecords>true</viewAllRecords></objectPermissions>
     <objectPermissions><allowCreate>true</allowCreate><allowDelete>true</allowDelete><allowEdit>true</allowEdit><allowRead>true</allowRead><modifyAllRecords>true</modifyAllRecords><object>Record_Health_Check_Integration_Delivery__c</object><viewAllRecords>true</viewAllRecords></objectPermissions>
+    <objectPermissions><allowCreate>true</allowCreate><allowDelete>false</allowDelete><allowEdit>true</allowEdit><allowRead>true</allowRead><modifyAllRecords>false</modifyAllRecords><object>Record_Health_Check_Integration_Setting__c</object><viewAllRecords>false</viewAllRecords></objectPermissions>
     <tabSettings><tab>Record_Health_Check_Integration_Route__c</tab><visibility>Visible</visibility></tabSettings>
     <tabSettings><tab>RHC_Integration_Dead_Letters</tab><visibility>Visible</visibility></tabSettings>
 </PermissionSet>

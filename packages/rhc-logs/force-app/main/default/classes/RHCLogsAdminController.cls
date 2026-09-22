@@ -43,7 +43,7 @@ public with sharing class RHCLogsAdminController {
      * Returns evidence-based setup and operational findings.
      * @return current package and visible core configuration status
      */
-    @AuraEnabled(cacheable=true)
+    @AuraEnabled
     public static SetupStatus getStatus() {
         assertSettingsReadable();
         SetupStatus status = new SetupStatus();
@@ -160,10 +160,8 @@ public with sharing class RHCLogsAdminController {
         status.retainedCount = (Integer) summary.get('retainedCount');
         status.oldestOccurredAt = (Datetime) summary.get('oldestAt');
         status.newestOccurredAt = (Datetime) summary.get('newestAt');
-        Map<String, Schema.SObjectField> logFields =
-            Record_Health_Check_Diagnostic_Log__c.SObjectType
-                .getDescribe(SObjectDescribeOptions.DEFERRED).fields.getMap();
-        if (logFields.get('ContractVersion__c').getDescribe().isAccessible()) {
+        if (Schema.SObjectType.Record_Health_Check_Diagnostic_Log__c.fields.ContractVersion__c
+                .isAccessible()) {
             status.unsupportedContractCount = [
                 SELECT COUNT()
                 FROM Record_Health_Check_Diagnostic_Log__c
@@ -221,17 +219,15 @@ public with sharing class RHCLogsAdminController {
     }
 
     private static void assertSettingsWritable() {
-        Map<String, Schema.SObjectField> settingsFields =
-            Record_Health_Check_Log_Settings__c.SObjectType
-                .getDescribe(SObjectDescribeOptions.DEFERRED).fields.getMap();
         if (!Schema.SObjectType.Record_Health_Check_Log_Settings__c.isCreateable()
             || !Schema.SObjectType.Record_Health_Check_Log_Settings__c.isUpdateable()) {
             throw sanitized('You do not have permission to configure RHC Logs.');
         }
-        for (String fieldName : new Set<String>{
-            'RetentionDays__c', 'CleanupBatchSize__c', 'AutomatedCleanupEnabled__c'
+        for (Schema.DescribeFieldResult fieldDescribe : new List<Schema.DescribeFieldResult>{
+            Schema.SObjectType.Record_Health_Check_Log_Settings__c.fields.RetentionDays__c,
+            Schema.SObjectType.Record_Health_Check_Log_Settings__c.fields.CleanupBatchSize__c,
+            Schema.SObjectType.Record_Health_Check_Log_Settings__c.fields.AutomatedCleanupEnabled__c
         }) {
-            Schema.DescribeFieldResult fieldDescribe = settingsFields.get(fieldName).getDescribe();
             if (!fieldDescribe.isCreateable() || !fieldDescribe.isUpdateable()) {
                 throw sanitized('You do not have permission to configure RHC Logs.');
             }

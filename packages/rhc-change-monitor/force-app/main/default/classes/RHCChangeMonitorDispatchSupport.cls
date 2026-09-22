@@ -1,5 +1,12 @@
 /** Builds core requests and summarizes bounded core responses for Change Monitor dispatch. */
-public class RHCChangeMonitorDispatchSupport {
+public inherited sharing class RHCChangeMonitorDispatchSupport {
+  @TestVisible
+  private static Boolean dispatchPublishSuccessOverride;
+
+  /** Signals that Salesforce rejected the package dispatch signal before publication. */
+  public class DispatchSignalException extends Exception {
+  }
+
   /** Per-record total and actionable result counts. */
   public class ResultCounts {
     public Map<String, Integer> totalByRecord = new Map<String, Integer>();
@@ -8,6 +15,49 @@ public class RHCChangeMonitorDispatchSupport {
 
   @SuppressWarnings('PMD.EmptyStatementBlock')
   private RHCChangeMonitorDispatchSupport() {
+  }
+
+  /**
+   * Starts one dispatcher chain unless one is already queued, so a burst of dispatch events
+   * does not fan out into parallel workers competing for the same pending claims.
+   */
+  public static void enqueueDispatcher() {
+    if (Limits.getQueueableJobs() >= Limits.getLimitQueueableJobs()) {
+      return;
+    }
+    List<AsyncApexJob> queued = [
+      SELECT Id FROM AsyncApexJob
+      WHERE ApexClass.Name = 'RHCChangeMonitorDispatcherQueueable'
+        AND JobType = 'Queueable' AND Status IN ('Queued', 'Holding', 'Preparing')
+      WITH USER_MODE
+      LIMIT 1
+    ];
+    if (queued.isEmpty()) {
+      System.enqueueJob(new RHCChangeMonitorDispatcherQueueable(0));
+    }
+  }
+
+  /**
+   * Publishes one data-free wake-up signal and rejects an immediate platform publish failure.
+   * @param claimCount Number of durable pending claims available for dispatch.
+   * @throws DispatchSignalException when Salesforce does not accept the event for publication.
+   */
+  public static void publishDispatch(Integer claimCount) {
+    if (claimCount == null || claimCount <= 0) {
+      return;
+    }
+    if (dispatchPublishSuccessOverride != null) {
+      if (!dispatchPublishSuccessOverride) {
+        throw new DispatchSignalException('The Change Monitor dispatch signal was rejected.');
+      }
+      return;
+    }
+    Database.SaveResult result = EventBus.publish(
+      new Record_Health_Check_Change_Dispatch__e(ClaimCount__c = claimCount)
+    );
+    if (!result.isSuccess()) {
+      throw new DispatchSignalException('The Change Monitor dispatch signal was rejected.');
+    }
   }
 
   /**

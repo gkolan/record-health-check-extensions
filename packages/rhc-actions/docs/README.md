@@ -16,7 +16,7 @@ recovery steps.
 | Create the example manual policy                | [Create the policy](admin/CREATE_MANUAL_POLICY.md)                        |
 | Generate, approve, and verify the first action  | [Test manual approval](admin/TEST_MANUAL_APPROVAL.md)                     |
 | Create synthetic data and exercise all controls | [Demo data and full test](admin/DEMO_DATA_AND_FULL_TEST.md)               |
-| Understand queue and history records            | [Monitor and troubleshoot](admin/MONITOR_AND_TROUBLESHOOT.md)             |
+| Monitor records and run governed retention      | [Monitor and troubleshoot](admin/MONITOR_AND_TROUBLESHOOT.md)             |
 | Deliberately enable automatic execution         | [Automatic execution](admin/ENABLE_AUTOMATIC_EXECUTION.md)                |
 | Pause or remove the package                     | [Disable and uninstall](admin/DISABLE_AND_UNINSTALL.md)                   |
 | Recheck Salesforce navigation sources           | [Official Salesforce references](admin/OFFICIAL_SALESFORCE_REFERENCES.md) |
@@ -53,7 +53,7 @@ Update documentation in the same change as source when any of these items change
 
 - an object, field, picklist value, label, tab, application, Permission Set, or Custom Permission;
 - the core Result event or Flow input contract;
-- queue state, retry, cooldown, idempotency, or loop behavior;
+- queue state, retry, cooldown, idempotency, loop, or retention behavior;
 - an administrator-visible message or navigation path;
 - an Apex class responsibility or transaction boundary;
 - package dependency, namespace, API version, package ID, or release command; or

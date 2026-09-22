@@ -19,7 +19,7 @@ rhc-run-manager/
 │   ├── applications/       Lightning application
 │   ├── classes/            Apex runtime and tests
 │   ├── lwc/rhcRunManager/  Administration/monitoring UI and Jest tests
-│   ├── objects/            Six owned operational/configuration objects
+│   ├── objects/            Seven owned operational/configuration objects
 │   ├── permissionsets/     Admin, Viewer, Executor personas
 │   └── tabs/               App and operational object tabs
 ├── docs/                   Audience-focused documentation
@@ -64,7 +64,16 @@ npm install
 - Use canonical core types and terminology.
 - Keep `SelectionType__c` explicit: `CHECK_SET` or `CHECK`.
 - Derive target objects through `RHCRunManagerCoreMetadataGateway`.
-- Keep all entry points on `RHCRunManagerExecutionService.start`.
+- Keep Run Definition validation, core canonicalization, and persistence in
+  `RHCRunManagerDefinitionService`; the Aura controller only maps its stable DTO.
+- Keep all entry points on `RHCRunManagerExecutionService.start` and pass its typed request; do not
+  reintroduce positional launch parameters.
+- Pass target-query inputs through `RHCRunManagerFilterService.QueryRequest` and capture inputs
+  through `RHCRunManagerCaptureService.Request` so related values remain one validated contract.
+- Pass human recurrence values to `RHCRunManagerScheduleService` as its request object; do not
+  reintroduce positional scheduling parameters or administrator-supplied CRON.
+- Keep launch preconditions in the execution service's narrow validation helpers and preserve the
+  single savepoint around Batch Run creation and platform job submission.
 - Keep record population and operational DML in user mode.
 - Never accept raw SOQL, CRON, Batch class names, event modes, or target objects from administrators.
 - Treat `SKIPPED` as summary-only.
@@ -128,10 +137,12 @@ sf project deploy start \
   --test-level RunSpecifiedTests \
   --tests RHCRunManagerAdminControllerTest \
   --tests RHCRunManagerAsyncTest \
+  --tests RHCRunManagerCancellationServiceTest \
   --tests RHCRunManagerCaptureServiceTest \
   --tests RHCRunManagerCoreMetadataGatewayTest \
   --tests RHCRunManagerExecutionTest \
   --tests RHCRunManagerFilterServiceTest \
+  --tests RHCRunManagerRetentionServiceTest \
   --tests RHCRunManagerSubmitIdsActionTest \
   --tests RHCRunManagerUninstallHandlerTest \
   --wait 30 \

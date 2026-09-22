@@ -83,158 +83,202 @@ private class RHCActionPolicyServiceTest {
 
   @IsTest
   static void shouldAcceptWhenActiveAutolaunchedContractMatches() {
-    RHCActionPolicyService.gateway = new GatewayStub(
-      'AutoLaunchedFlow',
-      true,
-      false
-    );
-    Test.startTest();
-    RHCActionPolicyService.ValidationResult result = RHCActionPolicyService.validate(
-      RHCActionTestDataFactory.policy()
-    );
-    Test.stopTest();
-    Assert.isTrue(
-      result.valid,
-      'The exact version-one contract should be eligible.'
-    );
+    System.runAs(new User(Id = UserInfo.getUserId())) {
+      RHCActionPolicyService.gateway = new GatewayStub(
+        'AutoLaunchedFlow',
+        true,
+        false
+      );
+      Test.startTest();
+      RHCActionPolicyService.ValidationResult result = RHCActionPolicyService.validate(
+        RHCActionTestDataFactory.policy()
+      );
+      Test.stopTest();
+      Assert.isTrue(
+        result.valid,
+        'The exact version-one contract should be eligible.'
+      );
+    }
   }
 
   @IsTest
   static void shouldRejectWhenFlowHasNoActiveVersion() {
-    RHCActionPolicyService.gateway = new GatewayStub(
-      'AutoLaunchedFlow',
-      false,
-      false
-    );
-    Test.startTest();
-    RHCActionPolicyService.ValidationResult result = RHCActionPolicyService.validate(
-      RHCActionTestDataFactory.policy()
-    );
-    Test.stopTest();
-    Assert.isFalse(result.valid, 'An inactive Flow must fail closed.');
+    System.runAs(new User(Id = UserInfo.getUserId())) {
+      RHCActionPolicyService.gateway = new GatewayStub(
+        'AutoLaunchedFlow',
+        false,
+        false
+      );
+      Test.startTest();
+      RHCActionPolicyService.ValidationResult result = RHCActionPolicyService.validate(
+        RHCActionTestDataFactory.policy()
+      );
+      Test.stopTest();
+      Assert.isFalse(result.valid, 'An inactive Flow must fail closed.');
+    }
   }
 
   @IsTest
   static void shouldRejectWhenFlowIsNotAutolaunched() {
-    RHCActionPolicyService.gateway = new GatewayStub('Flow', true, false);
-    RHCActionPolicyService.ValidationResult result = RHCActionPolicyService.validate(
-      RHCActionTestDataFactory.policy()
-    );
-    Assert.isFalse(result.valid, 'A screen Flow must be ineligible.');
+    System.runAs(new User(Id = UserInfo.getUserId())) {
+      RHCActionPolicyService.gateway = new GatewayStub('Flow', true, false);
+      RHCActionPolicyService.ValidationResult result = RHCActionPolicyService.validate(
+        RHCActionTestDataFactory.policy()
+      );
+      Assert.isFalse(result.valid, 'A screen Flow must be ineligible.');
+    }
   }
 
   @IsTest
   static void shouldRejectWhenFlowDeclaresArbitraryInput() {
-    RHCActionPolicyService.gateway = new GatewayStub(
-      'AutoLaunchedFlow',
-      true,
-      true
-    );
-    RHCActionPolicyService.ValidationResult result = RHCActionPolicyService.validate(
-      RHCActionTestDataFactory.policy()
-    );
-    Assert.isFalse(result.valid, 'Arbitrary input variables must be rejected.');
-    Assert.isTrue(
-      String.join(result.errors, ' ').contains('rawPayload'),
-      'The rejected variable should be named safely.'
-    );
+    System.runAs(new User(Id = UserInfo.getUserId())) {
+      RHCActionPolicyService.gateway = new GatewayStub(
+        'AutoLaunchedFlow',
+        true,
+        true
+      );
+      RHCActionPolicyService.ValidationResult result = RHCActionPolicyService.validate(
+        RHCActionTestDataFactory.policy()
+      );
+      Assert.isFalse(
+        result.valid,
+        'Arbitrary input variables must be rejected.'
+      );
+      Assert.isTrue(
+        String.join(result.errors, ' ').contains('rawPayload'),
+        'The rejected variable should be named safely.'
+      );
+    }
   }
 
   @IsTest
   static void shouldRejectWhenAutomaticPolicyLacksExplicitOptIn() {
-    RHC_Action_Policy__c policy = RHCActionTestDataFactory.policy();
-    policy.Mode__c = 'AUTOMATIC';
-    policy.Auto_Execution_Enabled__c = false;
-    RHCActionPolicyService.gateway = new GatewayStub(
-      'AutoLaunchedFlow',
-      true,
-      false
-    );
-    RHCActionPolicyService.ValidationResult result = RHCActionPolicyService.validate(
-      policy
-    );
-    Assert.isFalse(
-      result.valid,
-      'Automatic mode must require the policy opt-in.'
-    );
+    System.runAs(new User(Id = UserInfo.getUserId())) {
+      RHC_Action_Policy__c policy = RHCActionTestDataFactory.policy();
+      policy.Mode__c = 'AUTOMATIC';
+      policy.Auto_Execution_Enabled__c = false;
+      RHCActionPolicyService.gateway = new GatewayStub(
+        'AutoLaunchedFlow',
+        true,
+        false
+      );
+      RHCActionPolicyService.ValidationResult result = RHCActionPolicyService.validate(
+        policy
+      );
+      Assert.isFalse(
+        result.valid,
+        'Automatic mode must require the policy opt-in.'
+      );
+    }
   }
 
   @IsTest
   static void shouldReturnNullWhenGatewayFlowNameIsBlank() {
-    Test.startTest();
-    RHCActionFlowGateway.FlowDescriptor descriptor = new RHCActionFlowGateway()
-      .describeActive(' ');
-    Test.stopTest();
-    Assert.isNull(
-      descriptor,
-      'A blank Flow name must not query setup metadata.'
-    );
+    System.runAs(new User(Id = UserInfo.getUserId())) {
+      Test.startTest();
+      RHCActionFlowGateway.FlowDescriptor descriptor = new RHCActionFlowGateway()
+        .describeActive(' ');
+      Test.stopTest();
+      Assert.isNull(
+        descriptor,
+        'A blank Flow name must not query setup metadata.'
+      );
+    }
   }
 
   @IsTest
   static void shouldReturnNullWhenGatewayFlowDoesNotExist() {
-    Test.startTest();
-    RHCActionFlowGateway.FlowDescriptor descriptor = new RHCActionFlowGateway()
-      .describeActive('RHC_Actions_Definitely_Missing');
-    Test.stopTest();
-    Assert.isNull(descriptor, 'An unknown Flow must not appear eligible.');
+    System.runAs(new User(Id = UserInfo.getUserId())) {
+      Test.startTest();
+      RHCActionFlowGateway.FlowDescriptor descriptor = new RHCActionFlowGateway()
+        .describeActive('RHC_Actions_Definitely_Missing');
+      Test.stopTest();
+      Assert.isNull(descriptor, 'An unknown Flow must not appear eligible.');
+    }
   }
 
   @IsTest
   static void shouldDescribeActiveFlowThroughMetadataBoundary() {
-    RHCActionFlowGateway.metadataSource = new MetadataSourceStub();
+    System.runAs(new User(Id = UserInfo.getUserId())) {
+      RHCActionFlowGateway.metadataSource = new MetadataSourceStub();
 
-    Test.startTest();
-    RHCActionFlowGateway.FlowDescriptor descriptor = new RHCActionFlowGateway()
-      .describeActive(' Example_Autolaunched_Flow ');
-    Test.stopTest();
+      Test.startTest();
+      RHCActionFlowGateway.FlowDescriptor descriptor = new RHCActionFlowGateway()
+        .describeActive(' Example_Autolaunched_Flow ');
+      Test.stopTest();
 
-    Assert.areEqual('Example_Autolaunched_Flow', descriptor.apiName, 'The Flow name must be normalized.');
-    Assert.areEqual('AutoLaunchedFlow', descriptor.processType, 'The process type must be retained.');
-    Assert.areEqual(1, descriptor.variablesByName.size(), 'Every declared variable must be described.');
-    RHCActionFlowGateway.VariableDescriptor variable = descriptor.variablesByName.get(
-      'recordIdV1'
-    );
-    Assert.isTrue(variable.isInput, 'The input contract flag must be retained.');
-    Assert.isFalse(variable.isOutput, 'The output contract flag must be retained.');
-    Assert.isFalse(variable.isCollection, 'Scalar contract variables must remain scalar.');
+      Assert.areEqual(
+        'Example_Autolaunched_Flow',
+        descriptor.apiName,
+        'The Flow name must be normalized.'
+      );
+      Assert.areEqual(
+        'AutoLaunchedFlow',
+        descriptor.processType,
+        'The process type must be retained.'
+      );
+      Assert.areEqual(
+        1,
+        descriptor.variablesByName.size(),
+        'Every declared variable must be described.'
+      );
+      RHCActionFlowGateway.VariableDescriptor variable = descriptor.variablesByName.get(
+        'recordIdV1'
+      );
+      Assert.isTrue(
+        variable.isInput,
+        'The input contract flag must be retained.'
+      );
+      Assert.isFalse(
+        variable.isOutput,
+        'The output contract flag must be retained.'
+      );
+      Assert.isFalse(
+        variable.isCollection,
+        'Scalar contract variables must remain scalar.'
+      );
+    }
   }
 
   @IsTest
   static void shouldReturnNoVariablesForUnknownFlowVersion() {
-    Test.startTest();
-    List<SObject> variables = new RHCActionFlowGateway.MetadataSource()
-      .findVariables(RHCActionTestDataFactory.syntheticId('301'));
-    Test.stopTest();
-    Assert.areEqual(
-      0,
-      variables.size(),
-      'An unknown Flow version must not expose an input contract.'
-    );
+    System.runAs(new User(Id = UserInfo.getUserId())) {
+      Test.startTest();
+      List<SObject> variables = new RHCActionFlowGateway.MetadataSource()
+        .findVariables(RHCActionTestDataFactory.syntheticId('301'));
+      Test.stopTest();
+      Assert.areEqual(
+        0,
+        variables.size(),
+        'An unknown Flow version must not expose an input contract.'
+      );
+    }
   }
 
   @IsTest
   static void shouldRejectWhenPolicyBasicsAreUnsafe() {
-    RHC_Action_Policy__c policy = RHCActionTestDataFactory.policy();
-    policy.Active__c = false;
-    policy.Check_Qualified_API_Name__c = null;
-    policy.Matching_Statuses__c = null;
-    policy.Mode__c = 'UNKNOWN';
-    policy.Cooldown_Minutes__c = 0;
-    policy.Retry_Limit__c = 4;
-    policy.Input_Contract_Version__c = '2.0';
-    policy.Flow_API_Name__c = null;
-    RHCActionPolicyService.ValidationResult result = RHCActionPolicyService.validate(
-      policy
-    );
-    Assert.isFalse(
-      result.valid,
-      'Unsafe policy basics must fail before Flow execution.'
-    );
-    Assert.isTrue(
-      result.errors.size() >= 7,
-      'Every independent policy defect should be reported.'
-    );
+    System.runAs(new User(Id = UserInfo.getUserId())) {
+      RHC_Action_Policy__c policy = RHCActionTestDataFactory.policy();
+      policy.Active__c = false;
+      policy.Check_Qualified_API_Name__c = null;
+      policy.Matching_Statuses__c = null;
+      policy.Mode__c = 'UNKNOWN';
+      policy.Cooldown_Minutes__c = 0;
+      policy.Retry_Limit__c = 4;
+      policy.Input_Contract_Version__c = '2.0';
+      policy.Flow_API_Name__c = null;
+      RHCActionPolicyService.ValidationResult result = RHCActionPolicyService.validate(
+        policy
+      );
+      Assert.isFalse(
+        result.valid,
+        'Unsafe policy basics must fail before Flow execution.'
+      );
+      Assert.isTrue(
+        result.errors.size() >= 7,
+        'Every independent policy defect should be reported.'
+      );
+    }
   }
 
   private static SObject flowMetadataRow(

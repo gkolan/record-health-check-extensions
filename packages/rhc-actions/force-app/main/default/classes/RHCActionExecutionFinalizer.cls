@@ -6,14 +6,20 @@ public without sharing class RHCActionExecutionFinalizer implements Finalizer {
   private static RHCActionAsyncGateway asyncGateway = new RHCActionAsyncGateway();
   private final List<Id> pendingIds;
 
-  /** @param pendingIds Pending actions owned by the parent Queueable */
+  /**
+   * Creates recovery state for one parent Queueable.
+   * @param pendingIds Pending actions owned by the parent Queueable
+   */
   public RHCActionExecutionFinalizer(List<Id> pendingIds) {
     this.pendingIds = pendingIds == null
       ? new List<Id>()
       : new List<Id>(pendingIds);
   }
 
-  /** @param context Parent Queueable outcome */
+  /**
+   * Reconciles pending-action state after an unsuccessful parent execution.
+   * @param context Parent Queueable outcome
+   */
   public void execute(FinalizerContext context) {
     if (String.valueOf(context.getResult()) == 'SUCCESS') {
       return;

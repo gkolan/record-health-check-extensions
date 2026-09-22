@@ -9,13 +9,21 @@ public with sharing class RHCRunManagerCoreMetadataGateway {
     @AuraEnabled public String value;
     @AuraEnabled public String targetObjectApiName;
 
-    /** Sorts options by their administrator-facing label. */
+    /**
+     * Sorts options by their administrator-facing label.
+     * @param other Selection option being compared.
+     * @return Lexicographic comparison result.
+     */
     public Integer compareTo(Object other) {
       return label.toLowerCase().compareTo(((SelectionOption) other).label.toLowerCase());
     }
   }
 
-  /** Lists active Check Sets or Checks for a metadata-driven administrator picker. */
+  /**
+   * Lists active Check Sets or Checks for a metadata-driven administrator picker.
+   * @param selectionType CHECK_SET or CHECK.
+   * @return Sorted active selections of the requested type.
+   */
   public static List<SelectionOption> listSelections(String selectionType) {
     if (!new Set<String>{ 'CHECK_SET', 'CHECK' }.contains(selectionType)) {
       throw new ResolutionException('Selection Type must be CHECK_SET or CHECK.');
@@ -90,12 +98,7 @@ public with sharing class RHCRunManagerCoreMetadataGateway {
     if (matches.size() != 1 || matches[0].IsActive__c != true) {
       throw new ResolutionException('The active Check Set could not be resolved.');
     }
-    return createInfo(
-      'CHECK_SET',
-      matches[0].QualifiedApiName,
-      matches[0].QualifiedApiName,
-      matches[0].ObjectApiName__c
-    );
+    return createCheckSetInfo(matches[0]);
   }
 
   private static DefinitionInfo resolveCheck(String qualifiedApiName) {
@@ -117,20 +120,30 @@ public with sharing class RHCRunManagerCoreMetadataGateway {
     ) {
       throw new ResolutionException('The active Check could not be resolved.');
     }
-    return createInfo(
-      'CHECK',
-      matches[0].QualifiedApiName,
-      matches[0].Record_Health_Check_Set__r.QualifiedApiName,
-      matches[0].Record_Health_Check_Set__r.ObjectApiName__c
-    );
+    return createCheckInfo(matches[0]);
   }
 
-  private static DefinitionInfo createInfo(
-    String selectionType,
-    String qualifiedApiName,
-    String checkSetQualifiedApiName,
-    String targetObjectApiName
-  ) {
+  private static DefinitionInfo createCheckSetInfo(Record_Health_Check_Set__mdt item) {
+    DefinitionInfo info = new DefinitionInfo();
+    info.selectionType = 'CHECK_SET';
+    info.qualifiedApiName = item.QualifiedApiName;
+    info.checkSetQualifiedApiName = item.QualifiedApiName;
+    info.targetObjectApiName = item.ObjectApiName__c;
+    validateTargetObject(info.targetObjectApiName);
+    return info;
+  }
+
+  private static DefinitionInfo createCheckInfo(Record_Health_Check__mdt item) {
+    DefinitionInfo info = new DefinitionInfo();
+    info.selectionType = 'CHECK';
+    info.qualifiedApiName = item.QualifiedApiName;
+    info.checkSetQualifiedApiName = item.Record_Health_Check_Set__r.QualifiedApiName;
+    info.targetObjectApiName = item.Record_Health_Check_Set__r.ObjectApiName__c;
+    validateTargetObject(info.targetObjectApiName);
+    return info;
+  }
+
+  private static void validateTargetObject(String targetObjectApiName) {
     if (String.isBlank(targetObjectApiName)) {
       throw new ResolutionException('Core metadata has no target object.');
     }
@@ -140,12 +153,6 @@ public with sharing class RHCRunManagerCoreMetadataGateway {
     if (targetType == null || !targetType.getDescribe().isQueryable()) {
       throw new ResolutionException('The derived target object is unavailable.');
     }
-    DefinitionInfo info = new DefinitionInfo();
-    info.selectionType = selectionType;
-    info.qualifiedApiName = qualifiedApiName;
-    info.checkSetQualifiedApiName = checkSetQualifiedApiName;
-    info.targetObjectApiName = targetObjectApiName;
-    return info;
   }
 
   private static void validateInput(

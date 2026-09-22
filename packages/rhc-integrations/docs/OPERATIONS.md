@@ -1,6 +1,6 @@
 # RHC Integrations operations
 
-> Last reviewed: August 25, 2026. For installation and first-time setup, follow the
+> Last reviewed: September 20, 2026. For installation and first-time setup, follow the
 > [junior administrator click-by-click guide](JUNIOR-ADMIN-GUIDE.md).
 
 ## Install and authorize
@@ -96,9 +96,22 @@ may have completed externally even when Salesforce observed a timeout.
 
 The ledger is operational state, not a reporting warehouse. Monitor dead-letter count, age,
 attempts, Platform Event allocations, Queueable backlog, callout limits, and Salesforce storage.
-After the organization-defined audit window, an administrator may delete completed ledger rows.
 Do not build health trend reports from this object; use an explicitly governed external platform or
 the separate reporting extension for that purpose.
+
+To apply an approved retention decision:
+
+1. Open **RHC Integrations → Dead Letters** as a user assigned `RHC Integrations Admin`.
+2. Enter the approved 1–3,650 day window and select **Save retention settings**. The initial 90-day
+   value is only a recommendation until saved; saving never schedules deletion. A user missing any
+   required setting-field access cannot save the policy, even if object access was granted broadly.
+3. Review legal, audit, incident, and downstream replay requirements before every purge.
+4. Select the deletion acknowledgement, then **Purge eligible Integration Deliveries**.
+5. Record the returned count and repeat only when another reviewed batch is appropriate.
+
+One confirmation deletes at most 1,000 oldest completed `SUCCEEDED` or `DEAD_LETTER` rows outside
+the saved window. `PENDING` and `RETRY_WAIT` rows are never eligible. Deletion is permanent and no
+scheduled cleanup is included.
 
 Publication `NONE` creates no event and therefore no delivery. Uninstalling RHC Integrations does
 not affect core execution or any other extension, but removes its route and delivery data according

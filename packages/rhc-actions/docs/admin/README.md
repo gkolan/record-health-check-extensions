@@ -3,7 +3,7 @@
 These guides are written for a Salesforce administrator who can use Setup and Flow Builder but does
 not write Apex. Follow them in order for a first implementation.
 
-Last source verification: **August 25, 2026**, Salesforce Lightning Experience, RHC Actions
+Last source verification: **September 20, 2026**, Salesforce Lightning Experience, RHC Actions
 `0.1.0.NEXT` source.
 
 ## First-time setup path
@@ -15,7 +15,7 @@ Last source verification: **August 25, 2026**, Salesforce Lightning Experience, 
 | 3     | [Build the corrective Flow](BUILD_CORRECTIVE_FLOW.md) | 45–90 minutes                                | Active Flow passes sandbox Debug and creates exactly one test Task               |
 | 4     | [Create a manual policy](CREATE_MANUAL_POLICY.md)     | 20 minutes                                   | Active policy exactly matches the example Check and Flow                         |
 | 5     | [Test manual approval](TEST_MANUAL_APPROVAL.md)       | 30–60 minutes                                | One matching event creates one action, one Flow interview, and one audit attempt |
-| 6     | [Set up monitoring](MONITOR_AND_TROUBLESHOOT.md)      | 30 minutes                                   | Owners know how to interpret every state and error                               |
+| 6     | [Set up monitoring and retention](MONITOR_AND_TROUBLESHOOT.md) | 30 minutes                            | Owners can interpret states and govern manual audit cleanup                       |
 
 After the first-time setup, use
 [Create demo data and test every control](DEMO_DATA_AND_FULL_TEST.md) for the sandbox-only,
@@ -69,3 +69,5 @@ name.
 - The package can validate a Flow interface but cannot prove all Flow side effects.
 - A correction can cause another evaluation; cooldown and duplicate controls must stay enabled.
 - RHC Actions itself sends no human alert and makes no external callout.
+- Audit cleanup is Admin-only, manually confirmed, terminal-only, and capped at 1,000 rows; it is
+  never scheduled and does not grant direct Delete access.

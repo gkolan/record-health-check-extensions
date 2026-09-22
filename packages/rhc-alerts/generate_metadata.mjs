@@ -310,23 +310,60 @@ const objects = [
           "SHA-256 policy and checked-record key used for cooldown queries."
       }
     ]
+  },
+  {
+    api: "Record_Health_Check_Alert_Setting__c",
+    label: "Record Health Check Alert Setting",
+    plural: "Record Health Check Alert Settings",
+    nameType: "Text",
+    enableReports: false,
+    enableSearch: false,
+    generateTab: false,
+    sharingModel: "PublicReadWrite",
+    description:
+      "The Record Health Check Alert Setting object stores the administrator-approved delivery retention window used by bounded manual cleanup. It does not enable scheduled deletion. Commonly used to govern operational evidence disposition before an administrator explicitly purges terminal delivery records.",
+    fields: [
+      {
+        name: "SettingKey__c",
+        label: "Setting Key",
+        type: "Text",
+        length: 80,
+        external: true,
+        unique: true,
+        description:
+          "Package-owned singleton key. The supported value is Default."
+      },
+      {
+        name: "RetentionDays__c",
+        label: "Retention Days",
+        type: "Number",
+        precision: 4,
+        description:
+          "Days to retain terminal delivery history before an administrator can manually purge it. Valid values are 1 through 3650."
+      }
+    ]
   }
 ];
 
 for (const object of objects) {
+  const nameField =
+    object.nameType === "Text"
+      ? `<nameField><label>${object.label} Name</label><type>Text</type></nameField>`
+      : `<nameField><label>${object.label} Number</label><type>AutoNumber</type><displayFormat>${object.format}</displayFormat><startingNumber>1</startingNumber></nameField>`;
   write(
     `objects/${object.api}/${object.api}.object-meta.xml`,
-    `<CustomObject${ns}><label>${object.label}</label><pluralLabel>${object.plural}</pluralLabel><description>${escapeXml(object.description)}</description><deploymentStatus>Deployed</deploymentStatus><enableReports>true</enableReports><enableSearch>true</enableSearch><nameField><label>${object.label} Number</label><type>AutoNumber</type><displayFormat>${object.format}</displayFormat><startingNumber>1</startingNumber></nameField><sharingModel>Private</sharingModel><visibility>Public</visibility></CustomObject>`
+    `<CustomObject${ns}><label>${object.label}</label><pluralLabel>${object.plural}</pluralLabel><description>${escapeXml(object.description)}</description><deploymentStatus>Deployed</deploymentStatus><enableReports>${object.enableReports ?? true}</enableReports><enableSearch>${object.enableSearch ?? true}</enableSearch>${nameField}<sharingModel>${object.sharingModel ?? "Private"}</sharingModel><visibility>Public</visibility></CustomObject>`
   );
   for (const field of object.fields)
     write(
       `objects/${object.api}/fields/${field.name}.field-meta.xml`,
       `<CustomField${ns}>${fieldXml(field)}</CustomField>`
     );
-  write(
-    `tabs/${object.api}.tab-meta.xml`,
-    `<CustomTab${ns}><customObject>true</customObject><motif>Custom25: Alarm clock</motif></CustomTab>`
-  );
+  if (object.generateTab !== false)
+    write(
+      `tabs/${object.api}.tab-meta.xml`,
+      `<CustomTab${ns}><customObject>true</customObject><motif>Custom25: Alarm clock</motif></CustomTab>`
+    );
 }
 
 const policyValidationRules = [
@@ -364,6 +401,15 @@ for (const rule of policyValidationRules) {
 }
 
 write(
+  "objects/Record_Health_Check_Alert_Setting__c/validationRules/RHC_Setting_Retention_Range.validationRule-meta.xml",
+  `<ValidationRule${ns}><fullName>RHC_Setting_Retention_Range</fullName><active>true</active><errorConditionFormula>OR(ISBLANK(RetentionDays__c), RetentionDays__c &lt; 1, RetentionDays__c &gt; 3650)</errorConditionFormula><errorMessage>Retention Days must be a whole number from 1 through 3650.</errorMessage></ValidationRule>`
+);
+write(
+  "objects/Record_Health_Check_Alert_Setting__c/validationRules/RHC_Setting_Identity.validationRule-meta.xml",
+  `<ValidationRule${ns}><fullName>RHC_Setting_Identity</fullName><active>true</active><errorConditionFormula>OR(Name &lt;&gt; "Default", SettingKey__c &lt;&gt; "Default")</errorConditionFormula><errorMessage>The package-owned alert setting must use the Default identity.</errorMessage></ValidationRule>`
+);
+
+write(
   "notificationtypes/RHC_Alert.notiftype-meta.xml",
   `<CustomNotificationType${ns}><customNotifTypeName>RHC Alert</customNotifTypeName><desktop>true</desktop><masterLabel>RHC Alert</masterLabel><mobile>true</mobile></CustomNotificationType>`
 );
@@ -399,7 +445,9 @@ const classes = [
   "RHCAlertsNotificationSenderTest",
   "RHCAlertsPolicyValidator",
   "RHCAlertsPolicyValidatorTest",
+  "RHCAlertsPolicyAdminService",
   "RHCAlertsRecipientResolver",
+  "RHCAlertsRetentionService",
   "RHCAlertsResultPolicyMatcher",
   "RHCAlertsResultPolicyMatcherTest",
   "RHCAlertsTestDataFactory",
@@ -440,7 +488,9 @@ const permission = (admin) => {
     `<description>${admin ? "Configure policies, inspect delivery history, and run setup coverage checks." : "Least-privilege read-only access to inspect delivery outcomes."}</description>`
   );
   for (const object of objects) {
-    const editable = admin && object.api.endsWith("Policy__c");
+    const editable =
+      admin &&
+      (object.api.endsWith("Policy__c") || object.api.endsWith("Setting__c"));
     for (const field of object.fields) {
       const fieldName = `${object.api}.${field.name}`;
       if (admin || viewerFields.has(fieldName)) {
@@ -454,9 +504,12 @@ const permission = (admin) => {
     `<hasActivationRequired>false</hasActivationRequired><label>RHC Alerts ${admin ? "Admin" : "Viewer Runtime"}</label>`
   );
   for (const object of objects) {
-    const editable = admin && object.api.endsWith("Policy__c");
+    if (!admin && object.api.endsWith("Setting__c")) continue;
+    const policy = admin && object.api.endsWith("Policy__c");
+    const setting = admin && object.api.endsWith("Setting__c");
+    const delivery = admin && object.api.endsWith("Delivery__c");
     parts.push(
-      `<objectPermissions><allowCreate>${editable}</allowCreate><allowDelete>${editable}</allowDelete><allowEdit>${editable}</allowEdit><allowRead>true</allowRead><modifyAllRecords>${editable}</modifyAllRecords><object>${object.api}</object><viewAllRecords>true</viewAllRecords></objectPermissions>`
+      `<objectPermissions><allowCreate>${policy || setting}</allowCreate><allowDelete>${policy || delivery}</allowDelete><allowEdit>${policy || setting}</allowEdit><allowRead>true</allowRead><modifyAllRecords>${policy || delivery}</modifyAllRecords><object>${object.api}</object><viewAllRecords>${!setting}</viewAllRecords></objectPermissions>`
     );
   }
   parts.push(
@@ -465,7 +518,7 @@ const permission = (admin) => {
   parts.push(
     `<tabSettings><tab>RHC_Alerts_Delivery_History</tab><visibility>Visible</visibility></tabSettings>`
   );
-  for (const object of objects)
+  for (const object of objects.filter((value) => value.generateTab !== false))
     parts.push(
       `<tabSettings><tab>${object.api}</tab><visibility>${admin ? "Visible" : "None"}</visibility></tabSettings>`
     );

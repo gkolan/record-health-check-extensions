@@ -6,7 +6,16 @@ import listRecipients from "@salesforce/apex/RHCAlertsAdminController.listRecipi
 import savePolicy from "@salesforce/apex/RHCAlertsAdminController.savePolicy";
 import getLimitInfo from "@salesforce/apex/RHCAlertsAdminController.getLimitInfo";
 import analyzeCoverage from "@salesforce/apex/RHCAlertsAdminController.analyzeCoverage";
+import sendTestAlert from "@salesforce/apex/RHCAlertsAdminController.sendTestAlert";
+import getRetentionSettings from "@salesforce/apex/RHCAlertsAdminController.getRetentionSettings";
+import saveRetentionSettings from "@salesforce/apex/RHCAlertsAdminController.saveRetentionSettings";
+import purgeDeliveries from "@salesforce/apex/RHCAlertsAdminController.purgeDeliveries";
 
+jest.mock(
+  "@salesforce/apex/RHCAlertsAdminController.sendTestAlert",
+  () => ({ default: jest.fn() }),
+  { virtual: true }
+);
 jest.mock(
   "@salesforce/apex/RHCAlertsAdminController.listPolicies",
   () => ({ default: jest.fn() }),
@@ -37,6 +46,21 @@ jest.mock(
   () => ({ default: jest.fn() }),
   { virtual: true }
 );
+jest.mock(
+  "@salesforce/apex/RHCAlertsAdminController.getRetentionSettings",
+  () => ({ default: jest.fn() }),
+  { virtual: true }
+);
+jest.mock(
+  "@salesforce/apex/RHCAlertsAdminController.saveRetentionSettings",
+  () => ({ default: jest.fn() }),
+  { virtual: true }
+);
+jest.mock(
+  "@salesforce/apex/RHCAlertsAdminController.purgeDeliveries",
+  () => ({ default: jest.fn() }),
+  { virtual: true }
+);
 
 const flush = async () => {
   await Promise.resolve();
@@ -61,6 +85,11 @@ describe("c-rhc-alerts-admin", () => {
       maxAttempts: 3,
       note: "Limits apply."
     });
+    getRetentionSettings.mockResolvedValue({
+      retentionDays: 90,
+      configured: false,
+      maxDeleteRows: 1000
+    });
     analyzeCoverage.mockResolvedValue([
       {
         severity: "INFO",
@@ -69,6 +98,8 @@ describe("c-rhc-alerts-admin", () => {
       }
     ]);
     savePolicy.mockResolvedValue("a01000000000001");
+    saveRetentionSettings.mockResolvedValue();
+    purgeDeliveries.mockResolvedValue(2);
   });
   afterEach(() => {
     while (document.body.firstChild)
@@ -205,6 +236,47 @@ describe("c-rhc-alerts-admin", () => {
     expect(savePolicy).not.toHaveBeenCalled();
   });
 
+  it("surfaces a bounded policy-save error and rejects an unknown recipient label", async () => {
+    savePolicy.mockRejectedValueOnce({
+      body: { message: "The policy could not be saved." }
+    });
+    const element = createElement("c-rhc-alerts-admin", { is: RhcAlertsAdmin });
+    const toastHandler = jest.fn();
+    element.addEventListener("lightning__showtoast", toastHandler);
+    document.body.appendChild(element);
+    await flush();
+    await flush();
+
+    element.shadowRoot
+      .querySelector('[data-field="RecipientId__c"]')
+      .dispatchEvent(
+        new CustomEvent("change", {
+          detail: { value: "005000000000099" }
+        })
+      );
+    element.shadowRoot
+      .querySelectorAll(
+        "lightning-input, lightning-combobox, lightning-dual-listbox"
+      )
+      .forEach((input) => {
+        input.reportValidity = jest.fn(() => true);
+      });
+    element.shadowRoot.querySelectorAll("lightning-button")[0].click();
+    await flush();
+
+    expect(savePolicy).toHaveBeenCalledWith({
+      policy: expect.objectContaining({ RecipientLabel__c: "" })
+    });
+    expect(toastHandler).toHaveBeenCalledWith(
+      expect.objectContaining({
+        detail: expect.objectContaining({
+          title: "Policy was not saved",
+          message: "The policy could not be saved."
+        })
+      })
+    );
+  });
+
   it("disables actions while a save is pending to prevent duplicate submission", async () => {
     let resolveSave;
     savePolicy.mockImplementationOnce(
@@ -268,6 +340,223 @@ describe("c-rhc-alerts-admin", () => {
         title: "Coverage analysis failed",
         message: "Try again or contact your Salesforce administrator.",
         variant: "error"
+      })
+    );
+  });
+
+  it("sends a test alert for a policy row to the current user", async () => {
+    listPolicies.mockResolvedValue([
+      {
+        Id: "a01000000000001AAA",
+        DisplayName__c: "Ops",
+        NotificationChannel__c: "EMAIL",
+        Active__c: true
+      }
+    ]);
+    sendTestAlert.mockResolvedValue();
+    const element = createElement("c-rhc-alerts-admin", { is: RhcAlertsAdmin });
+    document.body.appendChild(element);
+    await flush();
+    const table = [
+      ...element.shadowRoot.querySelectorAll("lightning-datatable")
+    ].find((t) => t.columns.some((c) => c.fieldName === "DisplayName__c"));
+    table.dispatchEvent(
+      new CustomEvent("rowaction", {
+        detail: {
+          action: { name: "test" },
+          row: { Id: "a01000000000001AAA", NotificationChannel__c: "EMAIL" }
+        }
+      })
+    );
+    await flush();
+    expect(sendTestAlert).toHaveBeenCalledWith({
+      policyId: "a01000000000001AAA"
+    });
+  });
+
+  it("shows a bounded error when the test alert is rejected and ignores other row actions", async () => {
+    listPolicies.mockResolvedValue([
+      {
+        Id: "a01000000000001AAA",
+        DisplayName__c: "Ops",
+        NotificationChannel__c: "CUSTOM_NOTIFICATION",
+        Active__c: true
+      }
+    ]);
+    sendTestAlert.mockRejectedValue({
+      body: {
+        message: "Test alert could not be sent: NOTIFICATION_TYPE_UNAVAILABLE"
+      }
+    });
+    const element = createElement("c-rhc-alerts-admin", { is: RhcAlertsAdmin });
+    const toastHandler = jest.fn();
+    element.addEventListener("lightning__showtoast", toastHandler);
+    document.body.appendChild(element);
+    await flush();
+    const table = [
+      ...element.shadowRoot.querySelectorAll("lightning-datatable")
+    ].find((t) => t.columns.some((c) => c.fieldName === "DisplayName__c"));
+    table.dispatchEvent(
+      new CustomEvent("rowaction", {
+        detail: { action: { name: "other" }, row: {} }
+      })
+    );
+    table.dispatchEvent(
+      new CustomEvent("rowaction", {
+        detail: {
+          action: { name: "test" },
+          row: {
+            Id: "a01000000000001AAA",
+            NotificationChannel__c: "CUSTOM_NOTIFICATION"
+          }
+        }
+      })
+    );
+    await flush();
+    expect(sendTestAlert).toHaveBeenCalledTimes(1);
+    expect(toastHandler).toHaveBeenCalled();
+  });
+
+  it("saves a validated delivery-retention window", async () => {
+    const element = createElement("c-rhc-alerts-admin", { is: RhcAlertsAdmin });
+    const toastHandler = jest.fn();
+    element.addEventListener("lightning__showtoast", toastHandler);
+    document.body.appendChild(element);
+    await flush();
+    await flush();
+
+    const input = element.shadowRoot.querySelector("[data-retention-days]");
+    input.reportValidity = jest.fn(() => true);
+    input.value = "30";
+    input.dispatchEvent(new CustomEvent("change"));
+    element.shadowRoot.querySelector('[data-action="save-retention"]').click();
+    await flush();
+
+    expect(saveRetentionSettings).toHaveBeenCalledWith({ retentionDays: 30 });
+    expect(toastHandler).toHaveBeenCalledWith(
+      expect.objectContaining({
+        detail: expect.objectContaining({
+          title: "Retention settings saved",
+          variant: "success"
+        })
+      })
+    );
+  });
+
+  it("does not save an invalid delivery-retention window", async () => {
+    const element = createElement("c-rhc-alerts-admin", { is: RhcAlertsAdmin });
+    document.body.appendChild(element);
+    await flush();
+    await flush();
+
+    const input = element.shadowRoot.querySelector("[data-retention-days]");
+    input.reportValidity = jest.fn(() => false);
+    element.shadowRoot.querySelector('[data-action="save-retention"]').click();
+    await flush();
+
+    expect(saveRetentionSettings).not.toHaveBeenCalled();
+  });
+
+  it("surfaces a bounded retention-save error", async () => {
+    saveRetentionSettings.mockRejectedValueOnce({
+      body: { message: "Retention settings could not be saved." }
+    });
+    const element = createElement("c-rhc-alerts-admin", { is: RhcAlertsAdmin });
+    const toastHandler = jest.fn();
+    element.addEventListener("lightning__showtoast", toastHandler);
+    document.body.appendChild(element);
+    await flush();
+    await flush();
+
+    const input = element.shadowRoot.querySelector("[data-retention-days]");
+    input.reportValidity = jest.fn(() => true);
+    element.shadowRoot.querySelector('[data-action="save-retention"]').click();
+    await flush();
+
+    expect(toastHandler).toHaveBeenCalledWith(
+      expect.objectContaining({
+        detail: expect.objectContaining({
+          title: "Retention settings were not saved",
+          message: "Retention settings could not be saved.",
+          variant: "error"
+        })
+      })
+    );
+  });
+
+  it("requires confirmation before purging eligible delivery history", async () => {
+    getRetentionSettings.mockResolvedValueOnce({
+      retentionDays: 30,
+      configured: true,
+      maxDeleteRows: 1000
+    });
+    const element = createElement("c-rhc-alerts-admin", { is: RhcAlertsAdmin });
+    const toastHandler = jest.fn();
+    element.addEventListener("lightning__showtoast", toastHandler);
+    document.body.appendChild(element);
+    await flush();
+    await flush();
+
+    const purgeButton = element.shadowRoot.querySelector(
+      '[data-action="purge-deliveries"]'
+    );
+    expect(purgeButton.disabled).toBe(true);
+    const confirmation = element.shadowRoot.querySelector(
+      "[data-retention-confirm]"
+    );
+    confirmation.checked = true;
+    confirmation.dispatchEvent(new CustomEvent("change"));
+    await flush();
+    expect(purgeButton.disabled).toBe(false);
+    purgeButton.click();
+    await flush();
+
+    expect(purgeDeliveries).toHaveBeenCalledTimes(1);
+    expect(toastHandler).toHaveBeenCalledWith(
+      expect.objectContaining({
+        detail: expect.objectContaining({
+          title: "Delivery cleanup complete",
+          message: "2 terminal delivery record(s) deleted."
+        })
+      })
+    );
+    expect(purgeButton.disabled).toBe(true);
+  });
+
+  it("surfaces a bounded delivery-cleanup error", async () => {
+    getRetentionSettings.mockResolvedValueOnce({
+      retentionDays: 30,
+      configured: true,
+      maxDeleteRows: 1000
+    });
+    purgeDeliveries.mockRejectedValueOnce({
+      body: { message: "Delivery history could not be purged." }
+    });
+    const element = createElement("c-rhc-alerts-admin", { is: RhcAlertsAdmin });
+    const toastHandler = jest.fn();
+    element.addEventListener("lightning__showtoast", toastHandler);
+    document.body.appendChild(element);
+    await flush();
+    await flush();
+
+    const confirmation = element.shadowRoot.querySelector(
+      "[data-retention-confirm]"
+    );
+    confirmation.checked = true;
+    confirmation.dispatchEvent(new CustomEvent("change"));
+    await flush();
+    element.shadowRoot
+      .querySelector('[data-action="purge-deliveries"]')
+      .click();
+    await flush();
+
+    expect(toastHandler).toHaveBeenCalledWith(
+      expect.objectContaining({
+        detail: expect.objectContaining({
+          title: "Delivery cleanup failed",
+          message: "Delivery history could not be purged.",
+          variant: "error"
+        })
       })
     );
   });

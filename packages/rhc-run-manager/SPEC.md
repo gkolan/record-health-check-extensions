@@ -141,8 +141,9 @@ explicit dispositions:
 - Core does not expose a stable per-Check CPU/query/heap contract, so Run Manager does not promise
   per-Check resource accounting. It reports bounded job/scope failure evidence available from its
   own execution path.
-- History cleanup is an explicit administrator-approved retention process. Release 1 never silently
-  purges operational records.
+- History cleanup is an explicit administrator-approved retention process. It is never scheduled:
+  an Admin saves a 1–3,650 day window, acknowledges permanent deletion for each request, and removes
+  at most 1,000 explicit rows child-first. Active work and pending supplied-ID Requests are excluded.
 
 ## Acceptance criteria
 

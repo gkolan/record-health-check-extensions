@@ -23,6 +23,7 @@ public with sharing class RHCActionExecutionService {
   }
 
   /**
+   * Executes eligible pending actions and returns work that needs a delayed retry.
    * @param pendingIds Pending actions to execute
    * @return IDs eligible for a delayed retry
    */
@@ -40,9 +41,7 @@ public with sharing class RHCActionExecutionService {
     return work.retryIds;
   }
 
-  private static List<RHC_Pending_Action__c> queryActions(
-    List<Id> pendingIds
-  ) {
+  private static List<RHC_Pending_Action__c> queryActions(List<Id> pendingIds) {
     return [
       SELECT
         Id,
@@ -208,11 +207,7 @@ public with sharing class RHCActionExecutionService {
     action.Available_At__c = null;
     action.Last_Error_Code__c = null;
     action.Last_Error_Summary__c = null;
-    RHC_Action_History__c history = historyFor(
-      action,
-      attempt,
-      'SUPPRESSED'
-    );
+    RHC_Action_History__c history = historyFor(action, attempt, 'SUPPRESSED');
     history.Error_Code__c = 'COOLDOWN_ACTIVE';
     history.Error_Summary__c = 'A recent successful correction is still inside the policy cooldown.';
     work.histories.add(history);
@@ -236,11 +231,7 @@ public with sharing class RHCActionExecutionService {
     Integer attempt,
     ExecutionWork work
   ) {
-    RHC_Action_History__c history = historyFor(
-      action,
-      attempt,
-      'FAILED_FINAL'
-    );
+    RHC_Action_History__c history = historyFor(action, attempt, 'FAILED_FINAL');
     history.Error_Code__c = action.Last_Error_Code__c;
     history.Error_Summary__c = action.Last_Error_Summary__c;
     work.histories.add(history);
@@ -331,15 +322,14 @@ public with sharing class RHCActionExecutionService {
     }
   }
 
-  private static Boolean isExecutionAuthorized(
-    RHC_Pending_Action__c action
-  ) {
+  private static Boolean isExecutionAuthorized(RHC_Pending_Action__c action) {
     RHC_Action_Policy__c policy = action.Policy__r;
     if (policy == null || policy.Active__c != true) {
       return false;
     }
     Boolean hasApprovalFact =
-      action.Approved_By__c != null || action.Approved_At__c != null;
+      action.Approved_By__c != null ||
+      action.Approved_At__c != null;
     if (hasApprovalFact) {
       Boolean canApprove = approvalPermissionOverride == null
         ? FeatureManagement.checkPermission('RHC_Actions_Approve')
@@ -350,9 +340,7 @@ public with sharing class RHCActionExecutionService {
         canApprove;
     }
     Boolean canRunAutomatically = automaticPermissionOverride == null
-      ? FeatureManagement.checkPermission(
-          'RHC_Actions_Automatic_Execution'
-        )
+      ? FeatureManagement.checkPermission('RHC_Actions_Automatic_Execution')
       : automaticPermissionOverride;
     return policy.Mode__c == RHCActionConstants.MODE_AUTOMATIC &&
       policy.Auto_Execution_Enabled__c == true &&

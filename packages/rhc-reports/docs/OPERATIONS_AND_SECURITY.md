@@ -44,6 +44,17 @@ source, occurrence time, and contract/framework versions. It does not retain:
 Result events claiming restricted detail are rejected. Source Record ID is Text, not a relationship,
 so a deleted source record can leave only its former ID in history.
 
+## Ingestion evidence
+
+Fact upserts are keyed by Event ID and use partial success. A delivery whose only failures are
+transient (`UNABLE_TO_LOCK_ROW`, `SERVER_UNAVAILABLE`, `REQUEST_RUNNING_TOO_LONG`) is retried by
+the platform at most three times; after that, and for any permanent failure, the successful facts
+of that delivery are kept and the failure is recorded on the package setting as **Last Ingestion
+Failure At** and sorted **Ingestion Error Codes** (for example `REQUIRED_FIELD_MISSING` or
+`RETRY_EXHAUSTED`). The subscriber never throws a non-retryable exception, because that would move
+the trigger into the error state and stop all reporting until an administrator resumed it. Both
+values appear on the setup assistant under "Latest aggregation outcome".
+
 ## Scheduled processing
 
 `RHC Reports Daily Maintenance` is registered with cron `0 15 2 * * ?` by the user who clicks
@@ -115,6 +126,8 @@ Recommended Opportunity Close Readiness baseline:
 - Scheduled Jobs contains one future `RHC Reports Daily Maintenance` execution.
 - Apex Jobs shows successful Queueable and Batch work after the scheduled time.
 - `LastAggregatedDate__c` advances to the prior completed local day.
+- **Last Ingestion Failure At** on the setup assistant has not moved; if it has, review the error
+  codes and the publishing Check Set before facts are lost for that day.
 - Reporting Coverage's latest event time advances for active publishing Check Sets.
 
 ### Weekly administrator review

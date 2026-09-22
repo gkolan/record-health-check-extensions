@@ -78,6 +78,22 @@ The parent Route lookup uses Restrict delete. The auto-number is `RHCD-{00000000
 value; callout and final ledger update occur in one Queueable transaction. Operators must not build
 automation that expects `DELIVERING`.
 
+## Integration setting (`Record_Health_Check_Integration_Setting__c`)
+
+The package supports one administrator-managed record whose Name and Setting Key are both
+`Default`. Only `RHC Integrations Admin` receives create/read/edit access; the setting cannot be
+deleted through that permission set. Operator, Viewer, and Runtime receive no access.
+
+| Field | API name | Purpose |
+| --- | --- | --- |
+| Setting Name | `Name` | Fixed singleton identity `Default` |
+| Setting Key | `SettingKey__c` | Unique external key fixed to `Default` |
+| Retention Days | `RetentionDays__c` | Whole days from 1 through 3,650 before completed terminal deliveries become eligible for manual cleanup |
+
+The unsaved value of 90 days is a recommendation, not deletion authorization. Saving the setting
+does not create a schedule. Each separately confirmed purge deletes at most 1,000 oldest rows whose
+status is `SUCCEEDED` or `DEAD_LETTER` and whose Completed At precedes the cutoff.
+
 ## Complete example
 
 | Field | Value |

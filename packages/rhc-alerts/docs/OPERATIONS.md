@@ -136,11 +136,29 @@ turn a queued claim into `SUPPRESSED / POLICY_INACTIVE`.
 
 ## Retention and uninstall
 
-Delivery rows are operational evidence, not analytical history. Version `0.1.0` does not ship an
-automated purge job and the packaged Admin permission set intentionally does not grant delivery-row
-delete. Define an organization retention period before production. If deletion is required, use a
-separately authorized data administrator and approved tooling; never delete PENDING rows during an
-incident.
+Delivery rows are operational evidence, not analytical history. Define and approve an organization
+retention period before production. The Administration page stores one package-owned window from 1
+through 3,650 days. An unsaved page displays 90 days as a recommendation, but cleanup remains
+disabled until an administrator saves the value.
+
+The packaged cleanup is deliberately manual:
+
+1. Review investigation, legal-hold, audit, and export requirements.
+2. Open **RHC Alerts Administration → Delivery retention**.
+3. Save the approved retention days.
+4. Review the permanent-deletion statement and select its acknowledgment.
+5. Click **Purge eligible deliveries** and record the returned count.
+
+One run deletes at most 1,000 oldest rows whose `CreatedDate` is outside the window and whose outcome
+is `DELIVERED`, `SUPPRESSED`, `FAILED`, or `DUPLICATE`. It never selects `PENDING`, never widens the
+predicate after a partial run, and never schedules another run. A result of 1,000 means more eligible
+rows may remain; rerun only under the same approved change window. A result of zero means no eligible
+terminal evidence was found.
+
+The Admin permission set grants delivery delete solely so the user-mode controller can perform this
+operation. That permission also allows an administrator to use other authorized Salesforce data
+tools, so assign Admin only to configuration owners and use the packaged action for normal cleanup.
+Scheduled cleanup is not included and requires a separate design, approval, and release.
 
 Uninstalling RHC Alerts removes its package metadata and package-owned data according to Salesforce
 package uninstall behavior. It does not change core or another extension. Export only the bounded

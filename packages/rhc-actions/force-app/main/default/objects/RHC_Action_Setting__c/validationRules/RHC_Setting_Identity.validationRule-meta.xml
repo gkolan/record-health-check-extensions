@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>RHC_Setting_Identity</fullName>
+    <active>true</active>
+    <description>Preserves the package-owned singleton identity used by the retention service.</description>
+    <errorConditionFormula>OR(Name &lt;&gt; "Default", Setting_Key__c &lt;&gt; "Default")</errorConditionFormula>
+    <errorMessage>The package-owned Actions setting must use the Default identity.</errorMessage>
+</ValidationRule>

@@ -71,10 +71,14 @@ const objects = [
       { name: "Schedule__c", label: "Schedule", type: "Lookup", referenceTo: "Record_Health_Check_Schedule__c", relationshipLabel: "Batch Runs", relationshipName: "BatchRuns", description: "Optional firing schedule." },
       { name: "AsyncApexJobId__c", label: "Async Apex Job ID", type: "Text", length: 18, description: "Owned Batch AsyncApexJob identity." },
       { name: "Source__c", label: "Source", type: "Picklist", values: ["RUN_NOW", "SCHEDULED", "SUPPLIED_IDS"], description: "Entry path that launched the shared execution service." },
-      { name: "Status__c", label: "Status", type: "Picklist", values: ["QUEUED", "PROCESSING", "COMPLETED", "PARTIAL_FAILURE", "ERROR"], description: "Operational Batch Run status." },
+      { name: "Status__c", label: "Status", type: "Picklist", values: ["QUEUED", "PROCESSING", "COMPLETED", "PARTIAL_FAILURE", "ERROR", "CANCELLED"], description: "Operational Batch Run status." },
       { name: "SubmittedRecordCount__c", label: "Submitted Record Count", type: "Number", description: "Records submitted to core across scopes." },
       { name: "ProcessedRecordCount__c", label: "Processed Record Count", type: "Number", description: "Records processed successfully." },
       { name: "FailedScopeCount__c", label: "Failed Scope Count", type: "Number", description: "Scopes that failed while prior scopes remained committed." },
+      { name: "PassedCount__c", label: "Passed Count", type: "Number", description: "Total PASS results across completed scopes." },
+      { name: "FailedCount__c", label: "Failed Count", type: "Number", description: "Total FAIL results across completed scopes." },
+      { name: "UnableCount__c", label: "Unable Count", type: "Number", description: "Total UNABLE_TO_EVALUATE results across completed scopes." },
+      { name: "SystemErrorCount__c", label: "System Error Count", type: "Number", description: "Total ERROR results across completed scopes." },
       { name: "StartedAt__c", label: "Started At", type: "DateTime", description: "Execution start." },
       { name: "CompletedAt__c", label: "Completed At", type: "DateTime", description: "Execution completion." },
       { name: "ErrorSummary__c", label: "Error Summary", type: "LongTextArea", length: 32768, description: "Sanitized operational error summary." }
@@ -130,36 +134,52 @@ const objects = [
       { name: "Status__c", label: "Status", type: "Picklist", values: ["PENDING", "SUBMITTED"], description: "Coalescing state." },
       { name: "RequestedAt__c", label: "Requested At", type: "DateTime", description: "Most recent request time." }
     ]
+  },
+  {
+    api: "Record_Health_Check_Run_Setting__c", label: "Record Health Check Run Setting", plural: "Record Health Check Run Settings", nameType: "Text", sharing: "Private", internal: true,
+    fields: [
+      { name: "SettingKey__c", label: "Setting Key", type: "Text", length: 80, unique: true, external: true, description: "Stable singleton key for package-owned Run Manager settings." },
+      { name: "RetentionDays__c", label: "Retention Days", type: "Number", precision: 4, description: "Whole days to retain completed Run Manager operational records before manual cleanup." }
+    ]
   }
 ];
 
 for (const object of objects) {
-  write(`objects/${object.api}/${object.api}.object-meta.xml`, `<CustomObject${ns}><deploymentStatus>Deployed</deploymentStatus><description>Packaged RHC Run Manager operational data.</description><enableHistory>true</enableHistory><enableReports>true</enableReports><enableSearch>true</enableSearch><label>${object.label}</label><nameField><displayFormat>${object.format}</displayFormat><label>${object.label} Number</label><type>AutoNumber</type></nameField><pluralLabel>${object.plural}</pluralLabel><sharingModel>${object.sharing}</sharingModel><visibility>Public</visibility></CustomObject>`);
+  const nameField = object.nameType === "Text"
+    ? `<nameField><label>${object.label} Name</label><type>Text</type></nameField>`
+    : `<nameField><displayFormat>${object.format}</displayFormat><label>${object.label} Number</label><type>AutoNumber</type></nameField>`;
+  const enabled = !object.internal;
+  write(`objects/${object.api}/${object.api}.object-meta.xml`, `<CustomObject${ns}><deploymentStatus>Deployed</deploymentStatus><description>Packaged RHC Run Manager operational data.</description><enableHistory>${enabled}</enableHistory><enableReports>${enabled}</enableReports><enableSearch>${enabled}</enableSearch><label>${object.label}</label>${nameField}<pluralLabel>${object.plural}</pluralLabel><sharingModel>${object.sharing}</sharingModel><visibility>Public</visibility></CustomObject>`);
   for (const field of object.fields) write(`objects/${object.api}/fields/${field.name}.field-meta.xml`, `<CustomField${ns}>${fieldXml(field)}</CustomField>`);
-  write(`objects/${object.api}/listViews/All.listView-meta.xml`, `<ListView${ns}><fullName>All</fullName><filterScope>Everything</filterScope><label>All</label><columns>NAME</columns></ListView>`);
-  write(`tabs/${object.api}.tab-meta.xml`, `<CustomTab${ns}><customObject>true</customObject><motif>Custom48: Trophy</motif><description>RHC Run Manager ${object.plural}.</description></CustomTab>`);
+  if (!object.internal) write(`objects/${object.api}/listViews/All.listView-meta.xml`, `<ListView${ns}><fullName>All</fullName><filterScope>Everything</filterScope><label>All</label><columns>NAME</columns></ListView>`);
+  if (!object.internal) write(`tabs/${object.api}.tab-meta.xml`, `<CustomTab${ns}><customObject>true</customObject><motif>Custom48: Trophy</motif><description>RHC Run Manager ${object.plural}.</description></CustomTab>`);
 }
+
+write("objects/Record_Health_Check_Run_Setting__c/validationRules/Retention_Days_Range.validationRule-meta.xml", `<ValidationRule${ns}><fullName>Retention_Days_Range</fullName><active>true</active><description>Requires a whole retention window from 1 through 3650 days.</description><errorConditionFormula>OR(ISBLANK(RetentionDays__c), RetentionDays__c &lt; 1, RetentionDays__c &gt; 3650, MOD(RetentionDays__c, 1) &lt;&gt; 0)</errorConditionFormula><errorDisplayField>RetentionDays__c</errorDisplayField><errorMessage>Retention Days must be a whole number from 1 through 3650.</errorMessage></ValidationRule>`);
+write("objects/Record_Health_Check_Run_Setting__c/validationRules/Setting_Identity.validationRule-meta.xml", `<ValidationRule${ns}><fullName>Setting_Identity</fullName><active>true</active><description>Protects the package-owned singleton identity.</description><errorConditionFormula>OR(Name &lt;&gt; &quot;Default&quot;, SettingKey__c &lt;&gt; &quot;Default&quot;)</errorConditionFormula><errorMessage>The package-owned Run Manager setting must use the Default identity.</errorMessage></ValidationRule>`);
+write("customPermissions/RHC_Run_Manager_Manage_Retention.customPermission-meta.xml", `<CustomPermission${ns}><description>Allows guarded manual cleanup of eligible Run Manager operational records.</description><label>Manage RHC Run Manager Retention</label></CustomPermission>`);
 
 write("tabs/RHC_Run_Manager.tab-meta.xml", `<CustomTab${ns}><description>Administer and monitor RHC Run Manager.</description><label>RHC Run Manager</label><lwcComponent>rhcRunManager</lwcComponent><motif>Custom48: Trophy</motif></CustomTab>`);
 write("applications/RHC_Run_Manager.app-meta.xml", `<CustomApplication${ns}><description>Configure, schedule, and monitor Record Health Check Batch runs.</description><formFactors>Large</formFactors><label>RHC Run Manager</label><navType>Standard</navType><tabs>RHC_Run_Manager</tabs><tabs>Record_Health_Check_Run_Definition__c</tabs><tabs>Record_Health_Check_Schedule__c</tabs><tabs>Record_Health_Check_Batch_Run__c</tabs><tabs>Record_Health_Check_Run__c</tabs><tabs>Record_Health_Check_Run_Result__c</tabs><uiType>Lightning</uiType></CustomApplication>`);
 
-const apexClasses = ["RHCRunManagerAdminController", "RHCRunManagerBatch", "RHCRunManagerCaptureService", "RHCRunManagerCoalescerQueueable", "RHCRunManagerCoreMetadataGateway", "RHCRunManagerExecutionService", "RHCRunManagerFilterService", "RHCRunManagerScheduleService", "RHCRunManagerScheduled", "RHCRunManagerSubmitIdsAction"];
-for (const apexClass of [...apexClasses, "RHCRunManagerUninstallHandler", "RHCRunManagerTestDataFactory", "RHCRunManagerAdminControllerTest", "RHCRunManagerAsyncTest", "RHCRunManagerCoreMetadataGatewayTest", "RHCRunManagerFilterServiceTest", "RHCRunManagerCaptureServiceTest", "RHCRunManagerExecutionTest", "RHCRunManagerSubmitIdsActionTest", "RHCRunManagerUninstallHandlerTest"]) {
+const apexClasses = ["RHCRunManagerAdminCommandService", "RHCRunManagerAdminController", "RHCRunManagerBatch", "RHCRunManagerCaptureService", "RHCRunManagerCoalescerQueueable", "RHCRunManagerCoreMetadataGateway", "RHCRunManagerExecutionService", "RHCRunManagerFilterService", "RHCRunManagerRetentionService", "RHCRunManagerScheduleService", "RHCRunManagerScheduled", "RHCRunManagerSubmitIdsAction"];
+for (const apexClass of [...apexClasses, "RHCRunManagerUninstallHandler", "RHCRunManagerTestDataFactory", "RHCRunManagerAdminControllerTest", "RHCRunManagerAsyncTest", "RHCRunManagerCoreMetadataGatewayTest", "RHCRunManagerFilterServiceTest", "RHCRunManagerCaptureServiceTest", "RHCRunManagerExecutionTest", "RHCRunManagerRetentionServiceTest", "RHCRunManagerSubmitIdsActionTest", "RHCRunManagerUninstallHandlerTest"]) {
   write(`classes/${apexClass}.cls-meta.xml`, `<ApexClass${ns}><apiVersion>66.0</apiVersion><status>Active</status></ApexClass>`);
 }
 const sensitive = new Set(["FoundValueJson__c", "ExpectedValueJson__c"]);
 const permissionSet = (name, label, admin, viewAll) => {
   const classAccess = admin ? apexClasses.map((apexClass) => `<classAccesses><apexClass>${apexClass}</apexClass><enabled>true</enabled></classAccesses>`).join("") : `<classAccesses><apexClass>RHCRunManagerAdminController</apexClass><enabled>true</enabled></classAccesses>`;
-  const fieldPermissions = objects.flatMap((object) => object.fields.filter((field) => field.type !== "MasterDetail" && (admin || !sensitive.has(field.name))).map((field) => `<fieldPermissions><editable>${admin}</editable><field>${object.api}.${field.name}</field><readable>true</readable></fieldPermissions>`)).join("");
-  const readableObjects = objects;
+  const readableObjects = admin ? objects : objects.filter((object) => !object.internal);
+  const fieldPermissions = readableObjects.flatMap((object) => object.fields.filter((field) => field.type !== "MasterDetail" && (admin || !sensitive.has(field.name))).map((field) => `<fieldPermissions><editable>${admin}</editable><field>${object.api}.${field.name}</field><readable>true</readable></fieldPermissions>`)).join("");
   const objectPermissions = readableObjects.map((object) => `<objectPermissions><allowCreate>${admin}</allowCreate><allowDelete>${admin}</allowDelete><allowEdit>${admin}</allowEdit><allowRead>true</allowRead><modifyAllRecords>${admin}</modifyAllRecords><object>${object.api}</object><viewAllRecords>${viewAll}</viewAllRecords></objectPermissions>`).join("");
-  const tabs = readableObjects.map((object) => `<tabSettings><tab>${object.api}</tab><visibility>Visible</visibility></tabSettings>`).join("");
-  write(`permissionsets/${name}.permissionset-meta.xml`, `<PermissionSet${ns}>${classAccess}<description>${admin ? "Administer definitions, schedules, execution, and all operational details." : "Read Run Manager operational summaries without restricted details."}</description>${fieldPermissions}<hasActivationRequired>false</hasActivationRequired><label>${label}</label>${objectPermissions}<tabSettings><tab>RHC_Run_Manager</tab><visibility>Visible</visibility></tabSettings>${tabs}</PermissionSet>`);
+  const tabs = readableObjects.filter((object) => !object.internal).map((object) => `<tabSettings><tab>${object.api}</tab><visibility>Visible</visibility></tabSettings>`).join("");
+  const customPermissions = admin ? `<customPermissions><enabled>true</enabled><name>RHC_Run_Manager_Manage_Retention</name></customPermissions>` : "";
+  write(`permissionsets/${name}.permissionset-meta.xml`, `<PermissionSet${ns}>${classAccess}${customPermissions}<description>${admin ? "Administer definitions, schedules, execution, retention, and all operational details." : "Read Run Manager operational summaries without restricted details."}</description>${fieldPermissions}<hasActivationRequired>false</hasActivationRequired><label>${label}</label>${objectPermissions}<tabSettings><tab>RHC_Run_Manager</tab><visibility>Visible</visibility></tabSettings>${tabs}</PermissionSet>`);
 };
 permissionSet("RHC_Run_Manager_Admin", "RHC Run Manager Admin", true, true);
 permissionSet("RHC_Run_Manager_Viewer", "RHC Run Manager Viewer", false, true);
 
-const executorObjects = objects.filter((object) => object.api !== "Record_Health_Check_Schedule__c");
+const executorObjects = objects.filter((object) => object.api !== "Record_Health_Check_Schedule__c" && !object.internal);
 const executorClasses = ["RHCRunManagerSubmitIdsAction"];
 const executorClassAccess = executorClasses.map((apexClass) => `<classAccesses><apexClass>${apexClass}</apexClass><enabled>true</enabled></classAccesses>`).join("");
 const executorFieldPermissions = executorObjects.flatMap((object) => object.fields.filter((field) => field.type !== "MasterDetail").map((field) => {

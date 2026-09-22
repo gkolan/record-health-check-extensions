@@ -1,5 +1,5 @@
 /**
- * Subscriber-owned no-namespace adapter for Account change events.
+ * Subscriber-owned adapter for Account change events.
  */
 trigger RHCAccountChangeMonitor on AccountChangeEvent (after insert) {
   RHCChangeMonitorIntake.accept(Trigger.new);
