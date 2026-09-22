@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <LightningComponentBundle xmlns="http://soap.sforce.com/2006/04/metadata">
   <apiVersion>66.0</apiVersion><isExposed>true</isExposed><masterLabel>RHC Alerts Administration</masterLabel>
-  <description>Configure RHC Alerts policies and analyze core publication coverage.</description>
-  <targets><target>lightning__AppPage</target><target>lightning__HomePage</target><target>lightning__Tab</target></targets>
+  <description>Configure alert policies, verify publication coverage, and run approved bounded delivery cleanup.</description>
+  <targets><target>lightning__Tab</target></targets>
 </LightningComponentBundle>

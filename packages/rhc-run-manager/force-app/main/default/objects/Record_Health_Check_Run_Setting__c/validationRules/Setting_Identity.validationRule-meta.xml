@@ -1,0 +1,2 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata"><fullName>Setting_Identity</fullName><active>true</active><description>Protects the package-owned singleton identity.</description><errorConditionFormula>OR(Name &lt;&gt; &quot;Default&quot;, SettingKey__c &lt;&gt; &quot;Default&quot;)</errorConditionFormula><errorMessage>The package-owned Run Manager setting must use the Default identity.</errorMessage></ValidationRule>

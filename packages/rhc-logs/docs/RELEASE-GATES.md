@@ -23,8 +23,8 @@ CI result to a deterministic digest of the current source. See the
 | Dependency audit | `npm audit --audit-level=high` | Passed locally, 0 vulnerabilities, 2026-08-30 |
 | Source conversion | source-to-Metadata-API conversion in an empty temporary directory | Passed locally, 2026-08-30 |
 | Salesforce Code Analyzer | Recommended rules, zero severity 1–5 findings | Passed locally, 2026-08-30 |
-| Namespaced source compile and tests | `rhc` scratch org; minimum-core source plus extension source; 29 Apex tests; at least 95% package Apex coverage | **Pending; requires authorized org creation and source upload** |
-| No-namespace source compile and tests | Namespace-null extension source in a no-namespace scratch org with promoted minimum-core dependency; at least 29 Apex tests and 95% package Apex coverage | Passed, 2026-08-30: dry run `0AfRL00000hD2jD0AS`; deployment `0AfRL00000hDCH80AO`; 32/32 tests and 429/450 lines (95%), run `707RL00001eGvoZ` |
+| Namespaced source compile and tests | `rhc` scratch org; promoted minimum-core dependency plus extension source; all current 34 Apex tests; at least 95% package Apex coverage | **Pending; requires authorized org creation and source upload** |
+| No-namespace source compile and tests | Namespace-null extension source in a no-namespace scratch org with promoted minimum-core dependency; all current 34 Apex tests and at least 95% package Apex coverage | **Pending for current source**; historical 2026-08-30 evidence passed 32/32 tests and 429/450 lines (95%), run `707RL00001eGvoZ` |
 | Platform Event runtime | 251-event delivery, duplicate delivery, malformed event, unsupported contract, and retry classification in both source org shapes | No-namespace passed in run `707RL00001eGvoZ`; namespaced pending |
 | Permission/runtime acceptance | unprivileged, Viewer, and Admin behavior; schedule create/disable; bounded cleanup | No-namespace passed in run `707RL00001eGvoZ`; namespaced pending |
 | Exact-commit CI | GitHub Actions `Validate` succeeds for the release commit | **Pending** |

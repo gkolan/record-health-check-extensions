@@ -6,7 +6,7 @@ public with sharing class RHCReportsSetupController {
      * Returns effective package settings with Day-1 defaults.
      * @return setup values for the assistant
      */
-    @AuraEnabled(cacheable=true)
+    @AuraEnabled
     public static SettingDTO getSettings() {
         requireManager();
         Record_Health_Check_Report_Setting__c setting =
@@ -33,33 +33,59 @@ public with sharing class RHCReportsSetupController {
         output.lastAggregationAttemptAt = setting?.LastAggregationAttemptAt__c;
         output.lastAggregationStatus = setting?.LastAggregationStatus__c;
         output.lastAggregationErrorType = setting?.LastAggregationErrorType__c;
+        output.lastIngestionFailureAt = setting?.LastIngestionFailureAt__c;
+        output.lastIngestionErrorCodes = setting?.LastIngestionErrorCodes__c;
         output.cronTriggerId = setting?.CronTriggerId__c;
         output.scheduled = String.isNotBlank(output.cronTriggerId);
         return output;
     }
     /**
+     * Queues aggregation of the most recently completed local day (and bounded catch-up of
+     * earlier missed days) without waiting for the nightly schedule.
+     * @return local snapshot date that was queued
+     */
+    @AuraEnabled
+    public static Date runAggregationNow() {
+        requireManager();
+        Record_Health_Check_Report_Setting__c setting =
+            Record_Health_Check_Report_Setting__c.getOrgDefaults();
+        String timeZoneId = String.isBlank(setting?.AggregationTimeZone__c)
+            ? UserInfo.getTimeZone().getID()
+            : setting.AggregationTimeZone__c;
+        Date latestCompletedDate = Date.valueOf(
+            Datetime.now().format('yyyy-MM-dd', timeZoneId)
+        ).addDays(-1);
+        Date nextSnapshotDate = setting?.LastAggregatedDate__c == null ||
+            setting.LastAggregatedDate__c >= latestCompletedDate
+            ? latestCompletedDate
+            : setting.LastAggregatedDate__c.addDays(1);
+        if (Limits.getQueueableJobs() >= Limits.getLimitQueueableJobs()) {
+            throw new AuraHandledException('Too many asynchronous jobs are queued. Try again shortly.');
+        }
+        System.enqueueJob(
+            new RHCReportsDailyAggregationQueueable(
+                nextSnapshotDate,
+                timeZoneId,
+                RHCReportsDailyAggregationQueueable.CatchUpMode.ENABLED
+            )
+        );
+        return nextSnapshotDate;
+    }
+
+    /**
      * Saves retention and aggregation settings and optionally registers daily maintenance.
-     * @param detailedRetentionDays detailed fact retention in days
-     * @param snapshotRetentionDays snapshot retention in days
-     * @param dailyAggregationEnabled enables prior-local-day aggregation
-     * @param retentionCleanupEnabled enables irreversible cleanup
-     * @param aggregationTimeZone Salesforce time-zone ID
-     * @param scheduled whether the package maintenance job should be registered
+     * @param input retention, aggregation, time-zone, and scheduling settings
      * @return saved effective settings
      */
     @AuraEnabled
-    public static SettingDTO saveSettings(
-        Integer detailedRetentionDays,
-        Integer snapshotRetentionDays,
-        Boolean dailyAggregationEnabled,
-        Boolean retentionCleanupEnabled,
-        String aggregationTimeZone,
-        Boolean scheduled
-    ) {
+    public static SettingDTO saveSettings(SaveSettingsInput input) {
         requireManager();
-        validateDays(detailedRetentionDays, 'Detailed retention', 1, 3650);
-        validateDays(snapshotRetentionDays, 'Snapshot retention', 1, 36500);
-        validateTimeZone(aggregationTimeZone);
+        if (input == null) {
+            throw new AuraHandledException('Reporting settings are required.');
+        }
+        validateDays(input.detailedRetentionDays, 'Detailed retention', 1, 3650);
+        validateDays(input.snapshotRetentionDays, 'Snapshot retention', 1, 36500);
+        validateTimeZone(input.aggregationTimeZone);
         Record_Health_Check_Report_Setting__c setting =
             Record_Health_Check_Report_Setting__c.getOrgDefaults();
         if (setting == null) {
@@ -67,14 +93,14 @@ public with sharing class RHCReportsSetupController {
                 SetupOwnerId = UserInfo.getOrganizationId()
             );
         }
-        setting.DetailedRetentionDays__c = detailedRetentionDays;
-        setting.SnapshotRetentionDays__c = snapshotRetentionDays;
-        setting.DailyAggregationEnabled__c = dailyAggregationEnabled == true;
-        setting.RetentionCleanupEnabled__c = retentionCleanupEnabled == true;
-        setting.AggregationTimeZone__c = aggregationTimeZone;
+        setting.DetailedRetentionDays__c = input.detailedRetentionDays;
+        setting.SnapshotRetentionDays__c = input.snapshotRetentionDays;
+        setting.DailyAggregationEnabled__c = input.dailyAggregationEnabled == true;
+        setting.RetentionCleanupEnabled__c = input.retentionCleanupEnabled == true;
+        setting.AggregationTimeZone__c = input.aggregationTimeZone;
         abortExisting(setting.CronTriggerId__c);
         setting.CronTriggerId__c = null;
-        if (scheduled == true) {
+        if (input.scheduled == true) {
             setting.CronTriggerId__c = System.schedule(
                 RHCReportsMaintenanceScheduled.JOB_NAME,
                 RHCReportsMaintenanceScheduled.CRON_DAILY,
@@ -86,6 +112,16 @@ public with sharing class RHCReportsSetupController {
         // code-analyzer-suppress-next-line ApexCRUDViolation: Manage_RHC_Reports is the explicit authorization boundary for this validated, package-owned hierarchy setting; granting direct CRUD/FLS would permit bypassing validation and scheduler consistency.
         upsert setting;
         return getSettings();
+    }
+
+    /** Typed settings input for the setup assistant save boundary. */
+    public class SaveSettingsInput {
+        @AuraEnabled public Integer detailedRetentionDays;
+        @AuraEnabled public Integer snapshotRetentionDays;
+        @AuraEnabled public Boolean dailyAggregationEnabled;
+        @AuraEnabled public Boolean retentionCleanupEnabled;
+        @AuraEnabled public String aggregationTimeZone;
+        @AuraEnabled public Boolean scheduled;
     }
     /**
      * Recomputes a selected local day immediately.
@@ -153,6 +189,8 @@ public with sharing class RHCReportsSetupController {
         @AuraEnabled public Datetime lastAggregationAttemptAt { get; set; }
         @AuraEnabled public String lastAggregationStatus { get; set; }
         @AuraEnabled public String lastAggregationErrorType { get; set; }
+        @AuraEnabled public Datetime lastIngestionFailureAt { get; set; }
+        @AuraEnabled public String lastIngestionErrorCodes { get; set; }
         @AuraEnabled public String cronTriggerId { get; set; }
         @AuraEnabled public Boolean scheduled { get; set; }
     }

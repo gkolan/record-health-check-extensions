@@ -1,22 +1,32 @@
-@isTest
+@IsTest
 private class RHCReportsAggregationServiceTest {
-    @isTest
-    static void shouldUpsertRetrySafeSnapshots_WithRecoveryAndRecurringFailure() {
+    @IsTest
+    static void shouldUpsertRetrySafeSnapshotsWhenRecoveryAndRecurringFailure() {
+        User principal = RHCReportsTestDataFactory.createStandardUser('reports.aggregation');
+        System.runAs(principal) {
         Date targetDate = Date.newInstance(2026, 8, 20);
         Datetime prior = Datetime.newInstanceGMT(2026, 8, 19, 12, 0, 0);
         Datetime current = Datetime.newInstanceGMT(2026, 8, 20, 12, 0, 0);
         insert new List<Record_Health_Check_Report_Result__c>{
             RHCReportsTestDataFactory.resultFact(
-                'prior-recovery', 'FAIL', prior, '006000000000001AAA', 'Close_Date_Complete'
+                new RHCReportsTestDataFactory.ResultFactRequest(
+                    'prior-recovery', 'FAIL', prior
+                )
             ),
             RHCReportsTestDataFactory.resultFact(
-                'prior-recurring', 'FAIL', prior, '006000000000002AAA', 'Close_Date_Complete'
+                new RHCReportsTestDataFactory.ResultFactRequest(
+                    'prior-recurring', 'FAIL', prior
+                ).withRecord(RHCReportsTestDataFactory.fakeId(Opportunity.SObjectType, 2))
             ),
             RHCReportsTestDataFactory.resultFact(
-                'current-recovery', 'PASS', current, '006000000000001AAA', 'Close_Date_Complete'
+                new RHCReportsTestDataFactory.ResultFactRequest(
+                    'current-recovery', 'PASS', current
+                )
             ),
             RHCReportsTestDataFactory.resultFact(
-                'current-recurring', 'FAIL', current, '006000000000002AAA', 'Close_Date_Complete'
+                new RHCReportsTestDataFactory.ResultFactRequest(
+                    'current-recurring', 'FAIL', current
+                ).withRecord(RHCReportsTestDataFactory.fakeId(Opportunity.SObjectType, 2))
             )
         };
         insert RHCReportsTestDataFactory.runFact('target-run', current);
@@ -70,9 +80,12 @@ private class RHCReportsAggregationServiceTest {
             byGrainStatus.get('RUN:null').RunCount__c,
             'The run summary aggregate must not double on retry.'
         );
+        }
     }
-    @isTest
-    static void shouldRejectUnknownTimeZone_WhenAggregating() {
+    @IsTest
+    static void shouldRejectUnknownTimeZoneWhenAggregating() {
+        User principal = RHCReportsTestDataFactory.createStandardUser('reports.timezone');
+        System.runAs(principal) {
         Test.startTest();
         try {
             RHCReportsAggregationService.aggregateDate(
@@ -87,9 +100,12 @@ private class RHCReportsAggregationServiceTest {
             );
         }
         Test.stopTest();
+        }
     }
-    @isTest
-    static void shouldRejectNullDate_WhenAggregating() {
+    @IsTest
+    static void shouldRejectNullDateWhenAggregating() {
+        User principal = RHCReportsTestDataFactory.createStandardUser('reports.nulldate');
+        System.runAs(principal) {
         Test.startTest();
         try {
             RHCReportsAggregationService.aggregateDate(null, 'GMT');
@@ -101,10 +117,13 @@ private class RHCReportsAggregationServiceTest {
             );
         }
         Test.stopTest();
+        }
     }
 
-    @isTest
-    static void shouldUseExactLocalDayBoundaries_WhenZoneHasDaylightOffset() {
+    @IsTest
+    static void shouldUseExactLocalDayBoundariesWhenZoneHasDaylightOffset() {
+        User principal = RHCReportsTestDataFactory.createStandardUser('reports.boundaries');
+        System.runAs(principal) {
         Date targetDate = Date.newInstance(2026, 8, 20);
         insert new List<Record_Health_Check_Report_Run__c>{
             RHCReportsTestDataFactory.runFact(
@@ -140,13 +159,16 @@ private class RHCReportsAggregationServiceTest {
             runSnapshot.RunCount__c,
             'Only events inside the exact Chicago local day should be aggregated.'
         );
+        }
     }
 
-    @isTest
-    static void shouldFailClosed_WhenAQueryReachesItsSafetyBoundary() {
+    @IsTest
+    static void shouldFailClosedWhenAQueryReachesItsSafetyBoundary() {
+        User principal = RHCReportsTestDataFactory.createStandardUser('reports.querybound');
+        System.runAs(principal) {
         Test.startTest();
         try {
-            RHCReportsAggregationService.assertQueryComplete(20000, 20000, 'Result Fact');
+            RHCReportsAggregationRepository.assertQueryComplete(20000, 20000, 'Result Fact');
             Assert.fail('A boundary-sized result must not produce a partial snapshot.');
         } catch (RHCReportsAggregationService.RHCReportsAggregationException error) {
             Assert.isTrue(
@@ -154,7 +176,8 @@ private class RHCReportsAggregationServiceTest {
                 'The failure must state that the partition was preserved.'
             );
         }
-        RHCReportsAggregationService.assertQueryComplete(19999, 20000, 'Result Fact');
+        RHCReportsAggregationRepository.assertQueryComplete(19999, 20000, 'Result Fact');
         Test.stopTest();
+        }
     }
 }

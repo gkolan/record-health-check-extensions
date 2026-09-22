@@ -1,0 +1,2 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata"><fullName>RHC_Setting_Identity</fullName><active>true</active><errorConditionFormula>OR(Name &lt;&gt; "Default", SettingKey__c &lt;&gt; "Default")</errorConditionFormula><errorMessage>The package-owned alert setting must use the Default identity.</errorMessage></ValidationRule>

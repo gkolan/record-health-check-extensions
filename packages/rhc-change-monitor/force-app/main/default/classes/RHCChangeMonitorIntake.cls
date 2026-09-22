@@ -47,8 +47,14 @@ global with sharing class RHCChangeMonitorIntake {
     if (claims.isEmpty()) {
       return;
     }
-    if (persistClaims(claims)) {
-      System.enqueueJob(new RHCChangeMonitorDispatcherQueueable(0));
+    Savepoint dispatchSavepoint = Database.setSavepoint();
+    Integer pendingCount = persistClaims(claims);
+    try {
+      // Publish instead of enqueueing: a Queueable started here would inherit Automated Process.
+      RHCChangeMonitorDispatchSupport.publishDispatch(pendingCount);
+    } catch (RHCChangeMonitorDispatchSupport.DispatchSignalException error) {
+      Database.rollback(dispatchSavepoint);
+      throw new IntakeException('CDC claims could not be paired with a dispatch signal.');
     }
   }
 
@@ -137,20 +143,20 @@ global with sharing class RHCChangeMonitorIntake {
     return claims;
   }
 
-  private static Boolean persistClaims(
+  private static Integer persistClaims(
     List<Record_Health_Check_Change_Evaluation__c> claims
   ) {
     List<Database.SaveResult> results = Database.insert(claims, false, AccessLevel.USER_MODE);
-    Boolean hasPendingClaims = false;
+    Integer pendingCount = 0;
     for (Integer indexValue = 0; indexValue < results.size(); indexValue++) {
       Database.SaveResult result = results[indexValue];
       if (result.isSuccess()) {
-        hasPendingClaims = hasPendingClaims || 'PENDING'.equals(claims[indexValue].Outcome__c);
+        pendingCount += 'PENDING'.equals(claims[indexValue].Outcome__c) ? 1 : 0;
       } else if (!isDuplicateOnly(result.getErrors())) {
         throw new IntakeException('One or more CDC claims could not be persisted.');
       }
     }
-    return hasPendingClaims;
+    return pendingCount;
   }
 
   private static Record_Health_Check_Change_Evaluation__c createClaim(ClaimContext context) {

@@ -1,21 +1,14 @@
-@isTest
+@IsTest
 private class RHCReportsControllerTest {
-    @isTest
-    static void shouldSaveNinetyDayDefaults_WhenAdminHasPermission() {
+    @IsTest
+    static void shouldSaveNinetyDayDefaultsWhenAdminHasPermission() {
         User administrator = createUser('reports.admin');
         assignPermissionSet(administrator.Id, 'RHC_Reports_Admin');
 
         System.runAs(administrator) {
             Test.startTest();
             RHCReportsSetupController.SettingDTO saved =
-                RHCReportsSetupController.saveSettings(
-                    90,
-                    730,
-                    true,
-                    true,
-                    'America/Chicago',
-                    false
-                );
+                RHCReportsSetupController.saveSettings(defaultSettingsInput());
             Test.stopTest();
 
             Assert.areEqual(
@@ -32,22 +25,18 @@ private class RHCReportsControllerTest {
         }
     }
 
-    @isTest
-    static void shouldRejectInvalidRetention_WhenAdminSaves() {
+    @IsTest
+    static void shouldRejectInvalidRetentionWhenAdminSaves() {
         User administrator = createUser('reports.invalid');
         assignPermissionSet(administrator.Id, 'RHC_Reports_Admin');
 
         System.runAs(administrator) {
             Test.startTest();
             try {
-                RHCReportsSetupController.saveSettings(
-                    0,
-                    730,
-                    true,
-                    true,
-                    'GMT',
-                    false
-                );
+                RHCReportsSetupController.SaveSettingsInput input = defaultSettingsInput();
+                input.detailedRetentionDays = 0;
+                input.aggregationTimeZone = 'GMT';
+                RHCReportsSetupController.saveSettings(input);
                 Assert.fail('Zero-day detailed retention should be rejected.');
             } catch (AuraHandledException error) {
                 Assert.areNotEqual(
@@ -60,8 +49,49 @@ private class RHCReportsControllerTest {
         }
     }
 
-    @isTest
-    static void shouldDefaultRetentionCleanupOff_WhenOrgSettingIsAbsent() {
+    @IsTest
+    static void shouldRejectMissingSettingsWhenAdminSaves() {
+        User administrator = createUser('reports.missing');
+        assignPermissionSet(administrator.Id, 'RHC_Reports_Admin');
+
+        System.runAs(administrator) {
+            Test.startTest();
+            try {
+                RHCReportsSetupController.saveSettings(null);
+                Assert.fail('A missing settings request should be rejected.');
+            } catch (AuraHandledException error) {
+                Assert.areNotEqual(
+                    null,
+                    error,
+                    'The missing settings request must throw an AuraHandledException.'
+                );
+            }
+            Test.stopTest();
+        }
+    }
+
+    @IsTest
+    static void shouldQueueLatestCompletedDayWhenAdminRunsAggregationNow() {
+        User administrator = createUser('reports.runnow');
+        assignPermissionSet(administrator.Id, 'RHC_Reports_Admin');
+
+        System.runAs(administrator) {
+            Test.startTest();
+            Date queued = RHCReportsSetupController.runAggregationNow();
+            Integer jobs = Limits.getQueueableJobs();
+            Test.stopTest();
+
+            Assert.areEqual(1, jobs, 'One aggregation job is queued on demand.');
+            Assert.isTrue(queued < Date.today().addDays(1), 'Only a completed local day is aggregated.');
+            Assert.isNotNull(
+                Record_Health_Check_Report_Setting__c.getOrgDefaults().LastAggregationAttemptAt__c,
+                'The on-demand run records its outcome like the scheduled one.'
+            );
+        }
+    }
+
+    @IsTest
+    static void shouldDefaultRetentionCleanupOffWhenOrgSettingIsAbsent() {
         User administrator = createUser('reports.defaults');
         assignPermissionSet(administrator.Id, 'RHC_Reports_Admin');
 
@@ -78,8 +108,8 @@ private class RHCReportsControllerTest {
         }
     }
 
-    @isTest
-    static void shouldShowActionableCoverage_WhenOnlyActionableDetailArrives() {
+    @IsTest
+    static void shouldShowActionableCoverageWhenOnlyActionableDetailArrives() {
         User viewer = createUser('reports.viewer');
         assignPermissionSet(viewer.Id, 'RHC_Reports_Viewer');
 
@@ -89,11 +119,11 @@ private class RHCReportsControllerTest {
                 Datetime.now()
             );
             insert RHCReportsTestDataFactory.resultFact(
-                'coverage-result',
-                'FAIL',
-                Datetime.now(),
-                '006000000000001AAA',
-                'Close_Date_Complete'
+                new RHCReportsTestDataFactory.ResultFactRequest(
+                    'coverage-result',
+                    'FAIL',
+                    Datetime.now()
+                )
             );
             Test.startTest();
             List<RHCReportsCoverageController.CoverageRow> rows =
@@ -136,6 +166,18 @@ private class RHCReportsControllerTest {
                 Username = stem + '.' + System.now().getTime() + '@example.com'
             )
         );
+    }
+
+    private static RHCReportsSetupController.SaveSettingsInput defaultSettingsInput() {
+        RHCReportsSetupController.SaveSettingsInput input =
+            new RHCReportsSetupController.SaveSettingsInput();
+        input.detailedRetentionDays = 90;
+        input.snapshotRetentionDays = 730;
+        input.dailyAggregationEnabled = true;
+        input.retentionCleanupEnabled = true;
+        input.aggregationTimeZone = 'America/Chicago';
+        input.scheduled = false;
+        return input;
     }
 
     private static User insertUser(User userRecord) {

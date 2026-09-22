@@ -1,3 +1,4 @@
+/* eslint-disable @lwc/lwc-platform/no-aura-libs, @lwc/lwc-platform/no-process-env -- Node CLI, not LWC runtime code. */
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -25,6 +26,18 @@ function readJson(file) {
     }
 }
 
+function escapeRegExp(value) {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function workflowJob(workflow, jobName) {
+    const jobPattern = new RegExp(
+        `^  ${escapeRegExp(jobName)}:\\n([\\s\\S]*?)(?=^  [A-Za-z0-9_-]+:\\n|(?![\\s\\S]))`,
+        'm'
+    );
+    return workflow.match(jobPattern)?.[0] ?? '';
+}
+
 function walk(directory, predicate = () => true) {
     if (!fs.existsSync(directory)) {
         return [];
@@ -44,6 +57,10 @@ function walk(directory, predicate = () => true) {
 function validateMarkdownLinks(file) {
     markdownCount += 1;
     const markdown = fs.readFileSync(file, 'utf8');
+    assert(
+        !/repository has no HEAD|workspace (?:has no|does not currently resolve a) Git `?HEAD`?/i.test(markdown),
+        `${relative(file)} contains a stale claim that the current repository has no Git HEAD`
+    );
     const linkPattern = /!?\[[^\]]*\]\(([^)]+)\)/g;
     for (const match of markdown.matchAll(linkPattern)) {
         let target = match[1].trim().split(/\s+["']/)[0];
@@ -79,10 +96,106 @@ const packageDirectories = fs.readdirSync(packagesRoot, { withFileTypes: true })
     .filter((directory) => fs.existsSync(path.join(directory, 'sfdx-project.json')))
     .sort();
 
-assert(packageDirectories.length === 8, `Expected 8 package projects; found ${packageDirectories.length}`);
+assert(packageDirectories.length === 9, `Expected 9 package projects; found ${packageDirectories.length}`);
+
+const validationWorkflowFile = path.join(root, '.github', 'workflows', 'validate.yml');
+assert(fs.existsSync(validationWorkflowFile), 'Repository is missing .github/workflows/validate.yml');
+const validationWorkflow = fs.existsSync(validationWorkflowFile)
+    ? fs.readFileSync(validationWorkflowFile, 'utf8')
+    : '';
+assert(
+    validationWorkflow.includes('actionlint_1.7.12_linux_amd64.tar.gz') &&
+        validationWorkflow.includes('8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8'),
+    'Repository CI must run the pinned, checksum-verified Actionlint 1.7.12 binary'
+);
+const staticJobByPackage = new Map([
+    ['rhc-actions', 'rhc-actions-static'],
+    ['rhc-alerts', 'rhc-alerts-code-analyzer'],
+    ['rhc-builder', 'builder-static-analysis'],
+    ['rhc-change-monitor', 'remaining-salesforce-static'],
+    ['rhc-integrations', 'rhc-integrations-static'],
+    ['rhc-logs', 'rhc-logs-static'],
+    ['rhc-reports', 'rhc-reports-static'],
+    ['rhc-run-manager', 'run-manager-static'],
+    ['rhc-agent-actions', 'remaining-salesforce-static']
+]);
+const orgWorkflowByPackage = new Map([
+    ['rhc-actions', 'rhc-actions-salesforce-validate.yml'],
+    ['rhc-agent-actions', 'remaining-salesforce-validate.yml'],
+    ['rhc-alerts', 'remaining-salesforce-validate.yml'],
+    ['rhc-builder', 'rhc-builder-salesforce-validate.yml'],
+    ['rhc-change-monitor', 'remaining-salesforce-validate.yml'],
+    ['rhc-integrations', 'remaining-salesforce-validate.yml'],
+    ['rhc-logs', 'remaining-salesforce-validate.yml'],
+    ['rhc-reports', 'rhc-reports-salesforce-validate.yml'],
+    ['rhc-run-manager', 'remaining-salesforce-validate.yml']
+]);
+const documentationByPackage = new Map([
+    ['rhc-actions', {
+        admin: 'ADMIN_GUIDE.md',
+        security: 'docs/SECURITY_AND_AUTHORIZATION.md',
+        operations: 'docs/OPERATIONS.md',
+        release: 'docs/TESTING_AND_VERIFICATION.md'
+    }],
+    ['rhc-agent-actions', {
+        admin: 'ADMIN_GUIDE.md',
+        security: 'docs/SECURITY.md',
+        operations: 'docs/OPERATIONS.md',
+        release: 'RELEASE_EVIDENCE.md'
+    }],
+    ['rhc-alerts', {
+        admin: 'ADMIN_GUIDE.md',
+        security: 'docs/SECURITY.md',
+        operations: 'docs/OPERATIONS.md',
+        release: 'docs/RELEASE-GATES.md'
+    }],
+    ['rhc-builder', {
+        admin: 'docs/ADMIN_GUIDE.md',
+        security: 'docs/DEVELOPER_GUIDE.md',
+        operations: 'docs/OPERATIONS.md',
+        release: 'docs/VERIFICATION.md'
+    }],
+    ['rhc-change-monitor', {
+        admin: 'ADMIN_GUIDE.md',
+        security: 'docs/SECURITY.md',
+        operations: 'docs/OPERATIONS.md',
+        release: 'RELEASE_EVIDENCE.md'
+    }],
+    ['rhc-integrations', {
+        admin: 'docs/JUNIOR-ADMIN-GUIDE.md',
+        security: 'docs/SECURITY.md',
+        operations: 'docs/OPERATIONS.md',
+        release: 'docs/RELEASE-EVIDENCE.md'
+    }],
+    ['rhc-logs', {
+        admin: 'docs/ADMINISTRATION.md',
+        security: 'docs/SECURITY.md',
+        operations: 'docs/OPERATIONS.md',
+        release: 'docs/RELEASE-GATES.md'
+    }],
+    ['rhc-reports', {
+        admin: 'docs/ADMIN_GUIDE.md',
+        security: 'docs/OPERATIONS_AND_SECURITY.md',
+        operations: 'docs/OPERATIONS_AND_SECURITY.md',
+        release: 'docs/PACKAGE_VALIDATION.md'
+    }],
+    ['rhc-run-manager', {
+        admin: 'ADMIN_GUIDE.md',
+        security: 'docs/ARCHITECTURE.md',
+        operations: 'docs/OPERATIONS.md',
+        release: 'RELEASE_EVIDENCE.md'
+    }]
+]);
+const npmPackageNames = [];
+const forbiddenValidationCommands = [
+    'sf package create',
+    'sf package version create',
+    'sf package version promote'
+];
 
 let sharedApiVersion;
 let sharedCoreDependency;
+let sharedCoreSubscriberId;
 
 for (const packageDirectory of packageDirectories) {
     const packageName = path.basename(packageDirectory);
@@ -122,14 +235,37 @@ for (const packageDirectory of packageDirectories) {
                 dependency.package === sharedCoreDependency,
                 `${packageName} depends on ${dependency.package}; expected ${sharedCoreDependency}`
             );
+            const coreSubscriberId = project.packageAliases?.[dependency.package];
             assert(
-                project.packageAliases?.[dependency.package]?.startsWith('04t'),
+                coreSubscriberId?.startsWith('04t'),
                 `${packageName} must alias ${dependency.package} to a subscriber package version`
+            );
+            sharedCoreSubscriberId ??= coreSubscriberId;
+            assert(
+                coreSubscriberId === sharedCoreSubscriberId,
+                `${packageName} aliases ${dependency.package} to ${coreSubscriberId}; expected ${sharedCoreSubscriberId}`
             );
         }
     }
 
     assert(fs.existsSync(path.join(packageDirectory, 'README.md')), `${packageName} is missing README.md`);
+    const documentation = documentationByPackage.get(packageName);
+    assert(documentation, `${packageName} is missing its documentation-role contract`);
+    for (const [role, documentationPath] of Object.entries(documentation ?? {})) {
+        assert(
+            fs.existsSync(path.join(packageDirectory, documentationPath)),
+            `${packageName} is missing ${role} documentation at ${documentationPath}`
+        );
+    }
+    const scratchDefinitionFile = path.join(packageDirectory, 'config', 'project-scratch-def.json');
+    assert(fs.existsSync(scratchDefinitionFile), `${packageName} is missing config/project-scratch-def.json`);
+    if (fs.existsSync(scratchDefinitionFile)) {
+        const scratchDefinition = readJson(scratchDefinitionFile);
+        if (scratchDefinition) {
+            assert(scratchDefinition.orgName, `${packageName} scratch definition must declare orgName`);
+            assert(scratchDefinition.edition, `${packageName} scratch definition must declare edition`);
+        }
+    }
 
     const sourceRoot = path.join(packageDirectory, 'force-app');
     for (const apexFile of walk(sourceRoot, (file) => file.endsWith('.cls') || file.endsWith('.trigger'))) {
@@ -154,6 +290,7 @@ for (const packageDirectory of packageDirectories) {
     const lwcControllers = walk(lwcRoot, (file) => file.endsWith('.js') && !file.includes('__tests__'));
     assert(fs.existsSync(packageFile) || lwcControllers.length === 0, `${packageName} ships LWC code without a test harness`);
     if (fs.existsSync(packageFile)) {
+        npmPackageNames.push(packageName);
         const manifest = readJson(packageFile);
         assert(fs.existsSync(path.join(packageDirectory, 'package-lock.json')), `${packageName} is missing package-lock.json`);
         assert(fs.existsSync(path.join(packageDirectory, '.forceignore')), `${packageName} is missing .forceignore`);
@@ -166,6 +303,65 @@ for (const packageDirectory of packageDirectories) {
         }
     }
 }
+
+for (const [packageName, jobName] of staticJobByPackage) {
+    const job = workflowJob(validationWorkflow, jobName);
+    assert(job, `${packageName} is missing its ${jobName} CI job`);
+    assert(job.includes(packageName), `${jobName} does not select ${packageName}`);
+    assert(job.includes('sf project convert source'), `${jobName} does not validate source conversion`);
+    assert(job.includes('sf code-analyzer run'), `${jobName} does not run Salesforce Code Analyzer`);
+}
+
+for (const [packageName, workflowName] of orgWorkflowByPackage) {
+    const workflowFile = path.join(root, '.github', 'workflows', workflowName);
+    assert(fs.existsSync(workflowFile), `${packageName} is missing its ${workflowName} org-validation workflow`);
+    const workflow = fs.existsSync(workflowFile) ? fs.readFileSync(workflowFile, 'utf8') : '';
+    assert(workflow.includes(packageName), `${workflowName} does not select ${packageName}`);
+    assert(workflow.includes('sf org create scratch'), `${workflowName} does not create a disposable scratch org`);
+    assert(
+        sharedCoreSubscriberId && workflow.includes(sharedCoreSubscriberId),
+        `${workflowName} does not install the pinned core dependency ${sharedCoreSubscriberId}`
+    );
+    assert(
+        workflow.includes('sf project deploy start') && workflow.includes('--dry-run'),
+        `${workflowName} does not run a server-side source validation`
+    );
+    assert(workflow.includes('sf apex run test'), `${workflowName} does not run Apex tests`);
+    assert(workflow.includes('sf org delete scratch'), `${workflowName} does not clean up its scratch org`);
+}
+
+const remainingOrgWorkflowFile = path.join(root, '.github', 'workflows', 'remaining-salesforce-validate.yml');
+const remainingOrgWorkflow = fs.existsSync(remainingOrgWorkflowFile)
+    ? fs.readFileSync(remainingOrgWorkflowFile, 'utf8')
+    : '';
+assert(
+    remainingOrgWorkflow.includes('namespace_mode:') && remainingOrgWorkflow.includes('--no-namespace'),
+    'The remaining Salesforce org workflow does not validate both namespace modes'
+);
+
+for (const workflowFile of walk(path.join(root, '.github', 'workflows'), (file) => file.endsWith('.yml'))) {
+    const workflow = fs.readFileSync(workflowFile, 'utf8');
+    for (const command of forbiddenValidationCommands) {
+        assert(!workflow.includes(command), `${relative(workflowFile)} must not run ${command}`);
+    }
+}
+
+const lwcJob = workflowJob(validationWorkflow, 'lwc');
+for (const packageName of npmPackageNames) {
+    assert(lwcJob.includes(`- ${packageName}`), `${packageName} is missing from the npm CI matrix`);
+}
+assert(lwcJob.includes('npm run test:coverage'), 'The npm CI matrix does not enforce test coverage');
+assert(lwcJob.includes('npm audit --audit-level=high'), 'The npm CI matrix does not enforce dependency auditing');
+assert(
+    lwcJob.includes("matrix.package == 'rhc-change-monitor'") && lwcJob.includes('npm run test:adapter-generator'),
+    'The npm CI matrix does not run Change Monitor adapter-generator tests'
+);
+
+const remainingStaticJob = workflowJob(validationWorkflow, 'remaining-salesforce-static');
+assert(
+    remainingStaticJob.includes('npm run metadata:generate -- --check'),
+    'The Change Monitor static CI gate does not verify generated metadata'
+);
 
 for (const markdownFile of walk(root, (file) => file.endsWith('.md'))) {
     validateMarkdownLinks(markdownFile);
@@ -183,4 +379,10 @@ console.log(
     `Repository validation passed: ${packageDirectories.length} packages, ` +
     `${markdownCount} Markdown files, and ${linkCount} local links checked.`
 );
+console.log(
+    `CI contract: ${staticJobByPackage.size} source projects and ` +
+    `${npmPackageNames.length} npm-backed packages covered; ` +
+    `${orgWorkflowByPackage.size} org-validation paths configured.`
+);
+console.log(`Documentation contract: admin, security, operations, and release guidance mapped for all packages.`);
 console.log(`Shared contract: Salesforce API ${sharedApiVersion}; ${sharedCoreDependency}.`);

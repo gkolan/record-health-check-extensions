@@ -11,7 +11,7 @@ rhc-actions/
 │   ├── classes/            Apex runtime, controller, gateways, and tests
 │   ├── customPermissions/  approval and automatic-execution gates
 │   ├── lwc/                manual review UI and Jest tests
-│   ├── objects/            policy, queue, and history schema
+│   ├── objects/            policy, queue, history, and retention-setting schema
 │   ├── permissionsets/     Admin, Approver, Runtime, and Viewer personas
 │   ├── tabs/               review and object tabs
 │   └── triggers/           direct core Result event subscriber

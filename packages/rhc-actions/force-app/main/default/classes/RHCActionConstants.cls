@@ -21,6 +21,7 @@ public with sharing class RHCActionConstants {
   }
 
   /**
+   * Returns the version-one Flow input names accepted by policy validation.
    * @return Names of every permitted version-one Flow input.
    */
   public static Set<String> allowedFlowInputs() {

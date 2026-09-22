@@ -30,7 +30,7 @@ public inherited sharing class RHCReportsMaintenanceScheduled implements Schedul
                 new RHCReportsDailyAggregationQueueable(
                     nextSnapshotDate,
                     timeZoneId,
-                    true
+                    RHCReportsDailyAggregationQueueable.CatchUpMode.ENABLED
                 )
             );
             return;

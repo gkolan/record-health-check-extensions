@@ -3,6 +3,9 @@
  * Elevated access is isolated here; callers must pass the with-sharing controller permission check.
  */
 public without sharing class RHCBuilderMetadataService {
+  private static final Integer MAX_REPORTED_FAILURES = 10;
+  private static final Integer MAX_FAILURE_LENGTH = 255;
+
   /**
    * Schedules one complete Check Set Version publication.
    * @param deploymentId Package-owned deployment ledger identifier.
@@ -84,10 +87,42 @@ public without sharing class RHCBuilderMetadataService {
         succeeded,
         succeeded
           ? 'The complete Check Set Version was published successfully.'
-          : 'Salesforce rejected the metadata publication. Review Deployment Status before retrying.',
+          : failureSummary(result),
         result == null ? null : String.valueOf(result.id)
       );
     }
+  }
+
+  /**
+   * Builds the administrator-facing failure text: a fixed sentence plus a bounded list of the
+   * rejected components so the cause is visible without opening Setup > Deployment Status.
+   * @param result Metadata deployment result, possibly null or without details.
+   * @return Sanitized summary containing component names and Salesforce problem text only.
+   */
+  @TestVisible
+  private static String failureSummary(Metadata.DeployResult result) {
+    String summary = 'Salesforce rejected the metadata publication. Review Deployment Status before retrying.';
+    List<Metadata.DeployMessage> failures = result == null || result.details == null
+      ? null
+      : result.details.componentFailures;
+    if (failures == null || failures.isEmpty()) {
+      return summary;
+    }
+    List<String> lines = new List<String>();
+    for (Metadata.DeployMessage failure : failures) {
+      if (lines.size() == MAX_REPORTED_FAILURES) {
+        break;
+      }
+      lines.add(
+        (String.isBlank(failure.fullName) ? '(component)' : failure.fullName) +
+        ': ' +
+        String.valueOf(failure.problem).abbreviate(MAX_FAILURE_LENGTH)
+      );
+    }
+    if (failures.size() > MAX_REPORTED_FAILURES) {
+      lines.add('...and ' + (failures.size() - MAX_REPORTED_FAILURES) + ' more.');
+    }
+    return summary + '\n' + String.join(lines, '\n');
   }
 
   @TestVisible
@@ -158,9 +193,7 @@ public without sharing class RHCBuilderMetadataService {
         prior.IsActive__c = false;
         prior.Status__c = 'SUPERSEDED';
       }
-      if (!priorActiveVersions.isEmpty()) {
-        Database.update(priorActiveVersions, AccessLevel.SYSTEM_MODE);
-      }
+      Database.update(priorActiveVersions, AccessLevel.SYSTEM_MODE);
     }
   }
 

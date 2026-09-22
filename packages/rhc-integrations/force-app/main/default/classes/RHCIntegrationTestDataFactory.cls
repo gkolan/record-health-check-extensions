@@ -1,12 +1,42 @@
 /** Test data factory for RHC Integrations package tests. */
-@isTest
+@IsTest
 public class RHCIntegrationTestDataFactory {
-    /** @return Inserted active example route from the specification. */
+    /**
+     * Creates a standard-user principal for service and subscriber tests.
+     *
+     * @param stem Unique username stem for the test principal.
+     * @return Inserted least-privilege standard user.
+     */
+    public static User createStandardUser(String stem) {
+        Profile standardProfile = [SELECT Id FROM Profile WHERE Name = 'Standard User' LIMIT 1];
+        String uniqueValue = stem + String.valueOf(DateTime.now().getTime());
+        User principal = new User(
+            Alias = stem.left(8),
+            Email = uniqueValue + '@example.com',
+            EmailEncodingKey = 'UTF-8',
+            LastName = 'Integration Test',
+            LanguageLocaleKey = 'en_US',
+            LocaleSidKey = 'en_US',
+            ProfileId = standardProfile.Id,
+            TimeZoneSidKey = 'America/Chicago',
+            Username = uniqueValue + '@example.com'
+        );
+        insert principal;
+        return principal;
+    }
+
+    /**
+     * Creates one active example route from the specification.
+     *
+     * @return Inserted active example route from the specification.
+     */
     public static Record_Health_Check_Integration_Route__c createExampleRoute() {
         return createExampleRoutes(1)[0];
     }
 
     /**
+     * Creates matching active routes for bounded fan-out tests.
+     *
      * @param routeCount Number of matching active routes to insert.
      * @return Inserted matching routes.
      */
@@ -32,6 +62,8 @@ public class RHCIntegrationTestDataFactory {
     }
 
     /**
+     * Creates a delivery ledger row in the requested state.
+     *
      * @param routeId Route for the ledger row.
      * @param status Delivery status.
      * @return Inserted delivery row.

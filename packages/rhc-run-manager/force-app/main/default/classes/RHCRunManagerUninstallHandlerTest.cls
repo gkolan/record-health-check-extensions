@@ -7,7 +7,7 @@ private class RHCRunManagerUninstallHandlerTest {
   }
 
   @IsTest
-  static void shouldAbortOnlyOwnedScheduledAndAsyncJobs_WhenUninstalled() {
+  static void shouldAbortOnlyOwnedScheduledAndAsyncJobsWhenUninstalled() {
     System.runAs(RHCRunManagerTestDataFactory.adminUser()) {
       Record_Health_Check_Run_Definition__c definition = RHCRunManagerTestDataFactory.createDefinition('ALL_ACCESSIBLE', 'FAIL');
       Record_Health_Check_Schedule__c scheduleRecord = new Record_Health_Check_Schedule__c(
@@ -55,6 +55,10 @@ private class RHCRunManagerUninstallHandlerTest {
   }
 
   private class NoOpScheduled implements Schedulable {
+    /**
+     * Records an unexpected scheduled execution.
+     * @param context Platform schedule context.
+     */
     public void execute(SchedulableContext context) {
       noOpExecutions++;
     }
@@ -62,6 +66,10 @@ private class RHCRunManagerUninstallHandlerTest {
 
   @SuppressWarnings('PMD.QueueableWithoutFinalizer')
   private class NoOpQueueable implements Queueable {
+    /**
+     * Records an unexpected queueable execution.
+     * @param context Platform queueable context.
+     */
     public void execute(QueueableContext context) {
       noOpExecutions++;
     }

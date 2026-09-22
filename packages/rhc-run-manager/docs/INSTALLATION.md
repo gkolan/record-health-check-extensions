@@ -87,13 +87,18 @@ Do not assign Admin to every Flow user. Executor exists specifically to avoid th
 
 ## Verify the app
 
+Administrators should see the **Retention** tab because `RHC_Run_Manager_Admin` includes the
+`RHC_Run_Manager_Manage_Retention` custom permission and settings/delete access. Viewer and Executor
+users must not see retention controls and must not receive delete access.
+
 1. Leave Setup.
 2. Click the **App Launcher**.
 3. Enter `RHC Run Manager`.
 4. Click **RHC Run Manager**.
 5. Confirm the page loads without an access error.
 6. Confirm these tabs appear inside the card:
-   **1. Run Definitions**, **2. Schedules**, and **3. Monitoring**.
+   **1. Run Definitions**, **2. Schedules**, and **3. Monitoring**. An Admin also sees
+   **4. Retention**; Viewer and Executor users do not.
 7. Open **1. Run Definitions**.
 8. Choose **Check Set** and confirm active core Check Sets appear in the picker.
 9. Select one and confirm **Target object: ...** appears.

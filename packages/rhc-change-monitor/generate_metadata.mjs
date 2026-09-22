@@ -67,13 +67,33 @@ const objects = [
       { name: "ResultCount__c", label: "Result Count", type: "Number", precision: 9, description: "Count of core evaluation results for this source record." },
       { name: "ActionableCount__c", label: "Actionable Count", type: "Number", precision: 9, description: "Count of FAIL, UNABLE_TO_EVALUATE, and ERROR results." }
     ]
+  },
+  {
+    api: "Record_Health_Check_Change_Setting__c",
+    label: "Record Health Check Change Setting",
+    plural: "Record Health Check Change Settings",
+    nameType: "Text",
+    description: "The Record Health Check Change Setting object stores the administrator-approved evaluation retention window used by bounded manual cleanup. It does not enable scheduled deletion. Commonly used to govern operational evidence disposition before an administrator explicitly purges terminal Change Evaluations.",
+    enableReports: false,
+    enableSearch: false,
+    sharingModel: "PublicReadWrite",
+    visibility: "Public",
+    fields: [
+      { name: "SettingKey__c", label: "Setting Key", type: "Text", length: 80, external: true, unique: true, description: "Package-owned singleton key. The supported value is Default." },
+      { name: "RetentionDays__c", label: "Retention Days", type: "Number", precision: 4, description: "Days to retain terminal Change Evaluations before an administrator can manually purge them. Valid values are 1 through 3650." }
+    ]
   }
 ];
 
 for (const object of objects) {
-  write(`objects/${object.api}/${object.api}.object-meta.xml`, `<CustomObject${namespace}><deploymentStatus>Deployed</deploymentStatus><description>${escapeXml(object.label)} records owned by RHC Change Monitor.</description><enableActivities>false</enableActivities><enableFeeds>false</enableFeeds><enableHistory>false</enableHistory><enableReports>true</enableReports><label>${object.label}</label><nameField><displayFormat>${object.format}</displayFormat><label>${object.label} Number</label><type>AutoNumber</type></nameField><pluralLabel>${object.plural}</pluralLabel><sharingModel>Private</sharingModel></CustomObject>`);
+  const nameField = object.nameType === "Text"
+    ? `<nameField><label>${object.label} Name</label><type>Text</type></nameField>`
+    : `<nameField><displayFormat>${object.format}</displayFormat><label>${object.label} Number</label><type>AutoNumber</type></nameField>`;
+  write(`objects/${object.api}/${object.api}.object-meta.xml`, `<CustomObject${namespace}><deploymentStatus>Deployed</deploymentStatus><description>${escapeXml(object.description ?? `${object.label} records owned by RHC Change Monitor.`)}</description><enableActivities>false</enableActivities><enableFeeds>false</enableFeeds><enableHistory>false</enableHistory><enableReports>${object.enableReports ?? true}</enableReports>${object.enableSearch === undefined ? "" : `<enableSearch>${object.enableSearch}</enableSearch>`}<label>${object.label}</label>${nameField}<pluralLabel>${object.plural}</pluralLabel><sharingModel>${object.sharingModel ?? "Private"}</sharingModel>${object.visibility ? `<visibility>${object.visibility}</visibility>` : ""}</CustomObject>`);
   for (const field of object.fields) write(`objects/${object.api}/fields/${field.name}.field-meta.xml`, `<CustomField${namespace}>${fieldXml(field)}</CustomField>`);
 }
+write("objects/Record_Health_Check_Change_Setting__c/validationRules/RHC_Setting_Retention_Range.validationRule-meta.xml", `<ValidationRule${namespace}><fullName>RHC_Setting_Retention_Range</fullName><active>true</active><errorConditionFormula>OR(ISBLANK(RetentionDays__c), RetentionDays__c &lt; 1, RetentionDays__c &gt; 3650)</errorConditionFormula><errorMessage>Retention Days must be a whole number from 1 through 3650.</errorMessage></ValidationRule>`);
+write("objects/Record_Health_Check_Change_Setting__c/validationRules/RHC_Setting_Identity.validationRule-meta.xml", `<ValidationRule${namespace}><fullName>RHC_Setting_Identity</fullName><active>true</active><errorConditionFormula>OR(Name &lt;&gt; "Default", SettingKey__c &lt;&gt; "Default")</errorConditionFormula><errorMessage>The package-owned Change Monitor setting must use the Default identity.</errorMessage></ValidationRule>`);
 
 const classes = [
   "RHCChangeMonitorClaimKey",
@@ -84,13 +104,23 @@ const classes = [
   "RHCChangeMonitorIntake",
   "RHCChangeMonitorDispatcherQueueable"
 ];
+// Package-owned dispatch event: the CDC trigger (Automated Process) only claims and publishes;
+// the subscriber's PlatformEventSubscriberConfig runs this event's trigger as a named runtime user.
+const dispatchEvent = "Record_Health_Check_Change_Dispatch__e";
+write(`objects/${dispatchEvent}/${dispatchEvent}.object-meta.xml`, `<CustomObject${namespace}><deploymentStatus>Deployed</deploymentStatus><description>Signals that durable Change Monitor claims are waiting for dispatch. Carries no record data.</description><eventType>HighVolume</eventType><label>Record Health Check Change Dispatch</label><pluralLabel>Record Health Check Change Dispatches</pluralLabel><publishBehavior>PublishAfterCommit</publishBehavior></CustomObject>`);
+write(`objects/${dispatchEvent}/fields/ClaimCount__c.field-meta.xml`, `<CustomField${namespace}><fullName>ClaimCount__c</fullName><label>Claim Count</label><description>Number of pending claims persisted by the publishing intake transaction.</description><precision>9</precision><scale>0</scale><type>Number</type></CustomField>`);
+const eventAccess = `<objectPermissions><allowCreate>true</allowCreate><allowDelete>false</allowDelete><allowEdit>false</allowEdit><allowRead>true</allowRead><modifyAllRecords>false</modifyAllRecords><object>${dispatchEvent}</object><viewAllRecords>false</viewAllRecords></objectPermissions>`;
+const adminClasses = [...classes, "RHCChangeMonitorAdminController", "RHCChangeMonitorRetentionService"];
 const fieldAccess = (editable) => objects.flatMap((object) => object.fields.map((field) => `<fieldPermissions><editable>${editable}</editable><field>${object.api}.${field.name}</field><readable>true</readable></fieldPermissions>`)).join("");
-const objectAccess = (admin) => objects.map((object) => `<objectPermissions><allowCreate>${admin}</allowCreate><allowDelete>${admin}</allowDelete><allowEdit>${admin}</allowEdit><allowRead>true</allowRead><modifyAllRecords>${admin}</modifyAllRecords><object>${object.api}</object><viewAllRecords>true</viewAllRecords></objectPermissions>`).join("");
-const runtimeFieldAccess = objects.flatMap((object) => object.fields.map((field) => `<fieldPermissions><editable>${object.api === "Record_Health_Check_Change_Evaluation__c"}</editable><field>${object.api}.${field.name}</field><readable>true</readable></fieldPermissions>`)).join("");
-const runtimeObjectAccess = objects.map((object) => {
+const operationalObjects = objects.filter((object) => object.api !== "Record_Health_Check_Change_Setting__c");
+const objectAccess = (admin) => operationalObjects.map((object) => `<objectPermissions><allowCreate>${admin}</allowCreate><allowDelete>${admin}</allowDelete><allowEdit>${admin}</allowEdit><allowRead>true</allowRead><modifyAllRecords>${admin}</modifyAllRecords><object>${object.api}</object><viewAllRecords>true</viewAllRecords></objectPermissions>`).join("");
+const settingAdminAccess = `<objectPermissions><allowCreate>true</allowCreate><allowDelete>false</allowDelete><allowEdit>true</allowEdit><allowRead>true</allowRead><modifyAllRecords>false</modifyAllRecords><object>Record_Health_Check_Change_Setting__c</object><viewAllRecords>false</viewAllRecords></objectPermissions>`;
+const runtimeFieldAccess = operationalObjects.flatMap((object) => object.fields.map((field) => `<fieldPermissions><editable>${object.api === "Record_Health_Check_Change_Evaluation__c"}</editable><field>${object.api}.${field.name}</field><readable>true</readable></fieldPermissions>`)).join("");
+const runtimeObjectAccess = operationalObjects.map((object) => {
   const evaluation = object.api === "Record_Health_Check_Change_Evaluation__c";
   return `<objectPermissions><allowCreate>${evaluation}</allowCreate><allowDelete>false</allowDelete><allowEdit>${evaluation}</allowEdit><allowRead>true</allowRead><modifyAllRecords>false</modifyAllRecords><object>${object.api}</object><viewAllRecords>true</viewAllRecords></objectPermissions>`;
 }).join("");
-write("permissionsets/RHC_Change_Monitor_Admin.permissionset-meta.xml", `<PermissionSet${namespace}>${classes.map((name) => `<classAccesses><apexClass>${name}</apexClass><enabled>true</enabled></classAccesses>`).join("")}<description>Administer CDC policies and inspect all bounded Change Monitor operational evidence.</description>${fieldAccess(true)}<hasActivationRequired>false</hasActivationRequired><label>RHC Change Monitor Admin</label>${objectAccess(true)}</PermissionSet>`);
-write("permissionsets/RHC_Change_Monitor_Runtime.permissionset-meta.xml", `<PermissionSet${namespace}>${classes.map((name) => `<classAccesses><apexClass>${name}</apexClass><enabled>true</enabled></classAccesses>`).join("")}<description>Least-privilege data and Apex access for the configured Change Monitor asynchronous runtime principal. Assign together with a core runner permission set.</description>${runtimeFieldAccess}<hasActivationRequired>false</hasActivationRequired><label>RHC Change Monitor Runtime</label>${runtimeObjectAccess}</PermissionSet>`);
-write("permissionsets/RHC_Change_Monitor_Viewer.permissionset-meta.xml", `<PermissionSet${namespace}><description>Read Change Monitor policy and bounded operational evidence without mutation rights.</description>${fieldAccess(false)}<hasActivationRequired>false</hasActivationRequired><label>RHC Change Monitor Viewer</label>${objectAccess(false)}</PermissionSet>`);
+write("permissionsets/RHC_Change_Monitor_Admin.permissionset-meta.xml", `<PermissionSet${namespace}><applicationVisibilities><application>RHC_Change_Monitor</application><visible>true</visible></applicationVisibilities>${adminClasses.map((name) => `<classAccesses><apexClass>${name}</apexClass><enabled>true</enabled></classAccesses>`).join("")}<description>Administer CDC policies, retention settings, and bounded Change Monitor operational evidence.</description>${fieldAccess(true)}<hasActivationRequired>false</hasActivationRequired><label>RHC Change Monitor Admin</label>${objectAccess(true)}${settingAdminAccess}${eventAccess}<tabSettings><tab>RHC_Change_Monitor</tab><visibility>Visible</visibility></tabSettings></PermissionSet>`);
+write("permissionsets/RHC_Change_Monitor_Runtime.permissionset-meta.xml", `<PermissionSet${namespace}>${classes.map((name) => `<classAccesses><apexClass>${name}</apexClass><enabled>true</enabled></classAccesses>`).join("")}<description>Least-privilege data and Apex access for the configured Change Monitor asynchronous runtime principal. Assign together with a core runner permission set.</description>${runtimeFieldAccess}<hasActivationRequired>false</hasActivationRequired><label>RHC Change Monitor Runtime</label>${runtimeObjectAccess}${eventAccess}</PermissionSet>`);
+const viewerFieldAccess = operationalObjects.flatMap((object) => object.fields.map((field) => `<fieldPermissions><editable>false</editable><field>${object.api}.${field.name}</field><readable>true</readable></fieldPermissions>`)).join("");
+write("permissionsets/RHC_Change_Monitor_Viewer.permissionset-meta.xml", `<PermissionSet${namespace}><description>Read Change Monitor policy and bounded operational evidence without mutation rights.</description>${viewerFieldAccess}<hasActivationRequired>false</hasActivationRequired><label>RHC Change Monitor Viewer</label>${objectAccess(false)}</PermissionSet>`);

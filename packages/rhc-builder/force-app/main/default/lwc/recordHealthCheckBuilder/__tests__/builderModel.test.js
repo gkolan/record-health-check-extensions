@@ -1,4 +1,5 @@
 import {
+  diffVersions,
   buildCanonicalVersion,
   applyCardExperience,
   apiNameFromLabel,
@@ -124,5 +125,29 @@ describe("builderModel", () => {
     expect(validateLocalDraft(draft)).toContain(
       "Keep a Run action visible when the Check Set waits for the user.",
     );
+  });
+
+  it("diffs two versions by check identity and changed field names", () => {
+    const base = {
+      checkSet: { values: { CardTitle__c: "A", IsActive__c: true } },
+      checks: [
+        { qualifiedApiName: "Keep", values: { EvaluationOrder__c: 10, FailureSeverity__c: "WARNING" } },
+        { qualifiedApiName: "Gone", values: { EvaluationOrder__c: 20 } }
+      ]
+    };
+    const target = {
+      checkSet: { values: { CardTitle__c: "B", IsActive__c: true } },
+      checks: [
+        { qualifiedApiName: "Keep", values: { EvaluationOrder__c: 10, FailureSeverity__c: "ERROR" } },
+        { qualifiedApiName: "New", values: { EvaluationOrder__c: 30 } }
+      ]
+    };
+    const diff = diffVersions(base, target);
+    expect(diff.added).toEqual(["New"]);
+    expect(diff.removed).toEqual(["Gone"]);
+    expect(diff.changed).toEqual([{ qualifiedApiName: "Keep", fields: ["FailureSeverity__c"] }]);
+    expect(diff.checkSetFields).toEqual(["CardTitle__c"]);
+    expect(diff.isEmpty).toBe(false);
+    expect(diffVersions(base, base).isEmpty).toBe(true);
   });
 });

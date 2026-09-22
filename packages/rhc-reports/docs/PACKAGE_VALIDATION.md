@@ -73,6 +73,14 @@ values do not change. Then complete the sandbox-only
 
 ## Latest verification record
 
+On 2026-09-21, the exact working-tree delta passed six Jest tests, coverage (90.56% statements,
+53.33% branches, 93.75% functions, and 88.88% lines), source validation, the pinned minimum-core
+contract, XML parsing, zero-vulnerability dependency audit, Metadata API conversion, and a
+full-package Recommended scan with zero findings
+(`/tmp/rhc-reports-recommended-20260921-0240.json`). A focused Apex run stopped before submission
+with `NoDefaultEnvError`, so the historical org evidence below is not current-source compilation or
+execution evidence.
+
 On 2026-08-30, the remediated source passed the package source-contract validator, XML parsing,
 the pinned core 2.0.4.2 event-contract validator, Salesforce source conversion, dependency audit,
 both LWC Jest suites (5 tests), and the configured coverage gates (89.47% lines, 93.33% functions,

@@ -2,6 +2,14 @@
     <lightning-card title="RHC Integration Dead Letters" icon-name="utility:error">
         <lightning-button
             slot="actions"
+            label="Replay selected"
+            variant="brand"
+            onclick={handleReplaySelected}
+            disabled={replaySelectedDisabled}
+            data-action="replay-selected"
+        ></lightning-button>
+        <lightning-button
+            slot="actions"
             label="Refresh"
             icon-name="utility:refresh"
             onclick={handleRefresh}
@@ -16,7 +24,9 @@
                 data={rows}
                 columns={columns}
                 onrowaction={handleRowAction}
-                hide-checkbox-column
+                onrowselection={handleRowSelection}
+                hide-checkbox-column={hideSelection}
+                max-row-selection="50"
             ></lightning-datatable>
         </template>
         <template lwc:elseif={hasError}>
@@ -24,6 +34,26 @@
         </template>
         <template lwc:else>
             <div class="slds-var-p-around_medium">No dead-letter deliveries require attention.</div>
+        </template>
+        <template lwc:if={showRetention}>
+            <section aria-label="Integration Delivery retention" class="slds-var-p-around_medium slds-var-m-top_medium">
+                <h2 class="slds-text-heading_small">Integration Delivery retention</h2>
+                <p class="slds-text-body_small slds-var-m-bottom_small">
+                    Cleanup is manual. Each confirmed purge deletes at most {retention.maxDeleteRows} of the oldest SUCCEEDED or DEAD_LETTER deliveries and never deletes PENDING or RETRY_WAIT deliveries.
+                </p>
+                <div class="slds-grid slds-gutters slds-wrap slds-grid_vertical-align-end">
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                        <lightning-input data-retention-days type="number" label="Retain terminal deliveries for (days)" min="1" max="3650" step="1" required value={retention.retentionDays} onchange={handleRetentionChange}></lightning-input>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                        <lightning-button data-action="save-retention" label="Save retention settings" onclick={handleSaveRetention} disabled={isLoading}></lightning-button>
+                    </div>
+                </div>
+                <lightning-input data-retention-confirm class="slds-var-m-top_small" type="checkbox" label="I understand that eligible Integration Deliveries will be permanently deleted." checked={retentionConfirmed} onchange={handleRetentionConfirm}></lightning-input>
+                <div class="slds-var-m-top_small">
+                    <lightning-button data-action="purge" label="Purge eligible Integration Deliveries" variant="destructive" onclick={handlePurge} disabled={purgeDisabled}></lightning-button>
+                </div>
+            </section>
         </template>
     </lightning-card>
 </template>

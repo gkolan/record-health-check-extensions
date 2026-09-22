@@ -1,0 +1,11 @@
+ignores:
+  files:
+    - "**/coverage/**"
+    - "**/node_modules/**"
+    - "**/.sf/**"
+    - "**/.sfdx/**"
+    - "**/code-analyzer/**"
+    - "**/code-analyzer-results*.json"
+    # Build-time metadata generators are verified by each package's drift check;
+    # LWC runtime ESLint rules misclassify their Node.js imports and process flags.
+    - "**/generate_metadata.mjs"

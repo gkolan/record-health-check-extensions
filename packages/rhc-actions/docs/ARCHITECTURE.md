@@ -31,6 +31,8 @@ flowchart LR
         REVIEW["RHC Actions Review LWC"]
         EXECUTE["RHCActionExecutionService"]
         HISTORY[("Action History")]
+        SETTING[("Action Setting")]
+        RETENTION["RHCActionRetentionService"]
     end
 
     subgraph customer["Customer-owned automation"]
@@ -49,6 +51,10 @@ flowchart LR
     EXECUTE -->|"contract 1.0 inputs"| FLOW
     FLOW --> RECORD
     EXECUTE --> HISTORY
+    REVIEW -->|"save window / confirm purge"| RETENTION
+    SETTING --> RETENTION
+    RETENTION -->|"old completed rows only"| HISTORY
+    RETENTION -->|"old terminal rows only"| PENDING
     RECORD -.->|"can cause later reevaluation"| CHECK
 
     style core fill:#ecfeff,stroke:#0e7490,stroke-dasharray:5
@@ -177,6 +183,16 @@ make the original evaluation, event delivery, approval, and correction one atomi
 | `rhcActionReview`             | Present Pending Actions and invoke server-authorized approve/reject operations              | Decide authorization or execute Flow in JavaScript                        |
 | `RHCActionExecutionQueueable` | Run approved work asynchronously and schedule bounded delayed retries                       | Retry without the policy limit                                            |
 | `RHCActionExecutionService`   | Lock, revalidate, enforce cooldown, start Flow, and write safe audit state                  | Store exception messages, stack traces, payloads, or Flow outputs         |
+| `RHCActionRetentionService`   | Save the singleton in user mode; enforce permission, terminal filters, and 1,000-row cleanup cap | Schedule cleanup or expose unrestricted delete CRUD                   |
+
+## Retention transaction boundary
+
+The review controller delegates retention reads, saves, and purges to `RHCActionRetentionService`.
+Setting access remains user mode. The service is `without sharing` only for its narrow system-mode
+audit deletion boundary and first requires `RHC_Actions_Manage_Retention` plus setting CRUD. It
+selects completed History first and terminal Pending Actions only with remaining capacity. Each
+request is one transaction and rolls back if a delete fails. No scheduler or background purge is
+included.
 
 ## Invariants
 

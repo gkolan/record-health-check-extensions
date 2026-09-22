@@ -14,6 +14,7 @@ or client-provided approval state.
 | Automatic correction is accidental     | Manual default, automatic mode, explicit policy checkbox, dedicated Custom Permission         | Privileged admins can authorize risk                        |
 | Errors leak diagnostics                | Fixed codes and bounded authored summaries; no stacks, payloads, exception text, or outputs   | Flow logs follow org retention                              |
 | Runtime elevates access                | `with sharing`, user-mode data access, execution identity permissions                         | Customer Flow context can broaden effects                   |
+| Audit evidence is deleted casually     | Separate Admin permission, saved window, explicit confirmation, terminal-only filter, 1,000-row cap; no direct delete CRUD | Authorized cleanup remains irreversible; governance and backup remain customer responsibilities |
 
 Actions does not send alerts, call external systems, inspect other extensions, or mutate core. It
 cannot make the original check and correction atomic or roll back committed downstream work.

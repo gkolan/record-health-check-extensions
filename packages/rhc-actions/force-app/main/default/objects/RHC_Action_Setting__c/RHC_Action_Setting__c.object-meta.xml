@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <deploymentStatus>Deployed</deploymentStatus>
+    <description>The RHC Action Setting object stores the administrator-approved retention window used by bounded manual cleanup of terminal Pending Actions and completed Action History. It does not schedule deletion. Commonly used to govern corrective-action audit disposition while preserving nonterminal work.</description>
+    <enableActivities>false</enableActivities>
+    <enableFeeds>false</enableFeeds>
+    <enableHistory>false</enableHistory>
+    <enableReports>false</enableReports>
+    <enableSearch>false</enableSearch>
+    <label>RHC Action Setting</label>
+    <nameField>
+        <label>RHC Action Setting Name</label>
+        <type>Text</type>
+    </nameField>
+    <pluralLabel>RHC Action Settings</pluralLabel>
+    <sharingModel>ReadWrite</sharingModel>
+    <visibility>Public</visibility>
+</CustomObject>

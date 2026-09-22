@@ -57,10 +57,14 @@ Day-1 constraints:
 | Test class | Required behaviors |
 | --- | --- |
 | `RHCReportsIngestionServiceTest` | 251-event bulk handling, same-batch and redelivery deduplication, trigger delivery, unsupported/restricted rejection, null safety. |
-| `RHCReportsAggregationServiceTest` | deterministic upsert, recurrence, recovery, invalid time zone, null date. |
+| `RHCReportsAggregationServiceTest` | deterministic upsert, recurrence, recovery, invalid time zone, null date, and repository query-boundary failure. |
 | `RHCReportsRetentionBatchTest` | expired Result, Run, and Snapshot deletion. |
-| `RHCReportsControllerTest` | permission-gated 90-day settings, invalid retention, observed ACTIONABLE coverage. |
+| `RHCReportsControllerTest` | permission-gated typed settings, missing/invalid retention input, observed ACTIONABLE coverage. |
 | `RHCReportsMaintenanceTest` | Queueable completion date, disabled scheduler branch, invalid retention target. |
+
+Service, subscriber, aggregation, maintenance, and retention tests execute under a Standard User
+created by `RHCReportsTestDataFactory`. Controller tests separately assign the Admin or Viewer
+permission set required by the public user-mode boundary.
 
 ## Local metadata checks
 

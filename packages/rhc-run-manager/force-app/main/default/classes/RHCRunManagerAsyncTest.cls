@@ -7,9 +7,9 @@ private class RHCRunManagerAsyncTest {
   }
 
   @IsTest
-  static void shouldUseSharedExecutionPath_WhenRunNow() {
+  static void shouldUseSharedExecutionPathWhenRunNow() {
     System.runAs(RHCRunManagerTestDataFactory.adminUser()) {
-    RHCRunManagerTestDataFactory.createAccounts(2, true);
+    RHCRunManagerTestDataFactory.createAccounts(2);
     Record_Health_Check_Run_Definition__c definition = RHCRunManagerTestDataFactory.createDefinition('ALL_ACCESSIBLE', 'FAIL');
 
     Test.startTest();
@@ -28,9 +28,9 @@ private class RHCRunManagerAsyncTest {
   }
 
   @IsTest
-  static void shouldCoalescePendingIds_IntoOneSuppliedIdsBatch() {
+  static void shouldCoalescePendingIdsIntoOneSuppliedIdsBatch() {
     System.runAs(RHCRunManagerTestDataFactory.adminUser()) {
-    List<Account> accounts = RHCRunManagerTestDataFactory.createAccounts(2, true);
+    List<Account> accounts = RHCRunManagerTestDataFactory.createAccounts(2);
     Record_Health_Check_Run_Definition__c definition = RHCRunManagerTestDataFactory.createDefinition('SUPPLIED_IDS', 'FAIL');
     insert new List<Record_Health_Check_Run_Request__c>{
       pending(definition.Id, accounts[0].Id),
@@ -47,9 +47,9 @@ private class RHCRunManagerAsyncTest {
   }
 
   @IsTest
-  static void shouldContinueDraining_WhenPendingRowsExceedSafePage() {
+  static void shouldContinueDrainingWhenPendingRowsExceedSafePage() {
     System.runAs(RHCRunManagerTestDataFactory.adminUser()) {
-    List<Account> accounts = RHCRunManagerTestDataFactory.createAccounts(3, true);
+    List<Account> accounts = RHCRunManagerTestDataFactory.createAccounts(3);
     Record_Health_Check_Run_Definition__c definition = RHCRunManagerTestDataFactory.createDefinition('SUPPLIED_IDS', 'FAIL');
     insert new List<Record_Health_Check_Run_Request__c>{
       pending(definition.Id, accounts[0].Id),
@@ -68,12 +68,39 @@ private class RHCRunManagerAsyncTest {
   }
 
   @IsTest
+  static void shouldConsumeRequestWithoutBatchWhenRecordIdMalformed() {
+    System.runAs(RHCRunManagerTestDataFactory.adminUser()) {
+    Record_Health_Check_Run_Definition__c definition = RHCRunManagerTestDataFactory.createDefinition('SUPPLIED_IDS', 'FAIL');
+    Record_Health_Check_Run_Request__c requestValue = new Record_Health_Check_Run_Request__c(
+      RunDefinition__c = definition.Id,
+      RequestKey__c = definition.Id + '|malformed',
+      RecordId__c = 'not-an-id',
+      Status__c = 'PENDING',
+      RequestedAt__c = System.now()
+    );
+    insert requestValue;
+
+    Test.startTest();
+    new RHCRunManagerCoalescerQueueable(definition.Id).execute((QueueableContext) null);
+    Test.stopTest();
+
+    requestValue = [
+      SELECT Status__c
+      FROM Record_Health_Check_Run_Request__c
+      WHERE Id = :requestValue.Id
+    ];
+    Assert.areEqual('SUBMITTED', requestValue.Status__c, 'A malformed durable ID should not remain pending forever.');
+    Assert.areEqual(0, [SELECT COUNT() FROM Record_Health_Check_Batch_Run__c], 'Malformed IDs must not launch Batch work.');
+    }
+  }
+
+  @IsTest
   static void shouldValidateExecutionInputs() {
     System.runAs(RHCRunManagerTestDataFactory.adminUser()) {
     Record_Health_Check_Run_Definition__c definition = RHCRunManagerTestDataFactory.createDefinition('SUPPLIED_IDS', 'FAIL');
     Boolean customSourceRejected = false;
     try {
-      RHCRunManagerExecutionService.start(definition.Id, 'CUSTOM_BATCH', null, null);
+      RHCRunManagerExecutionService.start(executionRequest(definition.Id, 'CUSTOM_BATCH', null));
     } catch (RHCRunManagerExecutionService.ExecutionException error) {
       customSourceRejected = true;
     }
@@ -81,7 +108,7 @@ private class RHCRunManagerAsyncTest {
 
     Boolean emptyIdsRejected = false;
     try {
-      RHCRunManagerExecutionService.start(definition.Id, 'SUPPLIED_IDS', null, new List<Id>());
+      RHCRunManagerExecutionService.start(executionRequest(definition.Id, 'SUPPLIED_IDS', new List<Id>()));
     } catch (RHCRunManagerExecutionService.ExecutionException error) {
       emptyIdsRejected = true;
     }
@@ -98,7 +125,7 @@ private class RHCRunManagerAsyncTest {
     Record_Health_Check_Run_Definition__c allRecordsDefinition = RHCRunManagerTestDataFactory.createDefinition('ALL_ACCESSIBLE', 'FAIL');
     Boolean wrongDefinitionRejected = false;
     try {
-      RHCRunManagerExecutionService.start(allRecordsDefinition.Id, 'SUPPLIED_IDS', null, new List<Id>{ UserInfo.getUserId() });
+      RHCRunManagerExecutionService.start(executionRequest(allRecordsDefinition.Id, 'SUPPLIED_IDS', new List<Id>{ UserInfo.getUserId() }));
     } catch (RHCRunManagerExecutionService.ExecutionException error) {
       wrongDefinitionRejected = true;
     }
@@ -107,7 +134,33 @@ private class RHCRunManagerAsyncTest {
   }
 
   @IsTest
-  static void shouldEnqueueOneDelayedCoalescer_WhenDefinitionValid() {
+  static void shouldRejectNullExecutionRequest() {
+    System.runAs(RHCRunManagerTestDataFactory.adminUser()) {
+      Test.startTest();
+      try {
+        RHCRunManagerExecutionService.start(null);
+        Assert.fail('Expected a null execution request to fail.');
+      } catch (RHCRunManagerExecutionService.ExecutionException error) {
+        Assert.areEqual('Run Definition is required.', error.getMessage(), 'The failure should identify the missing definition.');
+      }
+      Test.stopTest();
+    }
+  }
+
+  private static RHCRunManagerExecutionService.Request executionRequest(
+    Id definitionId,
+    String source,
+    List<Id> suppliedIds
+  ) {
+    RHCRunManagerExecutionService.Request request = new RHCRunManagerExecutionService.Request();
+    request.definitionId = definitionId;
+    request.source = source;
+    request.suppliedIds = suppliedIds;
+    return request;
+  }
+
+  @IsTest
+  static void shouldEnqueueOneDelayedCoalescerWhenDefinitionValid() {
     System.runAs(RHCRunManagerTestDataFactory.adminUser()) {
     Record_Health_Check_Run_Definition__c definition = RHCRunManagerTestDataFactory.createDefinition('SUPPLIED_IDS', 'FAIL');
 
@@ -121,7 +174,7 @@ private class RHCRunManagerAsyncTest {
   }
 
   @IsTest
-  static void shouldLetViewerMonitorCrossOwnerRuns_WithoutWriteAccess() {
+  static void shouldLetViewerMonitorCrossOwnerRunsWithoutWriteAccess() {
     Record_Health_Check_Batch_Run__c batchRun;
     System.runAs(RHCRunManagerTestDataFactory.adminUser()) {
       Record_Health_Check_Run_Definition__c definition = RHCRunManagerTestDataFactory.createDefinition('ALL_ACCESSIBLE', 'FAIL');
@@ -142,7 +195,7 @@ private class RHCRunManagerAsyncTest {
   }
 
   @IsTest
-  static void shouldRetryOnlyUnhandledFailures_BeforeAttemptLimit() {
+  static void shouldRetryOnlyUnhandledFailuresBeforeAttemptLimit() {
     System.runAs(RHCRunManagerTestDataFactory.adminUser()) {
     Test.startTest();
     Boolean firstFailure = RHCRunManagerCoalescerQueueable.isRetryEligible(ParentJobResult.UNHANDLED_EXCEPTION, 0);

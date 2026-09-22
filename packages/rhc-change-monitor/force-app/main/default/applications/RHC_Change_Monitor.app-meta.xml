@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomApplication xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>Operate Record Health Check Change Monitor policies and CDC evaluation evidence.</description>
+    <formFactors>Large</formFactors>
+    <label>RHC Change Monitor</label>
+    <navType>Standard</navType>
+    <tabs>RHC_Change_Monitor</tabs>
+    <tabs>Record_Health_Check_Change_Policy__c</tabs>
+    <tabs>Record_Health_Check_Change_Evaluation__c</tabs>
+    <uiType>Lightning</uiType>
+</CustomApplication>

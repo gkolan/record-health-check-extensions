@@ -24,16 +24,17 @@ packages until their feasibility and release gates are complete.
 
 ## Choose the capability you need
 
-| Extension | What it adds | How it can help your organization |
-| --- | --- | --- |
-| [RHC Logs](packages/rhc-logs/README.md) | Restricted diagnostic-event retention, investigation, and bounded cleanup | Gives approved administrators searchable technical-error evidence inside Salesforce |
-| [RHC Run Manager](packages/rhc-run-manager/README.md) | No-code batch execution, scheduling, record selection, result history, and monitoring | Runs health checks across many records on demand, on a schedule, or from Flow |
-| [RHC Builder](packages/rhc-builder/README.md) | Guided design, validation, versioning, publication, and rollback | Helps administrators create reliable health checks without editing individual Custom Metadata records by hand |
-| [RHC Alerts](packages/rhc-alerts/README.md) | Configurable Salesforce bell notifications and email alerts for finalized outcomes | Brings important failures and operational issues to the people who need to respond |
-| [RHC Change Monitor](packages/rhc-change-monitor/README.md) | CDC-driven reruns after selected record changes | Keeps selected checks current without putting CDC concerns into core; development preview |
-| [RHC Reports](packages/rhc-reports/README.md) | Durable facts, daily snapshots, Salesforce reports, and a trend dashboard | Shows whether data quality and business readiness are improving over time |
-| [RHC Actions](packages/rhc-actions/README.md) | Governed mapping from actionable outcomes to approved autolaunched Flows | Turns selected findings into controlled follow-up work, with manual approval by default |
-| [RHC Integrations](packages/rhc-integrations/README.md) | Allow-listed outbound delivery through Named Credentials | Sends approved outcomes to external automation, monitoring, or data platforms |
+| Extension | What it adds | How it can help your organization | First run |
+| --- | --- | --- | --- |
+| [RHC Logs](packages/rhc-logs/README.md) | Restricted diagnostic-event retention, investigation, and bounded cleanup | Gives approved administrators searchable technical-error evidence inside Salesforce | [Checklist](packages/rhc-logs/README.md#first-run) |
+| [RHC Run Manager](packages/rhc-run-manager/README.md) | No-code batch execution, scheduling, record selection, result history, and monitoring | Runs health checks across many records on demand, on a schedule, or from Flow | [Checklist](packages/rhc-run-manager/README.md#first-run) |
+| [RHC Builder](packages/rhc-builder/README.md) | Guided design, validation, versioning, publication, and rollback | Helps administrators create reliable health checks without editing individual Custom Metadata records by hand | [Checklist](packages/rhc-builder/README.md#first-run) |
+| [RHC Alerts](packages/rhc-alerts/README.md) | Configurable Salesforce bell notifications and email alerts for finalized outcomes | Brings important failures and operational issues to the people who need to respond | [Checklist](packages/rhc-alerts/README.md#first-run) |
+| [RHC Change Monitor](packages/rhc-change-monitor/README.md) | CDC-driven reruns after selected record changes | Keeps selected checks current without putting CDC concerns into core; development preview | [Preview checklist](packages/rhc-change-monitor/README.md#first-run) |
+| [RHC Reports](packages/rhc-reports/README.md) | Durable facts, daily snapshots, Salesforce reports, and a trend dashboard | Shows whether data quality and business readiness are improving over time | [Checklist](packages/rhc-reports/README.md#first-run) |
+| [RHC Actions](packages/rhc-actions/README.md) | Governed mapping from actionable outcomes to approved autolaunched Flows | Turns selected findings into controlled follow-up work, with manual approval by default | [Checklist](packages/rhc-actions/README.md#first-run) |
+| [RHC Integrations](packages/rhc-integrations/README.md) | Allow-listed outbound delivery through Named Credentials | Sends approved outcomes to external automation, monitoring, or data platforms | [Checklist](packages/rhc-integrations/README.md#first-run) |
+| [RHC Agent Actions](packages/rhc-agent-actions/README.md) | Agentforce actions that explain findings and discover applicable Check Sets | Lets an agent tell a user which checks failed and how to fix them; source only | [Checklist](packages/rhc-agent-actions/README.md#first-run) |
 
 ## How the suite works
 
@@ -79,7 +80,7 @@ Important behavior remains deliberate:
   administrator.
 - Reporting and alert coverage depends on the outcomes that core is configured to publish.
 
-## Get started
+## Install and complete a first run
 
 1. [Install and configure Record Health Check core](https://github.com/gkolan/record-health-check/blob/main/docs/installation/install-and-verify.md).
 2. Choose the extension that matches the outcome you need from the table above.
@@ -88,6 +89,9 @@ Important behavior remains deliberate:
 4. Install the extension's released subscriber package version in a sandbox first.
 5. Assign the packaged permission sets, complete setup, and run the documented acceptance scenario
    before using it with production data.
+
+Use the suite-wide [install, first-run, and uninstall checklist](docs/FIRST_RUN.md) for exact access,
+controlled acceptance evidence, and cleanup expectations for every application.
 
 ### Current availability
 
@@ -102,8 +106,15 @@ installable release.
   released.
 - The first installable package versions for **Alerts, Reports, Actions, and Integrations** are
   still pending.
-- **RHC Change Monitor** has a local implementation preview. Its CDC adapter, replay identity,
-  execution principal, and limit gates must pass before a package container or version is created.
+- **RHC Agent Actions** is source-only: it has no registered package container or installable
+  version. Local source conversion and strict static analysis pass, while current Apex execution
+  still requires a freshly authorized org.
+- **RHC Change Monitor** has a local implementation preview. Its execution-principal gate passed;
+  replay/redelivery, adapter packaging, measured-load, and package-lifecycle gates remain open. A
+  tested CLI generates subscriber-owned adapters, but it does not create or deploy a package.
+
+The dated [suite verification ledger](docs/VERIFICATION_2026-09-20.md) records current local checks,
+CDC and notification readiness, and the evidence that still requires an authenticated org.
 
 Do not construct an installation URL from a package-container ID. Use only an installable `04t`
 subscriber package version documented by the selected extension, and confirm its current release
@@ -158,6 +169,7 @@ allow-listed routes and use Salesforce Named Credentials for authentication.
 | Need | Start here |
 | --- | --- |
 | Compare all extension projects | [Package index](packages/README.md) |
+| Install, verify, or uninstall an extension | [Install, first run, and uninstall](docs/FIRST_RUN.md) |
 | Install or configure one extension | The selected [package README](packages/README.md) |
 | Understand package boundaries | [Package standards](docs/architecture/package-standards.md) |
 | Review how the projects evolved | [Architecture stocktake](docs/architecture/stocktake.md) |

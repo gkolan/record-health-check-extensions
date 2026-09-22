@@ -21,7 +21,8 @@ Use it to:
 - match an exact Check or Check Set identity, status, and minimum severity;
 - deliver through Salesforce Custom Notification, email, or both;
 - suppress repeated messages during a policy-and-record cooldown;
-- see whether each delivery was pending, delivered, suppressed, failed, or a duplicate; and
+- see whether each delivery was pending, delivered, suppressed, failed, or a duplicate;
+- manually purge bounded terminal delivery evidence after an approved retention window; and
 - analyze whether core publication settings can produce the events the policy needs.
 
 For example, a data steward group could receive one alert when an Account fails a critical ownership
@@ -42,7 +43,7 @@ setup assistant helps administrators find interactive and programmatic publicati
 
 - the **RHC Alerts** Lightning app;
 - guided Alert Policy administration and a Delivery History experience;
-- Alert Policy and Delivery ledger objects;
+- Alert Policy, Delivery ledger, and package-owned retention-setting objects;
 - Admin and least-privilege Viewer Runtime permission sets;
 - a Salesforce Custom Notification type;
 - Result and Set Run Platform Event subscribers; and
@@ -51,7 +52,7 @@ setup assistant helps administrators find interactive and programmatic publicati
 The package does not retain general health-check history, update checked business records, send
 webhooks, or deliver to Slack or other external systems.
 
-## Get started
+## First run
 
 1. Install the required Record Health Check core version.
 2. Install an approved RHC Alerts subscriber package version in a sandbox.
@@ -65,6 +66,8 @@ webhooks, or deliver to Slack or other external systems.
 
 Follow the [junior administrator guide](ADMIN_GUIDE.md) for exact clicks and decisions, or use the
 [sandbox demo](demo/README.md) for a repeatable acceptance exercise.
+The suite [install, first-run, and uninstall checklist](../../docs/FIRST_RUN.md) defines the common
+package lifecycle and required success evidence.
 
 ### Current availability
 
@@ -84,6 +87,8 @@ See the executable [release gate ledger](docs/RELEASE-GATES.md) for the authorit
 - Recipient resolution includes active users and direct active user members of regular public
   groups.
 - Cooldown and event-policy idempotency reduce repeated delivery.
+- Administrators can save a 1–3,650 day retention window and explicitly purge at most 1,000 oldest
+  terminal deliveries per run; `PENDING` rows are never selected and no cleanup is scheduled.
 - Salesforce messaging and platform limits still apply.
 - Alerts depends only on Record Health Check core and never reads another extension's records.
 - Custom Notification and email delivery is asynchronous and cannot guarantee that a recipient read

@@ -47,7 +47,7 @@ does not remove core metadata that Builder already published.
 
 The package does not add a second evaluation engine and does not change records being checked.
 
-## Get started
+## First run
 
 1. Install the required Record Health Check core version.
 2. Install an approved RHC Builder subscriber package version in a sandbox.
@@ -57,6 +57,8 @@ The package does not add a second evaluation engine and does not change records 
 5. Review [operations](docs/OPERATIONS.md) before introducing a production authoring process.
 
 See [installation](docs/INSTALLATION.md) for exact prerequisites and package installation steps.
+The suite [install, first-run, and uninstall checklist](../../docs/FIRST_RUN.md) defines the common
+package lifecycle and reminds administrators that published core metadata survives Builder removal.
 
 ### Current availability
 

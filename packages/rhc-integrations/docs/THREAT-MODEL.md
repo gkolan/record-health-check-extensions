@@ -25,7 +25,8 @@ Credentials and External Credentials. The package never offers a fallback creden
 | Duplicate external work | The ledger has a unique route-plus-Event-ID key. Every request sends the canonical Event ID in `Idempotency-Key`. The receiver must enforce it. |
 | Retry storm | Retryable classifications are explicit and retries have fixed maximum attempts and bounded delays. Permanent responses dead-letter immediately. |
 | Unauthorized replay | Replay requires the packaged `RHC_Integration_Replay` Custom Permission and user-mode record access. Only the Admin permission set grants it. |
-| Reporting-data accumulation | The ledger stores only delivery operations and the minimal allow-listed request needed for retry/replay. There are no report types, dashboards, event-history objects, or checked-record updates. |
+| Unauthorized or over-broad cleanup | Retention management requires setting create/read/edit and Delivery delete access. Cleanup is manual, explicitly confirmed, user-mode, capped at 1,000 oldest rows, and restricted to completed `SUCCEEDED`/`DEAD_LETTER` deliveries. |
+| Reporting-data accumulation | The ledger stores only delivery operations and the minimal allow-listed request needed for retry/replay. Reports/search remain disabled, and the package provides bounded manual retention cleanup rather than an automatic schedule. |
 | Cross-extension privilege | No other extension object or Apex API is referenced. The only package dependency is Record Health Check core. |
 | Human-notification side effects | The package contains no email, notification, Chatter, Slack, or checked-record mutation path. |
 
@@ -35,4 +36,3 @@ Salesforce and an external system cannot provide an atomic exactly-once transact
 TLS, Named Credential, endpoint, external rate-limit, Platform Event, Queueable, callout, and async
 limits remain outside this package's control. An HTTP success proves only that the receiver returned
 a success response; it does not prove downstream completion.
-

@@ -33,7 +33,11 @@ global without sharing class RHCRunManagerUninstallHandler implements UninstallH
       WHERE ApexClass.Name IN :ASYNC_CLASS_NAMES
         AND Status IN ('Holding', 'Queued', 'Preparing', 'Processing')
     ];
-    for (CronTrigger scheduledJob : scheduledJobs) System.abortJob(scheduledJob.Id);
-    for (AsyncApexJob asynchronousJob : asynchronousJobs) System.abortJob(asynchronousJob.Id);
+    for (CronTrigger scheduledJob : scheduledJobs) {
+      System.abortJob(scheduledJob.Id);
+    }
+    for (AsyncApexJob asynchronousJob : asynchronousJobs) {
+      System.abortJob(asynchronousJob.Id);
+    }
   }
 }

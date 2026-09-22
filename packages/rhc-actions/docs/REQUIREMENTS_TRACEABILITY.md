@@ -7,13 +7,14 @@
 | Direct finalized Result subscription     | `RHCActionResultSubscriber`                         | Direct Platform Event delivery test                             |
 | No other extension reads                 | Capture uses only Policy plus core event            | Static scope audit and architecture review                      |
 | Core read-only                           | No DML to core metadata/runtime records             | Static scope audit                                              |
-| Policy, queue, history owned by Actions  | Three private custom objects                        | Metadata deployment and object tests                            |
+| Policy, queue, history owned by Actions  | Three private operational custom objects            | Metadata deployment and object tests                            |
+| Governed audit retention                 | Settings singleton, Admin permission, terminal-only 1,000-row service cap | retention Apex/Jest tests and source security validator |
 | Same-org autolaunched Flow only          | `RHCActionPolicyService` and `RHCActionFlowGateway` | active, inactive, wrong-type tests                              |
 | Manual default                           | `Mode__c` default and capture branch                | metadata review and manual execution tests                      |
 | Explicit permission-gated automatic mode | checkbox plus Custom Permission check               | automatic capture tests/security review                         |
 | Versioned Flow contract                  | `Input_Contract_Version__c = 1.0`                   | valid and unsupported contract tests                            |
 | Allow-listed inputs only                 | constants, validation, `buildInputs`                | arbitrary input rejection and captured input assertion          |
-| Manual review UI                         | `rhcActionReview` and controller                    | four Jest tests and controller tests                            |
+| Manual review and retention UI           | `rhcActionReview` and controller                    | 11 Jest tests and controller/retention tests                    |
 | Event ID idempotency                     | unique `Idempotency_Key__c`                         | duplicate event test                                            |
 | Per-record cooldown                      | recent successful History query by policy/record    | cooldown suppression test                                       |
 | Retry limits                             | policy validation and Queueable delay               | retry exhaustion test                                           |

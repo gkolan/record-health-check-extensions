@@ -5,27 +5,7 @@
 private class RHCActionReviewControllerTest {
   private class ReviewGatewayStub extends RHCActionFlowGateway {
     public override FlowDescriptor describeActive(String flowApiName) {
-      FlowDescriptor descriptor = new FlowDescriptor();
-      descriptor.apiName = flowApiName;
-      descriptor.activeVersionId = RHCActionTestDataFactory.syntheticId('301');
-      descriptor.processType = 'AutoLaunchedFlow';
-      for (String name : RHCActionConstants.allowedFlowInputs()) {
-        VariableDescriptor variable = new VariableDescriptor();
-        variable.apiName = name;
-        variable.dataType = 'String';
-        variable.isInput = true;
-        variable.isOutput = false;
-        variable.isCollection = false;
-        descriptor.variablesByName.put(name, variable);
-      }
-      VariableDescriptor interview = new VariableDescriptor();
-      interview.apiName = 'rhcInterviewGuidV1';
-      interview.dataType = 'String';
-      interview.isInput = false;
-      interview.isOutput = true;
-      interview.isCollection = false;
-      descriptor.variablesByName.put(interview.apiName, interview);
-      return descriptor;
+      return RHCActionTestDataFactory.flowDescriptor(flowApiName);
     }
   }
 
@@ -46,19 +26,21 @@ private class RHCActionReviewControllerTest {
 
   @IsTest
   static void shouldRejectRequestWhenApprovalPermissionIsMissing() {
-    RHCActionReviewController.approvalPermissionOverride = false;
-    Id actionId = [SELECT Id FROM RHC_Pending_Action__c LIMIT 1].Id;
-    Test.startTest();
-    try {
-      RHCActionReviewController.runAction(actionId);
-      Assert.fail('Missing approval permission should reject execution.');
-    } catch (AuraHandledException expected) {
-      Assert.isNotNull(
-        expected,
-        'The server must enforce the approval permission.'
-      );
+    System.runAs(new User(Id = UserInfo.getUserId())) {
+      RHCActionReviewController.approvalPermissionOverride = false;
+      Id actionId = [SELECT Id FROM RHC_Pending_Action__c LIMIT 1].Id;
+      Test.startTest();
+      try {
+        RHCActionReviewController.runAction(actionId);
+        Assert.fail('Missing approval permission should reject execution.');
+      } catch (AuraHandledException expected) {
+        Assert.isNotNull(
+          expected,
+          'The server must enforce the approval permission.'
+        );
+      }
+      Test.stopTest();
     }
-    Test.stopTest();
   }
 
   @IsTest
@@ -88,7 +70,11 @@ private class RHCActionReviewControllerTest {
       'The approving identity must be audited.'
     );
     Assert.isNotNull(action.Approved_At__c, 'Approval time must be audited.');
-    Assert.areEqual(1, asyncStub.enqueueCount, 'Approval should enqueue exactly once.');
+    Assert.areEqual(
+      1,
+      asyncStub.enqueueCount,
+      'Approval should enqueue exactly once.'
+    );
   }
 
   @IsTest
@@ -108,6 +94,59 @@ private class RHCActionReviewControllerTest {
         );
       }
     }
+  }
+
+  @IsTest
+  static void shouldApproveSelectionInOneDecisionAndSkipNonPending() {
+    RHCActionReviewController.approvalPermissionOverride = true;
+    RHCActionReviewController.asyncGateway = new RHCActionTestDataFactory.AsyncGatewayStub();
+    RHCActionReviewController.ReviewOutcome outcome;
+    System.runAs(new User(Id = UserInfo.getUserId())) {
+      RHC_Pending_Action__c pending = [
+        SELECT Id, Policy__c
+        FROM RHC_Pending_Action__c
+        LIMIT 1
+      ];
+      RHC_Pending_Action__c second = RHCActionTestDataFactory.pending(
+        pending.Policy__c,
+        'manual-2'
+      );
+      second.Queue_Status__c = 'PENDING_REVIEW';
+      update second;
+      RHC_Pending_Action__c alreadyQueued = RHCActionTestDataFactory.pending(
+        pending.Policy__c,
+        'queued'
+      );
+      alreadyQueued.Queue_Status__c = 'QUEUED';
+      update alreadyQueued;
+
+      Test.startTest();
+      outcome = RHCActionReviewController.runActions(
+        new List<Id>{ pending.Id, second.Id, alreadyQueued.Id }
+      );
+      Test.stopTest();
+    }
+    Assert.areEqual(
+      2,
+      outcome.processed,
+      'Both pending-review rows are approved.'
+    );
+    Assert.areEqual(
+      1,
+      outcome.skipped,
+      'The already queued row is skipped, not failed.'
+    );
+    Assert.areEqual(
+      2,
+      [
+        SELECT COUNT()
+        FROM RHC_Pending_Action__c
+        WHERE
+          Queue_Status__c = 'QUEUED'
+          AND Approved_By__c = :UserInfo.getUserId()
+      ],
+      'Approved rows record the approver.'
+    );
   }
 
   @IsTest
@@ -156,29 +195,62 @@ private class RHCActionReviewControllerTest {
   }
 
   @IsTest
+  static void shouldExposeRetentionOnlyThroughTheGuardedService() {
+    RHCActionRetentionService.retentionPermissionOverride = true;
+    RHCActionRetentionService.Settings recommendation;
+    RHCActionRetentionService.Settings saved;
+    RHCActionRetentionService.PurgeOutcome outcome;
+    Test.startTest();
+    System.runAs(new User(Id = UserInfo.getUserId())) {
+      recommendation = RHCActionReviewController.getRetentionSettings();
+      saved = RHCActionReviewController.saveRetentionSettings(30);
+      outcome = RHCActionReviewController.purgeAuditRecords();
+    }
+    Test.stopTest();
+    Assert.isFalse(
+      recommendation.configured,
+      'The initial value is only a recommendation.'
+    );
+    Assert.areEqual(
+      30,
+      saved.retentionDays,
+      'The controller should return the saved setting.'
+    );
+    Assert.areEqual(
+      0,
+      outcome.totalDeleted,
+      'An empty audit store should be a safe no-op.'
+    );
+  }
+
+  @IsTest
   static void shouldRejectNullIdsWhenApproverInvokesMutation() {
-    RHCActionReviewController.approvalPermissionOverride = true;
-    try {
-      RHCActionReviewController.runAction(null);
-      Assert.fail('A null pending action ID must be rejected.');
-    } catch (AuraHandledException expected) {
-      Assert.isNotNull(
-        expected,
-        'The controller should throw a handled error.'
-      );
+    System.runAs(new User(Id = UserInfo.getUserId())) {
+      RHCActionReviewController.approvalPermissionOverride = true;
+      try {
+        RHCActionReviewController.runAction(null);
+        Assert.fail('A null pending action ID must be rejected.');
+      } catch (AuraHandledException expected) {
+        Assert.isNotNull(
+          expected,
+          'The controller should throw a handled error.'
+        );
+      }
     }
   }
 
   @IsTest
   static void shouldExecuteQueueableWithEmptyInput() {
-    Integer beforeCount = [SELECT COUNT() FROM RHC_Action_History__c];
-    Test.startTest();
-    System.enqueueJob(new RHCActionExecutionQueueable(null));
-    Test.stopTest();
-    Assert.areEqual(
-      beforeCount,
-      [SELECT COUNT() FROM RHC_Action_History__c],
-      'An empty Queueable must not create audit attempts.'
-    );
+    System.runAs(new User(Id = UserInfo.getUserId())) {
+      Integer beforeCount = [SELECT COUNT() FROM RHC_Action_History__c];
+      Test.startTest();
+      System.enqueueJob(new RHCActionExecutionQueueable(null));
+      Test.stopTest();
+      Assert.areEqual(
+        beforeCount,
+        [SELECT COUNT() FROM RHC_Action_History__c],
+        'An empty Queueable must not create audit attempts.'
+      );
+    }
   }
 }

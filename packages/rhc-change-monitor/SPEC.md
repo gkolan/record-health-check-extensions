@@ -43,6 +43,7 @@ Change Monitor owns:
 - stable intake and policy idempotency keys;
 - bounded asynchronous dispatch and retry classification;
 - a minimal Change Evaluation ledger; and
+- package-owned retention settings with bounded, explicitly confirmed manual cleanup; and
 - setup diagnostics and operational visibility.
 
 ## Non-goals
@@ -202,6 +203,14 @@ the on-platform design does not pass its feasibility gate.
 Do not store changed values, old values, raw event payloads, found/expected values, display messages,
 stack traces, unrestricted exception text, user session data, or notification bodies.
 
+### Retention contract
+
+One `Record_Health_Check_Change_Setting__c` singleton stores the administrator-approved retention
+window. The supported identity is `Default`, and `RetentionDays__c` is a whole number from 1 through
+3,650. An unsaved 90-day recommendation is non-authorizing. One manually confirmed purge deletes at
+most 1,000 oldest terminal evaluations outside the saved window, ordered by acceptance time;
+`PENDING` is never eligible. Release 1 includes no scheduled or automatic deletion.
+
 ## Execution principal and authorization
 
 This is a release-blocking contract, not an implementation detail.
@@ -225,7 +234,12 @@ integration-user model requires separate approval.
 ## Loop and amplification controls
 
 - Core and conforming Checks are read-only, so evaluation must not create another source change.
-- Package-owned Change Policy and Change Evaluation objects are never eligible source entities.
+- Package-owned Change Policy, Change Evaluation, and Change Setting objects are never eligible
+  source entities.
+- Intake and administrator retry must inspect immediate dispatch-event publication results and
+  roll back the associated claim transition when Salesforce rejects the wake-up signal.
+- An authorized administrator can request one additional data-free dispatch signal for existing
+  pending claims when no dispatcher is active; this recovery does not mutate or duplicate claims.
 - One source object can have a documented maximum number of active policies; the initial proposed
   cap is 10 and must be load-tested before release.
 - One change-event batch queries policies once and inserts claims with partial-success DML.
@@ -281,8 +295,10 @@ subscriber-style org:
 8. DELETE never calls core and never masquerades as a health-check failure.
 9. A gap/overflow signal becomes visible high-priority operational evidence.
 10. No changed value, raw payload, unrestricted exception, or core display detail is persisted.
-11. Removing Change Monitor does not change core evaluation or another extension.
-12. Salesforce source validation, Apex tests, Code Analyzer, package creation, clean installation,
+11. Manual cleanup requires saved settings and explicit confirmation, deletes no `PENDING` claims,
+    and never exceeds 1,000 rows in one run.
+12. Removing Change Monitor does not change core evaluation or another extension.
+13. Salesforce source validation, Apex tests, Code Analyzer, package creation, clean installation,
     upgrade, and uninstall tests all pass before release language is used.
 
 ## Official Salesforce references
@@ -300,4 +316,3 @@ subscriber-style org:
 
 These sources ground platform behavior; the package must still verify exact Apex fields, limits,
 execution identity, packaging behavior, and supported API-version semantics in its feasibility org.
-

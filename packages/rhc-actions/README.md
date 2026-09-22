@@ -42,16 +42,16 @@ Pending Action.
 ## What installation adds
 
 - the **RHC Actions** Lightning app and Action Review experience;
-- Action Policy, Pending Action, and Action History objects;
+- Action Policy, Pending Action, Action History, and package-owned Action Setting objects;
 - Admin, Approver, Runtime, and Viewer permission sets;
-- Approve and Automatic Execution custom permissions;
+- Approve, Automatic Execution, and Manage Retention custom permissions;
 - the canonical Result Platform Event subscriber; and
 - asynchronous validation, locking, Flow execution, idempotency, and history services.
 
 The package does not select arbitrary Apex, execute another extension, or silently turn every
 failure into a record update.
 
-## Get started
+## First run
 
 1. Install the required Record Health Check core version.
 2. Install an approved RHC Actions subscriber package version in a sandbox.
@@ -66,6 +66,8 @@ failure into a record update.
 
 Start with the [Administrator Guide](ADMIN_GUIDE.md), or follow the modular
 [admin runbooks](docs/admin/README.md) and [full sandbox test](docs/admin/DEMO_DATA_AND_FULL_TEST.md).
+The suite [install, first-run, and uninstall checklist](../../docs/FIRST_RUN.md) defines the common
+package lifecycle and the evidence to retain.
 
 ### Current availability
 
@@ -88,6 +90,8 @@ remaining release gate.
   transient retries; permanent capture failures receive sanitized package audit records.
 - Policies can invoke only the explicitly configured active autolaunched Flow.
 - History records who initiated the action and its bounded outcome.
+- Admin-only retention cleanup requires a saved 1–3,650-day window and a confirmation for each
+  manual run; it deletes at most 1,000 old completed records and never deletes active/retrying work.
 - Actions depends only on Record Health Check core and never reads another extension's objects.
 - The administrator-owned Flow determines the business data changes, so it must enforce its own
   sharing, CRUD, field access, limits, and error-handling requirements.

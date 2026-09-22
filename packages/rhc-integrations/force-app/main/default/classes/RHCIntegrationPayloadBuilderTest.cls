@@ -1,25 +1,31 @@
-@isTest
+@IsTest
 private class RHCIntegrationPayloadBuilderTest {
-    @isTest
+    @IsTest
     static void shouldBuildAllowListedErrorProfileWhenCanonicalErrorProvided() {
-        RHCIntegrationEventDTO eventRecord = resultEvent();
-        Test.startTest();
-        String payload = RHCIntegrationPayloadBuilder.build('RHC Error v1', eventRecord);
-        Test.stopTest();
-        Map<String, Object> body = (Map<String, Object>) JSON.deserializeUntyped(payload);
-        Assert.areEqual('event-001', body.get('eventId'), 'Event ID should be included');
-        Assert.areEqual('CRITICAL', body.get('severity'), 'Canonical severity should be included');
-        Assert.isFalse(body.containsKey('stackTrace'), 'Stack traces must never be emitted');
-        Assert.isFalse(body.containsKey('detailsJson'), 'Diagnostic payloads must never be emitted');
+        User principal = RHCIntegrationTestDataFactory.createStandardUser('rhcpay1');
+        System.runAs(principal) {
+            RHCIntegrationEventDTO eventRecord = resultEvent();
+            Test.startTest();
+            String payload = RHCIntegrationPayloadBuilder.build('RHC Error v1', eventRecord);
+            Test.stopTest();
+            Map<String, Object> body = (Map<String, Object>) JSON.deserializeUntyped(payload);
+            Assert.areEqual('event-001', body.get('eventId'), 'Event ID should be included');
+            Assert.areEqual('CRITICAL', body.get('severity'), 'Canonical severity should be included');
+            Assert.isFalse(body.containsKey('stackTrace'), 'Stack traces must never be emitted');
+            Assert.isFalse(body.containsKey('detailsJson'), 'Diagnostic payloads must never be emitted');
+        }
     }
 
-    @isTest
+    @IsTest
     static void shouldReturnNullWhenProfileIsNotCompatible() {
-        RHCIntegrationEventDTO eventRecord = resultEvent();
-        Test.startTest();
-        String payload = RHCIntegrationPayloadBuilder.build('RHC Run v1', eventRecord);
-        Test.stopTest();
-        Assert.isNull(payload, 'An incompatible profile should fail closed');
+        User principal = RHCIntegrationTestDataFactory.createStandardUser('rhcpay2');
+        System.runAs(principal) {
+            RHCIntegrationEventDTO eventRecord = resultEvent();
+            Test.startTest();
+            String payload = RHCIntegrationPayloadBuilder.build('RHC Run v1', eventRecord);
+            Test.stopTest();
+            Assert.isNull(payload, 'An incompatible profile should fail closed');
+        }
     }
 
     private static RHCIntegrationEventDTO resultEvent() {

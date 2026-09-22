@@ -7,7 +7,10 @@ public inherited sharing class RHCLogsIngestionService {
     private static final Integer MESSAGE_LIMIT = 8000;
     private static final Integer DETAILS_LIMIT = 8000;
     private static final String SETTINGS_KEY = 'Default';
+    /** Platform Event redeliveries requested before a transient failure is treated as permanent. */
+    private static final Integer MAX_RETRIES = 3;
     @TestVisible private static Boolean snapshotPersistenceFailed = false;
+    @TestVisible private static Integer retryCountOverride;
 
     private class IngestionOutcome {
         private Integer insertedCount = 0;
@@ -32,9 +35,13 @@ public inherited sharing class RHCLogsIngestionService {
             processSaveResults(Database.insert(logs, false), outcome);
         }
         if (outcome.hasRetryableFailure) {
-            // Throwing rolls back this trigger transaction so already-successful rows can be
-            // delivered again safely; EventId__c uniqueness makes the retry idempotent.
-            throw new EventBus.RetryableException('Transient RHC Logs ingestion failure.');
+            if (shouldRetry()) {
+                // Throwing rolls back this trigger transaction so already-successful rows can be
+                // delivered again safely; EventId__c uniqueness makes the retry idempotent.
+                throw new EventBus.RetryableException('Transient RHC Logs ingestion failure.');
+            }
+            // Salesforce suspends the trigger after nine retries; stop earlier and keep evidence.
+            outcome.permanentErrorCodes.add('RETRY_EXHAUSTED');
         }
         updateOperationalSnapshot(outcome);
     }
@@ -124,6 +131,15 @@ public inherited sharing class RHCLogsIngestionService {
             return value;
         }
         return value.left(maximumLength);
+    }
+
+    @TestVisible
+    private static Boolean shouldRetry() {
+        EventBus.TriggerContext context = EventBus.TriggerContext.currentContext();
+        Integer retries = retryCountOverride != null
+            ? retryCountOverride
+            : (context == null ? 0 : context.retries);
+        return retries < MAX_RETRIES;
     }
 
     @TestVisible

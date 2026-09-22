@@ -41,19 +41,34 @@ public class RHCChangeMonitorTestDataFactory {
    * @return Inserted Account change policy.
    */
   public static Record_Health_Check_Change_Policy__c createPolicy() {
-    Record_Health_Check_Change_Policy__c policy = new Record_Health_Check_Change_Policy__c(
-      DisplayName__c = 'Account change contract',
-      Active__c = true,
-      SourceObjectApiName__c = 'Account',
-      SelectionType__c = 'CHECK_SET',
-      QualifiedApiName__c = 'Account_Data_Quality',
-      ChangeTypes__c = 'CREATE;UPDATE;UNDELETE',
-      ChangedFields__c = 'Name\nIndustry',
-      EventPublication__c = 'ACTIONABLE',
-      ActiveAfter__c = System.now().addDays(-1)
-    );
-    insert policy;
-    return policy;
+    return createPolicies(1)[0];
+  }
+
+  /**
+   * Creates and inserts a bulk-safe set of active Account policies.
+   * @param countValue Number of policies to insert.
+   * @return Inserted Account change policies.
+   */
+  public static List<Record_Health_Check_Change_Policy__c> createPolicies(Integer countValue) {
+    List<Record_Health_Check_Change_Policy__c> policies =
+      new List<Record_Health_Check_Change_Policy__c>();
+    for (Integer indexValue = 0; indexValue < countValue; indexValue++) {
+      String suffix = countValue == 1 ? '' : ' ' + indexValue;
+      String qualifiedSuffix = countValue == 1 ? '' : '_' + indexValue;
+      policies.add(new Record_Health_Check_Change_Policy__c(
+        DisplayName__c = 'Account change contract' + suffix,
+        Active__c = true,
+        SourceObjectApiName__c = 'Account',
+        SelectionType__c = 'CHECK_SET',
+        QualifiedApiName__c = 'Account_Data_Quality' + qualifiedSuffix,
+        ChangeTypes__c = 'CREATE;UPDATE;UNDELETE',
+        ChangedFields__c = 'Name\nIndustry',
+        EventPublication__c = 'ACTIONABLE',
+        ActiveAfter__c = System.now().addDays(-1)
+      ));
+    }
+    insert policies;
+    return policies;
   }
 
   /**

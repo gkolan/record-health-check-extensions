@@ -36,6 +36,9 @@ Downstream notification, reporting, action, or integration success belongs to th
 | Raw CDC or health data leaks through operations records | Minimal ledger with bounded enums/codes; no raw payload, values, display messages, or exception text |
 | Subscriber trigger passes arbitrary SObjects | Global handler verifies change-event type, entity, header shape, adapter allow-list, and package policy |
 | Retry loop amplifies a permanent failure | Closed transient classification, maximum three attempts, terminal failure |
+| Dispatch event is rejected before publication | Inspect the platform publish result and roll back the corresponding intake or retry transition |
+| Accepted dispatch event is later lost or delayed | Surface pending count and active-dispatcher state; permit an administrator to publish one idempotent, data-free recovery signal when no dispatcher is active |
+| Cleanup erases pending or unapproved evidence | Persisted administrator-approved window, terminal-only query, 1,000-row cap, user-mode delete, and a fresh UI acknowledgment for each run |
 | Uninstall disables another CDC subscriber | Never disable selected entities automatically; document subscriber dependency review |
 
 ## Security invariants
@@ -49,6 +52,10 @@ Downstream notification, reporting, action, or integration success belongs to th
 7. A package exception stored for administrators is a bounded code, never raw exception text.
 8. Package permission sets grant no source-object access; administrators grant business access
    separately according to the effective-principal design.
+9. Retention cleanup never deletes `PENDING`, never runs automatically, and cannot run from the UI
+   until an administrator saves the policy and acknowledges permanent deletion.
+10. An immediately rejected dispatch signal cannot commit new pending claims or a failed-to-pending
+    retry transition.
 
 ## Required negative tests
 
@@ -65,7 +72,9 @@ Downstream notification, reporting, action, or integration success belongs to th
 - Runtime principal can see the record but not one required field.
 - Queueable limit, row lock, and exhausted retry.
 - Gap/overflow signal.
+- Immediate dispatch-event publication rejection during intake and administrator retry.
 - Attempt to configure a package-owned object as the source.
+- Purge without a saved setting, with an out-of-range setting, and with an old `PENDING` claim.
 
 ## Residual risks
 
@@ -73,7 +82,8 @@ Downstream notification, reporting, action, or integration success belongs to th
 - Multiple changes can coalesce operationally into several events or several evaluations of the same
   current state.
 - Salesforce allocations and asynchronous backlogs can delay work.
+- Platform event acceptance does not prove final delivery; operations must monitor pending age and
+  use the bounded wake-up action only after confirming no dispatcher is active.
 - A successful core run does not guarantee a downstream human or system acted on the result.
 - CDC is not permanent history; reconciliation requires a current-state scan owned outside this
   package.
-

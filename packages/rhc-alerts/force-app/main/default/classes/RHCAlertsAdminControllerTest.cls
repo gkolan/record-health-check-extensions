@@ -91,7 +91,7 @@ private class RHCAlertsAdminControllerTest {
         'The installed core package should expose active Check Sets.'
       );
 
-      List<RHCAlertsAdminController.RecipientOption> users = RHCAlertsAdminController.listRecipients(
+      List<RHCAlertsPolicyAdminService.RecipientOption> users = RHCAlertsAdminController.listRecipients(
         'USER'
       );
       Assert.isFalse(
@@ -122,6 +122,29 @@ private class RHCAlertsAdminControllerTest {
       Assert.isTrue(
         gaps.size() >= 3,
         'Missing exact definitions and caller publication guidance should be visible.'
+      );
+    }
+  }
+
+  @IsTest
+  static void shouldSendTestAlertToCurrentUserWithoutLedgerRow() {
+    System.runAs(adminUser()) {
+      Record_Health_Check_Alert_Policy__c policy = RHCAlertsTestDataFactory.createCheckPolicy(
+        'pkg__Safe_Check',
+        0
+      );
+      Test.startTest();
+      RHCAlertsAdminController.sendTestAlert(policy.Id);
+      Integer emails = Limits.getEmailInvocations();
+      Test.stopTest();
+      Assert.areEqual(
+        0,
+        [SELECT COUNT() FROM Record_Health_Check_Alert_Delivery__c],
+        'A test send never writes to Delivery History.'
+      );
+      Assert.isTrue(
+        policy.NotificationChannel__c != 'EMAIL' || emails == 1,
+        'An email policy sends exactly one test message.'
       );
     }
   }
@@ -163,12 +186,12 @@ private class RHCAlertsAdminControllerTest {
     );
     System.runAs(adminUser()) {
       Test.startTest();
-      List<RHCAlertsAdminController.RecipientOption> groups = RHCAlertsAdminController.listRecipients(
+      List<RHCAlertsPolicyAdminService.RecipientOption> groups = RHCAlertsAdminController.listRecipients(
         'PUBLIC_GROUP'
       );
-      RHCAlertsAdminController.RecipientOption later = new RHCAlertsAdminController.RecipientOption();
+      RHCAlertsPolicyAdminService.RecipientOption later = new RHCAlertsPolicyAdminService.RecipientOption();
       later.label = 'Zulu';
-      RHCAlertsAdminController.RecipientOption earlier = new RHCAlertsAdminController.RecipientOption();
+      RHCAlertsPolicyAdminService.RecipientOption earlier = new RHCAlertsPolicyAdminService.RecipientOption();
       earlier.label = 'alpha';
       Integer comparison = later.compareTo(earlier);
       Test.stopTest();
@@ -206,6 +229,154 @@ private class RHCAlertsAdminControllerTest {
         );
       }
       Test.stopTest();
+    }
+  }
+
+  @IsTest
+  static void shouldExposeUnconfiguredRetentionDefault() {
+    System.runAs(adminUser()) {
+      Test.startTest();
+      RHCAlertsRetentionService.Settings settings = RHCAlertsAdminController.getRetentionSettings();
+      Test.stopTest();
+
+      Assert.areEqual(
+        90,
+        settings.retentionDays,
+        'An unsaved setting should expose the documented recommendation.'
+      );
+      Assert.isFalse(
+        settings.configured,
+        'The default must not authorize cleanup until an administrator saves it.'
+      );
+      Assert.areEqual(
+        1000,
+        settings.maxDeleteRows,
+        'The bounded delete cap should be visible to the interface.'
+      );
+    }
+  }
+
+  @IsTest
+  static void shouldSaveRetentionSettings() {
+    System.runAs(adminUser()) {
+      Test.startTest();
+      RHCAlertsAdminController.saveRetentionSettings(30);
+      RHCAlertsRetentionService.Settings settings = RHCAlertsAdminController.getRetentionSettings();
+      Test.stopTest();
+
+      Assert.areEqual(
+        30,
+        settings.retentionDays,
+        'The saved window should load.'
+      );
+      Assert.isTrue(
+        settings.configured,
+        'A saved setting should enable the explicit purge action.'
+      );
+      Assert.areEqual(
+        1,
+        [SELECT COUNT() FROM Record_Health_Check_Alert_Setting__c],
+        'Saving should create one package-owned singleton record.'
+      );
+    }
+  }
+
+  @IsTest
+  static void shouldRejectRetentionBelowMinimum() {
+    System.runAs(adminUser()) {
+      Test.startTest();
+      try {
+        RHCAlertsAdminController.saveRetentionSettings(0);
+        Assert.fail('A zero-day retention window should be rejected.');
+      } catch (AuraHandledException expected) {
+        Assert.isTrue(
+          expected.getMessage().contains('1 through 3650'),
+          'The bounded administrator message should state the valid range.'
+        );
+      }
+      Test.stopTest();
+    }
+  }
+
+  @IsTest
+  static void shouldRejectRetentionAboveMaximum() {
+    System.runAs(adminUser()) {
+      Test.startTest();
+      try {
+        RHCAlertsAdminController.saveRetentionSettings(3651);
+        Assert.fail('A retention window above the maximum should be rejected.');
+      } catch (AuraHandledException expected) {
+        Assert.isTrue(
+          expected.getMessage().contains('1 through 3650'),
+          'The bounded administrator message should state the valid range.'
+        );
+      }
+      Test.stopTest();
+    }
+  }
+
+  @IsTest
+  static void shouldRequireSavedSettingsBeforePurge() {
+    System.runAs(adminUser()) {
+      Test.startTest();
+      try {
+        RHCAlertsAdminController.purgeDeliveries();
+        Assert.fail('Cleanup should require an explicitly saved setting.');
+      } catch (AuraHandledException expected) {
+        Assert.isTrue(
+          expected.getMessage().contains('Save retention settings'),
+          'The administrator should receive an actionable message.'
+        );
+      }
+      Test.stopTest();
+    }
+  }
+
+  @IsTest
+  static void shouldPurgeOnlyOldTerminalDeliveries() {
+    System.runAs(adminUser()) {
+      Record_Health_Check_Alert_Policy__c policy = RHCAlertsTestDataFactory.createCheckPolicy(
+        'pkg__Retention_Check',
+        0
+      );
+      List<Record_Health_Check_Alert_Delivery__c> deliveries = new List<Record_Health_Check_Alert_Delivery__c>();
+      for (Integer index = 0; index < 4; index++) {
+        deliveries.add(
+          RHCAlertsTestDataFactory.createPendingDelivery(
+            policy,
+            'retention-event-' + index
+          )
+        );
+      }
+      deliveries[0].Outcome__c = 'DELIVERED';
+      deliveries[1].Outcome__c = 'FAILED';
+      deliveries[3].Outcome__c = 'DUPLICATE';
+      update deliveries;
+      Test.setCreatedDate(deliveries[0].Id, System.now().addDays(-31));
+      Test.setCreatedDate(deliveries[1].Id, System.now().addDays(-31));
+      Test.setCreatedDate(deliveries[2].Id, System.now().addDays(-31));
+      RHCAlertsAdminController.saveRetentionSettings(30);
+
+      Test.startTest();
+      Integer deleted = RHCAlertsAdminController.purgeDeliveries();
+      Test.stopTest();
+
+      Assert.areEqual(2, deleted, 'Only old terminal rows should be deleted.');
+      Map<Id, Record_Health_Check_Alert_Delivery__c> remaining = new Map<Id, Record_Health_Check_Alert_Delivery__c>(
+        [
+          SELECT Id, Outcome__c
+          FROM Record_Health_Check_Alert_Delivery__c
+          WHERE Id IN :deliveries
+        ]
+      );
+      Assert.isTrue(
+        remaining.containsKey(deliveries[2].Id),
+        'Old pending work must never be purged.'
+      );
+      Assert.isTrue(
+        remaining.containsKey(deliveries[3].Id),
+        'Recent terminal evidence must remain inside the retention window.'
+      );
     }
   }
 

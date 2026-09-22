@@ -57,11 +57,11 @@ npm run test:unit:coverage
 npm audit --audit-level=high
 ```
 
-Current suite expectations: two suites and eight tests covering render, replay/refresh, structured
-and unstructured load errors, manual refresh, rejected replay, unknown actions, and suppression of
-the Replay action when the custom permission is absent. The enforced coverage floor is 100% for
-statements, functions, and lines and 90% for branches; the August 30 local result was 100% in all
-four categories.
+Current suite expectations: two suites and 15 tests covering render, replay/refresh, structured and
+unstructured load errors, manual refresh, rejected replay, unknown actions, permission-gated replay,
+retention-setting validation, and explicitly confirmed terminal-only purge. The enforced coverage
+floor is 100% for statements, functions, lines, and branches; the September 20 local result was 100%
+in all four categories.
 
 ## Apex validation
 
@@ -81,20 +81,28 @@ sf project deploy start \
   --tests RHCIntegrationSubscriberTest
 ```
 
-The current source test contract contains 21 Apex test methods covering exact matching, 251-event
+The current source contains 28 Apex test methods covering exact matching, 251-event
 bulk handling, the 50-event subscriber checkpoint boundary, bounded fan-out rejection, transient
 versus permanent ingestion classification, non-duplicate ingestion failure, duplicate Event ID,
 publication NONE/no event, direct three-event subscription, allow-listed payloads, incompatible
 profiles, 202 success, 503 retry, 400 dead-letter, retry exhaustion, allowed replay, and denied
 replay, stale-state and inactive-route replay rejection, Finalizer dead-letter recovery, and
-authority-style endpoint rejection. The previous baseline dry-run completed 57/57 components and
+authority-style endpoint rejection. The current additions also cover bulk replay plus retention
+settings, terminal-only purge eligibility, preservation, authorization, and the 1,000-row cap; they
+still require fresh org execution. The previous baseline dry-run completed 57/57 components and
 13/13 Apex tests with 92.03% aggregate coverage under job `0AfRK00000szolb0AA`; that job predates
-the hardening tests and is not evidence for the current source. The current no-namespace shared-org
+the hardening tests and is not evidence for the current source. The August 30 no-namespace shared-org
 check-only deployment is job `0AfRL00000hD8wg0AC`: 61/61 components and 21/21 test methods passed.
 The persisted deployment is `0AfRL00000hCpXT0A0`; focused run `707RL00001eHCnq` passed with 89%
 test-run coverage, and shared-org `RunLocalTests` run `707RL00001eHCzP` completed 907 test/setup
 executions with zero failures and 95% test-run coverage. These results replace the obsolete source
 baseline but do not replace the clean subscriber `04t` acceptance gate.
+
+The principal-hardening standard is an explicit Standard User created by
+`RHCIntegrationTestDataFactory.createStandardUser`; payload, direct-event subscriber, Queueable,
+and handler tests follow it. Controller authorization tests continue to use their Admin and Viewer
+principals. This keeps the assumed runtime identity visible while avoiding production permission
+grants in unit tests.
 
 The subscriber demo helpers are namespaced anonymous Apex and require both managed packages to be
 installed. They are not compile-validated by the local analyzer. Execute every scenario in the
@@ -138,6 +146,21 @@ CI pins the CLI-supported Code Analyzer 5.15.0. The CI workflow blocks severity
 SHA. It also emits a JSON evidence manifest that fails closed unless Git `HEAD` matches the CI SHA,
 the Integrations package and workflow are clean, and every analyzer artifact exists; the manifest
 records SHA-256 digests, package/dependency metadata, the pinned core ref, and workflow-run identity.
+
+A September 20 first rerun found one high `ApexFlsViolation` at `saveRetentionSettings`. Explicit
+setting-field capability checks and `Security.stripInaccessible` before user-mode DML removed that
+finding. SFGE then identified 32 entry points but analyzed only 30 after internal vertex-loading
+errors at `RHCIntegrationDeadLetterController.replay` and `replayAll`; adding explicit replay-state
+sanitization with fail-closed removed-field handling did not change the engine defect. The current
+follow-up reproduced the same result and tested Salesforce's documented next-line and stack
+directives with both known rule identifiers. None changed the incomplete result, so no ineffective
+suppression was retained. The strict log gate still requires zero internal errors and complete
+entry-point accounting. See `RELEASE-EVIDENCE.md` for the current evidence. The hardened retention
+service separately passes the focused Recommended policy with zero findings.
+
+A September 21 full-package Recommended scan reports zero findings after completing the explicit
+test-principal conversion, Apex method contracts, and Queueable control-flow decomposition. This
+policy result does not supersede the separate incomplete SFGE security gate described above.
 Re-run after Apex, LWC, permission, or security-relevant metadata changes and record the result
 in [release evidence](RELEASE-EVIDENCE.md).
 

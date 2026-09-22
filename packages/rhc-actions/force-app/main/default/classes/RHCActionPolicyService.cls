@@ -15,7 +15,10 @@ public with sharing class RHCActionPolicyService {
     @AuraEnabled
     public List<String> errors = new List<String>();
 
-    /** @param message Safe validation failure */
+    /**
+     * Adds one safe failure to this validation result.
+     * @param message Safe validation failure
+     */
     public void reject(String message) {
       valid = false;
       errors.add(message);
@@ -23,6 +26,7 @@ public with sharing class RHCActionPolicyService {
   }
 
   /**
+   * Validates every policy invariant and its active Flow contract.
    * @param policy Policy to validate
    * @return Complete validation result
    */
@@ -208,6 +212,7 @@ public with sharing class RHCActionPolicyService {
   }
 
   /**
+   * Returns the version-one inputs selected by a policy's mapping flags.
    * @param policy Policy mapping selections
    * @return Selected version-one input names
    */

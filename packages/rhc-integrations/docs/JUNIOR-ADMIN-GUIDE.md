@@ -1,7 +1,7 @@
 # RHC Integrations junior administrator guide
 
-> Last reviewed: August 25, 2026  
-> Package API version: 66.0  
+> Last reviewed: September 20, 2026
+> Package API version: 66.0
 > Minimum Record Health Check core: 2.0.4.2 (`04tak000000cZBFAA2`)
 
 Use this guide to install, configure, test, operate, and safely disable RHC Integrations. It assumes
@@ -542,6 +542,20 @@ the retained request payload.
 
 This prevents new deliveries for that route. It does not cancel an HTTP request already in progress
 or undo work already accepted by the external system.
+
+### Apply the approved retention window
+
+1. Sign in as a user assigned **RHC Integrations Admin** and open **RHC Integrations → Dead Letters**.
+2. Under **Integration Delivery retention**, enter the approved whole-day window from 1 through
+   3,650 and select **Save retention settings**. The displayed 90 days is only a recommendation
+   until saved, and saving does not schedule deletion. The service also requires access to each
+   setting field and sanitizes the write before user-mode DML.
+3. Before each cleanup, confirm that audit, incident, legal-hold, and replay needs are satisfied.
+4. Select the permanent-deletion acknowledgement and then **Purge eligible Integration Deliveries**.
+5. Record the returned count. One request deletes at most 1,000 oldest completed `SUCCEEDED` or
+   `DEAD_LETTER` rows. It never deletes `PENDING` or `RETRY_WAIT` rows.
+
+Operator and Viewer users do not see these controls. No automatic or scheduled purge is included.
 
 ### Rotate a credential without editing the route
 

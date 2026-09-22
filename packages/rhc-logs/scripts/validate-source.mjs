@@ -1,3 +1,4 @@
+/* eslint-disable @lwc/lwc-platform/no-aura-libs, @lwc/lwc-platform/no-process-env -- Node CLI, not LWC runtime code. */
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -58,10 +59,15 @@ check(!allSourceText.includes('Test.isRunningTest()'), 'Production code must not
 
 const suppressionDocumentation = read('docs/CODE-ANALYZER-SUPPRESSIONS.md');
 const suppressionCount = (allSourceText.match(/@SuppressWarnings\(/g) ?? []).length;
-check(suppressionCount === 10, `Expected 10 reviewed analyzer suppressions; found ${suppressionCount}`);
+check(suppressionCount === 11, `Expected 11 reviewed analyzer suppressions; found ${suppressionCount}`);
 check(
     suppressionDocumentation.includes('aggregate complexity 52'),
     'Analyzer suppression documentation must record the current Admin complexity'
+);
+check(
+    suppressionDocumentation.includes('QueueableWithoutFinalizer')
+        && suppressionDocumentation.includes('failed continuation rolls back its entire transaction'),
+    'Analyzer suppression documentation must explain the cleanup Queueable recovery model'
 );
 for (const suppressedSource of [
     'RHCLogsIngestionService.cls', 'RHCLogsCleanupService.cls',

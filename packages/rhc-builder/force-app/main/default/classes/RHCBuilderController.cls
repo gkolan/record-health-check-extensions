@@ -36,7 +36,7 @@ public with sharing class RHCBuilderController {
    * Returns the Builder landing-page state.
    * @return Saved complete versions and recent version-level operations.
    */
-  @AuraEnabled(cacheable=true)
+  @AuraEnabled
   public static Map<String, Object> getBuilderHome() {
     requireAuthor();
     List<Object> versions = new List<Object>();
@@ -301,7 +301,7 @@ public with sharing class RHCBuilderController {
    * @param operationToken Idempotent operation token.
    * @return Current operation state, or null when no operation exists.
    */
-  @AuraEnabled(cacheable=true)
+  @AuraEnabled
   public static Map<String, Object> getSetDeployment(String operationToken) {
     requireAuthor();
     Record_Health_Check_Set_Deployment__c operation = findOperation(

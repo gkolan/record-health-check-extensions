@@ -6,6 +6,10 @@ import listRecipients from "@salesforce/apex/RHCAlertsAdminController.listRecipi
 import savePolicy from "@salesforce/apex/RHCAlertsAdminController.savePolicy";
 import analyzeCoverage from "@salesforce/apex/RHCAlertsAdminController.analyzeCoverage";
 import getLimitInfo from "@salesforce/apex/RHCAlertsAdminController.getLimitInfo";
+import sendTestAlert from "@salesforce/apex/RHCAlertsAdminController.sendTestAlert";
+import getRetentionSettings from "@salesforce/apex/RHCAlertsAdminController.getRetentionSettings";
+import saveRetentionSettings from "@salesforce/apex/RHCAlertsAdminController.saveRetentionSettings";
+import purgeDeliveries from "@salesforce/apex/RHCAlertsAdminController.purgeDeliveries";
 
 const EMPTY_POLICY = {
   DisplayName__c: "",
@@ -29,6 +33,12 @@ export default class RhcAlertsAdmin extends LightningElement {
   gaps = [];
   coverageAnalyzed = false;
   limits;
+  retention = {
+    retentionDays: 90,
+    configured: false,
+    maxDeleteRows: 1000
+  };
+  retentionConfirmed = false;
   loading = true;
 
   selectionTypes = [
@@ -47,7 +57,7 @@ export default class RhcAlertsAdmin extends LightningElement {
     { label: "Public Group", value: "PUBLIC_GROUP" }
   ];
   channels = [
-    { label: "Salesforce Custom Notification", value: "CUSTOM_NOTIFICATION" },
+    { label: "Salesforce notification (bell)", value: "CUSTOM_NOTIFICATION" },
     { label: "Email", value: "EMAIL" }
   ];
 
@@ -58,12 +68,14 @@ export default class RhcAlertsAdmin extends LightningElement {
   async initialize() {
     this.loading = true;
     try {
-      const [policies, limits] = await Promise.all([
+      const [policies, limits, retention] = await Promise.all([
         listPolicies(),
-        getLimitInfo()
+        getLimitInfo(),
+        getRetentionSettings()
       ]);
       this.policies = policies;
       this.limits = limits;
+      this.retention = retention;
       await Promise.all([this.loadSelections(), this.loadRecipients()]);
     } catch (error) {
       this.toast("RHC Alerts could not load", this.message(error), "error");
@@ -103,14 +115,47 @@ export default class RhcAlertsAdmin extends LightningElement {
   get hasPolicies() {
     return this.policies.length > 0;
   }
+  get purgeDisabled() {
+    return (
+      this.loading || !this.retention.configured || !this.retentionConfirmed
+    );
+  }
   get policyColumns() {
     return [
       { label: "Policy", fieldName: "DisplayName__c" },
       { label: "Type", fieldName: "SelectionType__c" },
       { label: "Qualified API Name", fieldName: "QualifiedApiName__c" },
       { label: "Channel", fieldName: "NotificationChannel__c" },
-      { label: "Active", fieldName: "Active__c", type: "boolean" }
+      { label: "Active", fieldName: "Active__c", type: "boolean" },
+      {
+        type: "action",
+        typeAttributes: {
+          rowActions: [{ label: "Send test alert to me", name: "test" }]
+        }
+      }
     ];
+  }
+
+  async handlePolicyAction(event) {
+    if (event.detail.action.name !== "test") {
+      return;
+    }
+    this.loading = true;
+    try {
+      await sendTestAlert({ policyId: event.detail.row.Id });
+      this.dispatchEvent(
+        new ShowToastEvent({
+          title: "Test alert sent",
+          message:
+            "Check your notification bell or inbox. Test sends are not recorded in Delivery History.",
+          variant: "success"
+        })
+      );
+    } catch (error) {
+      this.toast("Test alert was not sent", this.message(error), "error");
+    } finally {
+      this.loading = false;
+    }
   }
 
   handleChange(event) {
@@ -182,6 +227,64 @@ export default class RhcAlertsAdmin extends LightningElement {
       this.coverageAnalyzed = true;
     } catch (error) {
       this.toast("Coverage analysis failed", this.message(error), "error");
+    } finally {
+      this.loading = false;
+    }
+  }
+
+  handleRetentionDays(event) {
+    this.retention = {
+      ...this.retention,
+      retentionDays: Number(event.target.value)
+    };
+  }
+
+  handleRetentionConfirm(event) {
+    this.retentionConfirmed = event.target.checked;
+  }
+
+  async handleSaveRetention() {
+    if (this.loading) return;
+    const input = this.template.querySelector("[data-retention-days]");
+    if (!input.reportValidity()) return;
+    this.loading = true;
+    try {
+      await saveRetentionSettings({
+        retentionDays: this.retention.retentionDays
+      });
+      this.retention = {
+        ...this.retention,
+        configured: true
+      };
+      this.toast(
+        "Retention settings saved",
+        "Cleanup remains manual and runs only when you select Purge eligible deliveries.",
+        "success"
+      );
+    } catch (error) {
+      this.toast(
+        "Retention settings were not saved",
+        this.message(error),
+        "error"
+      );
+    } finally {
+      this.loading = false;
+    }
+  }
+
+  async handlePurge() {
+    if (this.purgeDisabled) return;
+    this.loading = true;
+    try {
+      const deleted = await purgeDeliveries();
+      this.retentionConfirmed = false;
+      this.toast(
+        "Delivery cleanup complete",
+        `${deleted} terminal delivery record(s) deleted.`,
+        "success"
+      );
+    } catch (error) {
+      this.toast("Delivery cleanup failed", this.message(error), "error");
     } finally {
       this.loading = false;
     }

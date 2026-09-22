@@ -23,6 +23,17 @@ core dependency, declare `Record Health Check@<version>` as a dependency, expose
 surface required, and include least-privilege permission sets. No extension modifies core Custom
 Metadata types, events, or permission sets.
 
+Every project also owns `config/project-scratch-def.json` and a repository-mapped CI path that
+installs the pinned core subscriber version, validates source before deployment, runs Apex tests in
+a disposable scratch org, captures machine-readable evidence, and attempts cleanup on every
+outcome. Source-validation CI must never create a package container, package version, namespace,
+or release artifact.
+
+Every package must maintain four discoverable documentation roles even when filenames differ:
+administrator setup, security boundaries, operations/recovery, and release evidence. The root
+repository validator maps and checks those paths so a new package or documentation move cannot
+silently omit one of the roles.
+
 ## Object and field vocabulary
 
 Core event and Apex response names are canonical. Durable equivalents copy the exact semantic name:

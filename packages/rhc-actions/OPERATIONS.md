@@ -38,5 +38,10 @@ it, and committed downstream work cannot be assumed reversible.
 A rejected manual proposal remains on Pending Action with status `REJECTED`. Because no Flow
 attempt occurred, rejection does not create an Action History record.
 
+Retention is never scheduled. In **RHC Actions Review**, an Admin can save an approved 1–3,650-day
+window and confirm a manual purge. Each request deletes at most 1,000 oldest eligible rows,
+completed Action History first and then terminal Pending Actions. Do not run cleanup during an
+incident or legal hold; `PENDING_REVIEW`, `QUEUED`, `RUNNING`, and `RETRY_WAIT` are never eligible.
+
 Deactivate policies before uninstall. Removing Actions removes only owned metadata and data; core
 and other extensions remain operational.

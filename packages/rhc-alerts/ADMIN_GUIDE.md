@@ -1,6 +1,7 @@
 # RHC Alerts junior administrator guide
 
-Last verified: **August 25, 2026**, against RHC Alerts `0.1.0` in Salesforce Lightning Experience.
+Last verified: **September 20, 2026**, against RHC Alerts `0.1.0` source in Salesforce Lightning
+Experience.
 
 This is a click-by-click guide for an administrator who uses Salesforce Setup but does not write
 code. Complete the first configuration in a sandbox. Every procedure includes a **screen checkpoint**
@@ -19,7 +20,7 @@ The worked example creates this policy:
 | Minimum severity     | WARNING                                                                                                                      |
 | Recipient type       | Public Group                                                                                                                 |
 | Recipient            | Sales Operations                                                                                                             |
-| Notification channel | Salesforce Custom Notification                                                                                               |
+| Notification channel | Salesforce notification (bell)                                                                                               |
 | Cooldown             | 1,440 minutes (24 hours)                                                                                                     |
 | Active               | On after review                                                                                                              |
 
@@ -32,13 +33,13 @@ webhook.
 
 ## Roles in this guide
 
-| Role                     | Example person           | Responsibility                                                                        |
-| ------------------------ | ------------------------ | ------------------------------------------------------------------------------------- |
-| Release administrator    | Alex                     | Installs promoted package versions and confirms dependency/version status             |
-| RHC Alerts administrator | Maya                     | Enables publication, creates policies, runs setup analysis, and investigates delivery |
-| Read-only viewer         | Jordan                   | Reviews delivery outcomes but cannot change policies or ledger rows                   |
-| Recipient                | Sales Operations members | Receives the human notification using existing Salesforce access                      |
-| Automation owner         | Flow/Apex owner          | Ensures programmatic health-check callers request `ACTIONABLE` or `ALL` publication   |
+| Role                     | Example person           | Responsibility                                                                      |
+| ------------------------ | ------------------------ | ----------------------------------------------------------------------------------- |
+| Release administrator    | Alex                     | Installs promoted package versions and confirms dependency/version status           |
+| RHC Alerts administrator | Maya                     | Enables publication, creates policies, manages retention, and investigates delivery |
+| Read-only viewer         | Jordan                   | Reviews delivery outcomes but cannot change policies or ledger rows                 |
+| Recipient                | Sales Operations members | Receives the human notification using existing Salesforce access                    |
+| Automation owner         | Flow/Apex owner          | Ensures programmatic health-check callers request `ACTIONABLE` or `ALL` publication |
 
 One person can hold more than one role, but keep permission assignments aligned to job
 responsibilities.
@@ -117,7 +118,7 @@ RHC Alerts includes two permission sets.
 
 | Permission set label          | Assign to                             | What it permits                                                                                                                                          |
 | ----------------------------- | ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **RHC Alerts Admin**          | Maya and package configuration owners | Open the app, create/change policies, run setup analysis, and read all package delivery rows                                                             |
+| **RHC Alerts Admin**          | Maya and package configuration owners | Open the app, create/change policies, run setup analysis, read all package delivery rows, and run approved bounded cleanup                               |
 | **RHC Alerts Viewer Runtime** | Jordan, auditors, and support viewers | Open only bounded Delivery History; policy display name and reviewed delivery fields are read-only, with no recipient-directory or generic object access |
 
 Neither permission set grants access to Opportunity, Account, Case, or any other checked business
@@ -248,8 +249,12 @@ about this choice but cannot inspect a runtime request after the fact.
 2. A yellow limits banner.
 3. The policy form.
 4. **Save policy** and **Analyze publication coverage** buttons.
-5. **Existing policies** after at least one policy exists.
+5. **Existing policies** after at least one policy exists. Each row's menu offers **Send test
+   alert to me**, which sends one synthetic alert through the policy's channel to you only; it is
+   not recorded in Delivery History and does not contact the policy's recipients.
 6. **Setup assistant** findings after analysis finds one or more items.
+7. **Delivery retention**, with a 1–3,650 day setting, explicit deletion acknowledgment, and a
+   manual purge action.
 
 The yellow banner should show:
 
@@ -358,11 +363,11 @@ Minimum severity as a replacement for Matching statuses.
 ### 5G. Notification channel
 
 1. Click **Notification channel**.
-2. Select **Salesforce Custom Notification**.
+2. Select **Salesforce notification (bell)**.
 
 Channel behavior:
 
-- **Salesforce Custom Notification**: appears under the notification bell and can appear in the
+- **Salesforce notification (bell)**: a Custom Notification that appears under the notification bell and can appear in the
   Salesforce mobile app. If a valid checked record ID is present, selecting the notification targets
   that record; Salesforce still enforces record access.
 - **Email**: sends a plain-text Salesforce email to each resolved User. It does not create an
@@ -414,7 +419,7 @@ Before saving, compare your screen with this table:
 | Qualified API name   | Exact picker value for Example: Deal Readiness - Next Step |
 | Matching statuses    | FAIL; UNABLE TO EVALUATE; ERROR                            |
 | Minimum severity     | WARNING                                                    |
-| Notification channel | Salesforce Custom Notification                             |
+| Notification channel | Salesforce notification (bell)                             |
 | Recipient type       | Public Group                                               |
 | Recipient            | Sales Operations                                           |
 | Cooldown minutes     | 1440                                                       |
@@ -441,6 +446,17 @@ was not saved, verify permission-set assignment and use only picker values.
 4. Read every finding from highest severity to lowest.
 
 The assistant evaluates saved active policies. Its possible findings are:
+
+### ERROR — NOTIFICATION_TYPE_UNAVAILABLE
+
+An active Salesforce notification policy exists, but the packaged `RHC_Alert` Custom Notification
+Type cannot be resolved.
+
+1. Do not activate or test additional Salesforce notification policies.
+2. Confirm **RHC Alert** appears under Setup → Notification Builder → Custom Notifications.
+3. Repair or reinstall the approved RHC Alerts release through the normal change process; do not
+   create a similarly named replacement type manually.
+4. Run analysis again and require this error to disappear before acceptance.
 
 ### ERROR — DEFINITION_NOT_FOUND
 
@@ -678,6 +694,32 @@ leave its existing delivery rows without the policy lookup because the relations
 **Screen checkpoint:** Jordan can investigate bounded operational outcomes and cannot change Alerts
 configuration or business data.
 
+## Step 15: Configure and run delivery retention
+
+Complete this only after the data owner approves a retention period. Cleanup is permanent, manual,
+and limited to the oldest 1,000 eligible rows per run. It deletes only `DELIVERED`, `SUPPRESSED`,
+`FAILED`, and `DUPLICATE` rows older than the saved window. It never selects `PENDING` rows and does
+not create a schedule.
+
+1. Open **RHC Alerts → RHC Alerts Administration** as Maya.
+2. In **Delivery retention**, enter the approved number of days from 1 through 3,650. The displayed
+   90-day value is a recommendation only until it is saved.
+3. Click **Save retention settings**.
+4. Confirm the success message says cleanup remains manual.
+5. Review Delivery History and any applicable audit/export requirement before deletion.
+6. Select **I understand this permanently deletes eligible delivery history**.
+7. Click **Purge eligible deliveries**.
+8. Record the deleted count in the organization's operational change record.
+9. If 1,000 rows were deleted, review storage and repeat only while the approved cleanup window
+   remains open; each click is a separate bounded transaction.
+
+**Screen checkpoint:** A success message reports the exact number deleted. Recent records and every
+`PENDING` row remain. The acknowledgment clears after the run, so another purge requires a fresh
+confirmation.
+
+Do not use generic data tools to broaden the predicate, and do not automate the button. Scheduled
+cleanup requires a separate design and approval because deletion cannot be undone.
+
 ## Troubleshooting by symptom
 
 ### The expected Check is missing from Qualified API name
@@ -753,6 +795,7 @@ Do not activate production policies until every item is complete.
 - [ ] Viewer read-only behavior was tested with a separate user.
 - [ ] Platform Event, Queueable, notification, email, and storage capacity were reviewed.
 - [ ] An operational retention period and support owner were named.
+- [ ] The approved retention period was saved; any purge was reviewed, acknowledged, and recorded.
 
 ## Where to go next
 

@@ -74,6 +74,10 @@
                         <dd class="slds-item_detail">{settings.lastAggregationAttemptAt}</dd>
                         <dt class="slds-item_label">Failure type</dt>
                         <dd class="slds-item_detail">{settings.lastAggregationErrorType}</dd>
+                        <dt class="slds-item_label">Last ingestion failure</dt>
+                        <dd class="slds-item_detail">{settings.lastIngestionFailureAt}</dd>
+                        <dt class="slds-item_label">Ingestion error codes</dt>
+                        <dd class="slds-item_detail">{settings.lastIngestionErrorCodes}</dd>
                     </dl>
                 </div>
                 <div class="slds-box slds-theme_shade slds-var-m-bottom_medium">
@@ -91,6 +95,9 @@
                 </p>
                 <lightning-button variant="brand" label="Save and Apply"
                     onclick={save} disabled={saving}>
+                </lightning-button>
+                <lightning-button label="Run aggregation now" class="slds-var-m-left_x-small"
+                    onclick={runNow} disabled={saving} data-action="run-now">
                 </lightning-button>
             </template>
         </div>

@@ -40,7 +40,7 @@ delivery across Salesforce and an external system.
 
 - the **RHC Integrations** Lightning app;
 - Route configuration and Dead Letter review experiences;
-- Integration Route and Delivery ledger objects;
+- Integration Route, Delivery ledger, and package-owned retention setting objects;
 - Admin, Operator, Runtime, and Viewer permission sets;
 - a Replay custom permission;
 - Run, Result, and approved Log Platform Event subscribers; and
@@ -49,7 +49,7 @@ delivery across Salesforce and an external system.
 Subscriber administrators continue to own the Named Credentials and External Credentials. The
 package does not contain destination authentication secrets.
 
-## Get started
+## First run
 
 1. Install the required Record Health Check core version.
 2. Install an approved RHC Integrations subscriber package version in a sandbox.
@@ -62,6 +62,8 @@ package does not contain destination authentication secrets.
 
 New administrators should follow the [junior administrator guide](docs/JUNIOR-ADMIN-GUIDE.md) and
 [demo testing guide](docs/DEMO-TESTING.md).
+The suite [install, first-run, and uninstall checklist](../../docs/FIRST_RUN.md) defines the common
+package lifecycle and required delivery evidence.
 
 ### Current availability
 
@@ -79,7 +81,11 @@ evidence.
 - Relative endpoints are validated and routes are explicitly allow-listed.
 - Payload profiles are versioned, bounded contracts rather than arbitrary event serialization.
 - Delivery records retain operational evidence needed for retry and investigation.
-- Replay requires the dedicated custom permission and applies only to eligible dead letters.
+- Replay requires the dedicated custom permission, applies only to eligible dead letters, and
+  rejects a request if any replay-state field is removed by field-level security.
+- Delivery cleanup is administrator-only, manual, explicitly confirmed, terminal-only, and capped
+  at 1,000 oldest rows per transaction; setting writes are field-sanitized and run in user mode,
+  and saving a policy never schedules deletion.
 - Integrations depends only on Record Health Check core and never queries another extension.
 - The receiver must validate authorization, schema version, and idempotency.
 - Platform Event, Queueable, callout, storage, and downstream-service limits still apply.

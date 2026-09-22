@@ -1,3 +1,4 @@
+/* eslint-disable @lwc/lwc-platform/no-aura-libs, @lwc/lwc-platform/no-process-env -- Node CLI, not LWC runtime code. */
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -47,6 +48,25 @@ check(
     !productionApex.includes('Test.isRunningTest()'),
     'Production Apex must not branch on Test.isRunningTest()'
 );
+
+const coverageController = read(
+    'force-app/main/default/classes/RHCReportsCoverageController.cls'
+);
+const suppressionDocumentation = read('docs/CODE-ANALYZER-SUPPRESSIONS.md');
+check(
+    coverageController.match(/@SuppressWarnings\('PMD\.AvoidBooleanMethodParameters'\)/g)?.length === 1
+        && coverageController.match(/@SuppressWarnings\('PMD\.AvoidNonRestrictiveQueries'\)/g)?.length === 2,
+    'Coverage analyzer suppressions must remain limited to the Aura Boolean DTO and two complete aggregate queries'
+);
+for (const rationale of [
+    'generated Aura property setters',
+    'complete grouped fact-table aggregates'
+]) {
+    check(
+        suppressionDocumentation.includes(rationale),
+        `Analyzer suppression documentation is missing rationale: ${rationale}`
+    );
+}
 
 const project = JSON.parse(read('sfdx-project.json'));
 check(project.namespace === 'rhc', 'Package namespace configuration must remain rhc');

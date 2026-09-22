@@ -9,6 +9,7 @@ public inherited sharing class RHCReportsRetentionBatch implements Database.Batc
     private Date snapshotCutoff;
     private ContinuationMode executionMode;
     /**
+     * Creates a retention batch that continues through all storage targets.
      * @param targetName RUN, RESULT, or SNAPSHOT
      * @param factCutoff exclusive fact occurrence cutoff
      * @param snapshotCutoff exclusive snapshot date cutoff
@@ -18,27 +19,25 @@ public inherited sharing class RHCReportsRetentionBatch implements Database.Batc
         Datetime factCutoff,
         Date snapshotCutoff
     ) {
-        this(targetName, factCutoff, snapshotCutoff, ContinuationMode.ENABLED);
-    }
-    /**
-     * Creates a retention batch with explicit continuation behavior.
-     * @param targetName RUN, RESULT, or SNAPSHOT
-     * @param factCutoff exclusive fact occurrence cutoff
-     * @param snapshotCutoff exclusive snapshot date cutoff
-     * @param requestedMode whether finish launches the next target
-     */
-    public RHCReportsRetentionBatch(
-        String targetName,
-        Datetime factCutoff,
-        Date snapshotCutoff,
-        ContinuationMode requestedMode
-    ) {
         this.targetName = targetName;
         this.factCutoff = factCutoff;
         this.snapshotCutoff = snapshotCutoff;
-        this.executionMode = requestedMode == null
-            ? ContinuationMode.ENABLED
-            : requestedMode;
+        this.executionMode = ContinuationMode.ENABLED;
+    }
+
+    @TestVisible
+    private static RHCReportsRetentionBatch withoutContinuation(
+        String targetName,
+        Datetime factCutoff,
+        Date snapshotCutoff
+    ) {
+        RHCReportsRetentionBatch batch = new RHCReportsRetentionBatch(
+            targetName,
+            factCutoff,
+            snapshotCutoff
+        );
+        batch.executionMode = ContinuationMode.DISABLED;
+        return batch;
     }
     /**
      * Starts the selected cleanup query.
@@ -108,8 +107,7 @@ public inherited sharing class RHCReportsRetentionBatch implements Database.Batc
                 new RHCReportsRetentionBatch(
                     nextTarget,
                     factCutoff,
-                    snapshotCutoff,
-                    ContinuationMode.ENABLED
+                    snapshotCutoff
                 ),
                 200
             );

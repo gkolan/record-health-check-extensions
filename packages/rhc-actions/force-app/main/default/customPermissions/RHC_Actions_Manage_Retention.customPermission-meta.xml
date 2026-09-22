@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomPermission xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>Allows the guarded Actions retention service to remove eligible audit records without granting direct object delete access.</description>
+    <label>Manage RHC Actions Retention</label>
+</CustomPermission>

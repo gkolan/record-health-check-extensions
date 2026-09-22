@@ -1,0 +1,53 @@
+<template>
+  <lightning-card title="RHC Change Monitor" icon-name="standard:record_update">
+    <lightning-button slot="actions" label="Refresh" onclick={refresh} disabled={loading}></lightning-button>
+    <div class="slds-var-p-horizontal_medium">
+      <template lwc:if={errorMessage}>
+        <div class="slds-notify slds-notify_alert slds-alert_error" role="alert">{errorMessage}</div>
+      </template>
+      <template lwc:if={principalWarning}>
+        <div class="slds-notify slds-notify_alert slds-alert_warning slds-var-m-bottom_small" role="alert">{principalWarning}</div>
+      </template>
+      <template lwc:if={status}>
+        <dl class="slds-list_horizontal slds-wrap slds-var-m-bottom_small">
+          <dt class="slds-item_label">Pending claims</dt>
+          <dd class="slds-item_detail">{status.pendingCount}</dd>
+          <dt class="slds-item_label">Retryable failures</dt>
+          <dd class="slds-item_detail">{status.retryableFailedCount}</dd>
+          <dt class="slds-item_label">Dispatcher queued</dt>
+          <dd class="slds-item_detail">{status.dispatcherQueued}</dd>
+          <dt class="slds-item_label">You hold the core run permission</dt>
+          <dd class="slds-item_detail">{status.currentUserCanRunCore}</dd>
+        </dl>
+        <h2 class="slds-text-heading_small slds-var-m-top_small">Outcomes, last 7 days</h2>
+        <lightning-datatable key-field="outcome" data={status.lastSevenDays} columns={summaryColumns} hide-checkbox-column></lightning-datatable>
+        <h2 class="slds-text-heading_small slds-var-m-top_medium">Policies</h2>
+        <lightning-datatable key-field="Id" data={status.policies} columns={policyColumns} hide-checkbox-column></lightning-datatable>
+        <h2 class="slds-text-heading_small slds-var-m-top_medium">Recent claims</h2>
+        <lightning-datatable key-field="Id" data={status.recent} columns={recentColumns} hide-checkbox-column is-loading={loading}></lightning-datatable>
+        <div class="slds-var-m-top_medium">
+          <lightning-button label="Retry failed claims" variant="brand" onclick={handleRetry} disabled={loading} data-action="retry"></lightning-button>
+          <lightning-button class="slds-var-m-left_x-small" label="Dispatch pending claims" title="Publish a wake-up signal for pending claims when no dispatcher is active." onclick={handleDispatchPending} disabled={dispatchDisabled} data-action="dispatch-pending"></lightning-button>
+        </div>
+        <section aria-label="Change Evaluation retention" class="slds-var-m-top_large">
+          <h2 class="slds-text-heading_small">Change Evaluation retention</h2>
+          <p class="slds-text-body_small slds-var-m-bottom_small">
+            Cleanup is manual. Each confirmed purge deletes at most {retention.maxDeleteRows} of the oldest terminal claims and never deletes PENDING claims.
+          </p>
+          <div class="slds-grid slds-gutters slds-wrap slds-grid_vertical-align-end">
+            <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+              <lightning-input data-retention-days type="number" label="Retain terminal claims for (days)" min="1" max="3650" step="1" required value={retention.retentionDays} onchange={handleRetentionChange}></lightning-input>
+            </div>
+            <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+              <lightning-button data-action="save-retention" label="Save retention settings" onclick={handleSaveRetention} disabled={loading}></lightning-button>
+            </div>
+          </div>
+          <lightning-input data-retention-confirm class="slds-var-m-top_small" type="checkbox" label="I understand that eligible Change Evaluations will be permanently deleted." checked={retentionConfirmed} onchange={handleRetentionConfirm}></lightning-input>
+          <div class="slds-var-m-top_small">
+            <lightning-button data-action="purge" label="Purge eligible Change Evaluations" variant="destructive" onclick={handlePurge} disabled={purgeDisabled}></lightning-button>
+          </div>
+        </section>
+      </template>
+    </div>
+  </lightning-card>
+</template>

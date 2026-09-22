@@ -2,7 +2,7 @@
 <LightningComponentBundle xmlns="http://soap.sforce.com/2006/04/metadata">
     <apiVersion>66.0</apiVersion>
     <description
-  >Review, approve, run, or reject pending corrective actions.</description>
+  >Review corrective actions and manage bounded audit retention.</description>
     <isExposed>true</isExposed>
     <masterLabel>RHC Actions Review</masterLabel>
     <targets>

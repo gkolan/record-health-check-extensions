@@ -12,8 +12,13 @@ import saveDefinition from "@salesforce/apex/RHCRunManagerAdminController.saveDe
 import runNow from "@salesforce/apex/RHCRunManagerAdminController.runNow";
 import saveSchedule from "@salesforce/apex/RHCRunManagerAdminController.saveSchedule";
 import pauseSchedule from "@salesforce/apex/RHCRunManagerAdminController.pauseSchedule";
+import cancelBatchRun from "@salesforce/apex/RHCRunManagerAdminController.cancelBatchRun";
+import getRetentionSettings from "@salesforce/apex/RHCRunManagerAdminController.getRetentionSettings";
+import saveRetentionSettings from "@salesforce/apex/RHCRunManagerAdminController.saveRetentionSettings";
+import purgeOperationalRecords from "@salesforce/apex/RHCRunManagerAdminController.purgeOperationalRecords";
 
 jest.mock("@salesforce/apex/RHCRunManagerAdminController.getDefinitions", () => ({ default: jest.fn() }), { virtual: true });
+jest.mock("@salesforce/apex/RHCRunManagerAdminController.cancelBatchRun", () => ({ default: jest.fn() }), { virtual: true });
 jest.mock("@salesforce/apex/RHCRunManagerAdminController.getSelections", () => ({ default: jest.fn() }), { virtual: true });
 jest.mock("@salesforce/apex/RHCRunManagerAdminController.getSchedules", () => ({ default: jest.fn() }), { virtual: true });
 jest.mock("@salesforce/apex/RHCRunManagerAdminController.getBatchRuns", () => ({ default: jest.fn() }), { virtual: true });
@@ -25,6 +30,9 @@ jest.mock("@salesforce/apex/RHCRunManagerAdminController.saveDefinition", () => 
 jest.mock("@salesforce/apex/RHCRunManagerAdminController.runNow", () => ({ default: jest.fn() }), { virtual: true });
 jest.mock("@salesforce/apex/RHCRunManagerAdminController.saveSchedule", () => ({ default: jest.fn() }), { virtual: true });
 jest.mock("@salesforce/apex/RHCRunManagerAdminController.pauseSchedule", () => ({ default: jest.fn() }), { virtual: true });
+jest.mock("@salesforce/apex/RHCRunManagerAdminController.getRetentionSettings", () => ({ default: jest.fn() }), { virtual: true });
+jest.mock("@salesforce/apex/RHCRunManagerAdminController.saveRetentionSettings", () => ({ default: jest.fn() }), { virtual: true });
+jest.mock("@salesforce/apex/RHCRunManagerAdminController.purgeOperationalRecords", () => ({ default: jest.fn() }), { virtual: true });
 
 const flushPromises = () => Promise.resolve();
 const mountComponent = async () => {
@@ -67,6 +75,10 @@ describe("c-rhc-run-manager", () => {
     runNow.mockResolvedValue("a01000000000001AAA");
     saveSchedule.mockResolvedValue("a03000000000001AAA");
     pauseSchedule.mockResolvedValue("a03000000000001AAA");
+    cancelBatchRun.mockResolvedValue("a01000000000001AAA");
+    getRetentionSettings.mockResolvedValue({ retentionDays: 365, configured: false, maxDeleteRows: 1000, canManage: false });
+    saveRetentionSettings.mockResolvedValue({ retentionDays: 30, configured: true, maxDeleteRows: 1000, canManage: true });
+    purgeOperationalRecords.mockResolvedValue({ resultsDeleted: 2, runsDeleted: 1, batchRunsDeleted: 1, requestsDeleted: 1, totalDeleted: 5 });
   });
 
   afterEach(() => {
@@ -159,6 +171,23 @@ describe("c-rhc-run-manager", () => {
     await flushPromises();
 
     expect(getRuns).toHaveBeenCalledWith({ batchRunId: "a01000000000001AAA" });
+  });
+
+  it("offers Cancel only for active batch runs and reloads after cancelling", async () => {
+    const element = createElement("c-rhc-run-manager", { is: RhcRunManager });
+    document.body.appendChild(element);
+    await flushPromises(); await flushPromises();
+
+    const actionsFor = (row) => new Promise((resolve) => element.shadowRoot.querySelectorAll("lightning-datatable")[2].columns.at(-1).typeAttributes.rowActions(row, resolve));
+    expect((await actionsFor({ Status__c: "PROCESSING" })).map((a) => a.name)).toEqual(["scopes", "cancel"]);
+    expect((await actionsFor({ Status__c: "COMPLETED" })).map((a) => a.name)).toEqual(["scopes"]);
+
+    getBatchRuns.mockClear();
+    element.shadowRoot.querySelectorAll("lightning-datatable")[2].dispatchEvent(new CustomEvent("rowaction", { detail: { action: { name: "cancel" }, row: { Id: "a01000000000001AAA", Name: "RHC-BATCH-000001", Status__c: "PROCESSING" } } }));
+    await flushPromises(); await flushPromises();
+
+    expect(cancelBatchRun).toHaveBeenCalledWith({ batchRunId: "a01000000000001AAA" });
+    expect(getBatchRuns).toHaveBeenCalledTimes(1);
   });
 
   it("edits an existing guided definition and removes a retained filter", async () => {
@@ -284,6 +313,43 @@ describe("c-rhc-run-manager", () => {
 
     expect(saveDefinition).not.toHaveBeenCalled();
     expect(saveSchedule).not.toHaveBeenCalled();
+  });
+
+  it("saves retention settings without enabling cleanup until confirmed", async () => {
+    getRetentionSettings.mockResolvedValue({ retentionDays: 365, configured: false, maxDeleteRows: 1000, canManage: true });
+    const element = await mountComponent();
+    const input = element.shadowRoot.querySelector("[data-retention-days]");
+    input.reportValidity = jest.fn(() => true);
+    input.value = "30";
+    input.dispatchEvent(new CustomEvent("change"));
+    element.shadowRoot.querySelector("[data-action='save-retention']").click();
+    await flushPromises();
+
+    expect(saveRetentionSettings).toHaveBeenCalledWith({ retentionDays: 30 });
+    expect(element.shadowRoot.querySelector("[data-action='purge']").disabled).toBe(true);
+  });
+
+  it("requires explicit confirmation and runs one bounded purge", async () => {
+    getRetentionSettings.mockResolvedValue({ retentionDays: 30, configured: true, maxDeleteRows: 1000, canManage: true });
+    const element = await mountComponent();
+    const purge = element.shadowRoot.querySelector("[data-action='purge']");
+    expect(purge.disabled).toBe(true);
+    const confirm = element.shadowRoot.querySelector("[data-retention-confirm]");
+    confirm.checked = true;
+    confirm.dispatchEvent(new CustomEvent("change"));
+    await flushPromises();
+    expect(purge.disabled).toBe(false);
+    purge.click();
+    await flushPromises();
+    await flushPromises();
+
+    expect(purgeOperationalRecords).toHaveBeenCalledTimes(1);
+    expect(purge.disabled).toBe(true);
+  });
+
+  it("hides retention controls without retention-management access", async () => {
+    const element = await mountComponent();
+    expect(element.shadowRoot.querySelector("[data-retention-days]")).toBeNull();
   });
 
   it("handles rejected Apex operations without leaking promise failures", async () => {

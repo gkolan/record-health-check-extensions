@@ -21,6 +21,7 @@ implemented project:
 | `rhc-reports`      | [RHC Reports](rhc-reports/README.md)                  |
 | `rhc-actions`      | [RHC Actions](rhc-actions/README.md)                  |
 | `rhc-integrations` | [RHC Integrations](rhc-integrations/README.md)        |
+| `rhc-agent-actions` | [RHC Agent Actions](rhc-agent-actions/README.md)     |
 
 ## Package container status
 
@@ -36,6 +37,7 @@ The package projects currently declare these Dev Hub package-container aliases:
 | RHC Reports                 | `0Hoak0000005M7xCAE` |
 | RHC Actions                 | `0Hoak0000005M6LCAU` |
 | RHC Integrations            | `0Hoak0000005Lv3CAE` |
+| RHC Agent Actions           | Not registered       |
 
 A registered `0Ho` container is not an installable package version. Consult each project's release
 documentation for its current `04t` status and validation evidence. The core dependency pin is the

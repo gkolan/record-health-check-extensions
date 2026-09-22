@@ -1,0 +1,2 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata"><fullName>SettingKey__c</fullName><label>Setting Key</label><description>Package-owned singleton key used to locate the supported Integration retention setting.</description><inlineHelpText>Keep the package-owned value Default; other values are not supported.</inlineHelpText><length>80</length><externalId>true</externalId><unique>true</unique><type>Text</type></CustomField>

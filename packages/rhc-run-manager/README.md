@@ -19,7 +19,8 @@ Use Run Manager when your organization needs to:
 - accept record IDs from a Flow and combine related requests efficiently;
 - run checks now or on a schedule with optional start and end dates;
 - monitor batch jobs, independently committed scope runs, counts, and failures; or
-- retain the result statuses selected by the administrator.
+- retain the result statuses selected by the administrator; or
+- apply an explicit, manually confirmed retention window to completed operational records.
 
 A common example is checking all active Accounts each night, or submitting an Account ID whenever a
 related Contact changes.
@@ -44,12 +45,13 @@ operational records used to monitor its work.
 ## What installation adds
 
 - the **RHC Run Manager** Lightning app and guided workspace;
-- Run Definition, Schedule, Batch Run, scope Run, Result, and Flow Request objects;
-- Admin, Viewer, and Executor permission sets;
+- Run Definition, Schedule, Batch Run, scope Run, Result, Flow Request, and internal retention
+  Setting objects;
+- Admin, Viewer, and Executor permission sets, with retention management limited to Admin;
 - batch, scheduling, coalescing, and monitoring services; and
 - the packaged Flow action for submitting target record IDs.
 
-## Get started
+## First run
 
 1. Install the required Record Health Check core version.
 2. Install an approved RHC Run Manager subscriber package version in a sandbox.
@@ -62,6 +64,8 @@ operational records used to monitor its work.
 Experienced administrators can use [installation and first-time setup](docs/INSTALLATION.md).
 For a complete guided exercise, follow the [Administrator Guide](ADMIN_GUIDE.md) and
 [demo guide](docs/DEMO_GUIDE.md).
+The suite [install, first-run, and uninstall checklist](../../docs/FIRST_RUN.md) defines the common
+package lifecycle and monitored-run evidence.
 
 ### Current availability
 
@@ -85,6 +89,8 @@ See [release evidence](RELEASE_EVIDENCE.md) for the authoritative status.
 - Target-record and operational-data access is enforced in Salesforce user mode.
 - Guided filters expose only accessible described fields and supported operators.
 - Flow-supplied IDs are validated, deduplicated, and durably staged.
+- Retention cleanup is manual, permission-gated, and capped at 1,000 rows per request. It preserves
+  active work and pending supplied-ID requests, and deletes Results before their parent records.
 - Run Manager does not accept customer-owned Batch classes or arbitrary SOQL.
 - It depends only on Record Health Check core and does not read another extension's objects.
 - Other independently installed extensions react to canonical events from core, not to Run Manager

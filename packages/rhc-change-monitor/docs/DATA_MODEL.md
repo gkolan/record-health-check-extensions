@@ -20,7 +20,14 @@ Stored facts are limited to source and stream correlation, bounded status/reason
 result counts, and timestamps. The object never stores changed or old values, raw event JSON, core
 Found/Expected values, display messages, stack traces, session data, or notification content.
 
-Both objects use Private sharing. The Admin permission set grants complete package-object access;
-the Viewer set grants read-only access. The Runtime set reads policies and creates, reads, and
-updates evaluation evidence, but cannot mutate policies or delete evidence. None grants
-business-object access or the core Run custom permission.
+## Change Setting
+
+`Record_Health_Check_Change_Setting__c` is a system-facing, public-read/write singleton with the
+fixed `Default` name and unique `SettingKey__c`. `RetentionDays__c` accepts 1 through 3,650 whole
+days. The record authorizes bounded manual cleanup only; it does not schedule deletion.
+
+Policies and evaluations use Private sharing. The Admin permission set grants complete policy and
+evaluation access plus create/read/edit—but not delete—access to the setting. The Viewer set grants
+read-only access to policies and evaluations and no setting access. The Runtime set reads policies
+and creates, reads, and updates evaluation evidence, but cannot mutate policies, read settings, or
+delete evidence. None grants business-object access or the core Run custom permission.

@@ -6,13 +6,18 @@ private class RHCRunManagerExecutionTest {
   }
 
   @IsTest
-  static void shouldPersistPartialFailure_WhenScopeThrows() {
+  static void shouldPersistPartialFailureWhenScopeThrows() {
     System.runAs(RHCRunManagerTestDataFactory.adminUser()) {
     Record_Health_Check_Run_Definition__c definition = RHCRunManagerTestDataFactory.createDefinition('ALL_ACCESSIBLE', 'FAIL');
     Record_Health_Check_Batch_Run__c batchRun = RHCRunManagerTestDataFactory.createBatchRun(definition.Id);
     RHCRunManagerCoreMetadataGateway.DefinitionInfo info = RHCRunManagerCoreMetadataGateway.resolve('CHECK_SET', definition.QualifiedApiName__c);
-    List<Account> accounts = RHCRunManagerTestDataFactory.createAccounts(2, true);
-    RHCRunManagerBatch batch = new RHCRunManagerBatch(batchRun.Id, definition, info, 'RUN_NOW', null);
+    List<Account> accounts = RHCRunManagerTestDataFactory.createAccounts(2);
+    RHCRunManagerBatch.LaunchRequest launchRequest = new RHCRunManagerBatch.LaunchRequest();
+    launchRequest.batchRunId = batchRun.Id;
+    launchRequest.definition = definition;
+    launchRequest.coreInfo = info;
+    launchRequest.source = 'RUN_NOW';
+    RHCRunManagerBatch batch = new RHCRunManagerBatch(launchRequest);
 
     Test.startTest();
     RHCRunManagerBatch.forceScopeFailure = false;
@@ -22,8 +27,12 @@ private class RHCRunManagerExecutionTest {
     batch.finish(null);
     Test.stopTest();
 
-    Record_Health_Check_Batch_Run__c captured = [SELECT Status__c, FailedScopeCount__c, ProcessedRecordCount__c FROM Record_Health_Check_Batch_Run__c WHERE Id = :batchRun.Id];
+    Record_Health_Check_Batch_Run__c captured = [SELECT Status__c, FailedScopeCount__c, ProcessedRecordCount__c, PassedCount__c, FailedCount__c, UnableCount__c, SystemErrorCount__c FROM Record_Health_Check_Batch_Run__c WHERE Id = :batchRun.Id];
     Assert.areEqual('PARTIAL_FAILURE', captured.Status__c, 'Scope failure should remain visible after finish.');
+    Record_Health_Check_Run__c scopeRun = [SELECT PassedCount__c, FailedCount__c, UnableCount__c, SystemErrorCount__c FROM Record_Health_Check_Run__c WHERE BatchRun__c = :batchRun.Id AND Status__c = 'COMPLETED' LIMIT 1];
+    Assert.areEqual(scopeRun.PassedCount__c + scopeRun.FailedCount__c + scopeRun.UnableCount__c + scopeRun.SystemErrorCount__c,
+      captured.PassedCount__c + captured.FailedCount__c + captured.UnableCount__c + captured.SystemErrorCount__c,
+      'Batch Run totals roll up the completed scope counts.');
     Assert.areEqual(1, captured.FailedScopeCount__c, 'Exactly one failed scope should be counted.');
     Assert.areEqual(1, captured.ProcessedRecordCount__c, 'The successful earlier scope must remain committed and counted.');
     Assert.areEqual(2, [SELECT COUNT() FROM Record_Health_Check_Run__c WHERE BatchRun__c = :batchRun.Id], 'Both independently committed scope envelopes must remain visible.');
@@ -31,7 +40,7 @@ private class RHCRunManagerExecutionTest {
   }
 
   @IsTest
-  static void shouldFinalizeBatchAsError_WhenPopulationStartupFails() {
+  static void shouldFinalizeBatchAsErrorWhenPopulationStartupFails() {
     System.runAs(RHCRunManagerTestDataFactory.adminUser()) {
     Record_Health_Check_Run_Definition__c definition = RHCRunManagerTestDataFactory.createDefinition('ALL_ACCESSIBLE', 'FAIL');
     RHCRunManagerBatch.forceStartFailure = true;
@@ -52,7 +61,45 @@ private class RHCRunManagerExecutionTest {
   }
 
   @IsTest
-  static void shouldRollbackMonitoringEnvelope_WhenBatchCannotBeQueued() {
+  static void shouldRejectIncompleteBatchLaunchRequest() {
+    System.runAs(RHCRunManagerTestDataFactory.adminUser()) {
+      Boolean rejected = false;
+      try {
+        new RHCRunManagerBatch(null);
+      } catch (IllegalArgumentException expected) {
+        rejected = true;
+      }
+      Assert.isTrue(rejected, 'A Batch must not serialize an incomplete launch request.');
+    }
+  }
+
+  @IsTest
+  static void shouldRejectOverlappingRunWhenBatchRunIsStillActive() {
+    System.runAs(RHCRunManagerTestDataFactory.adminUser()) {
+    Record_Health_Check_Run_Definition__c definition = RHCRunManagerTestDataFactory.createDefinition('ALL_ACCESSIBLE', 'FAIL');
+    Record_Health_Check_Batch_Run__c active = RHCRunManagerTestDataFactory.createBatchRun(definition.Id);
+    String rejection;
+
+    try {
+      RHCRunManagerExecutionService.runNow(definition.Id);
+    } catch (RHCRunManagerExecutionService.ExecutionException error) {
+      rejection = error.getMessage();
+    }
+
+    Assert.isTrue(rejection != null && rejection.contains('already in progress'), 'An active Batch Run must block a second launch: ' + rejection);
+    Assert.areEqual(1, [SELECT COUNT() FROM Record_Health_Check_Batch_Run__c], 'No second Batch Run is created.');
+
+    active.Status__c = 'CANCELLED';
+    update active;
+    Test.startTest();
+    Id launched = RHCRunManagerExecutionService.runNow(definition.Id);
+    Test.stopTest();
+    Assert.isNotNull(launched, 'A terminal previous run no longer blocks a launch.');
+    }
+  }
+
+  @IsTest
+  static void shouldRollbackMonitoringEnvelopeWhenBatchCannotBeQueued() {
     System.runAs(RHCRunManagerTestDataFactory.adminUser()) {
     Record_Health_Check_Run_Definition__c definition = RHCRunManagerTestDataFactory.createDefinition('ALL_ACCESSIBLE', 'FAIL');
     RHCRunManagerExecutionService.forceLaunchFailure = true;
@@ -70,7 +117,7 @@ private class RHCRunManagerExecutionTest {
   }
 
   @IsTest
-  static void shouldGenerateHumanScheduleCron_WithoutAdminCronInput() {
+  static void shouldGenerateHumanScheduleCronWithoutAdminCronInput() {
     System.runAs(RHCRunManagerTestDataFactory.adminUser()) {
     Assert.areEqual('0 30 2 ? * MON-FRI', RHCRunManagerScheduleService.cronExpression('WEEKDAYS', '02:30', null), 'Weekday recurrence should be packaged CRON.');
     Assert.areEqual('0 0 6 ? * MON', RHCRunManagerScheduleService.cronExpression('WEEKLY', '06:00', 'MON'), 'Weekly recurrence should include selected day.');
@@ -93,12 +140,32 @@ private class RHCRunManagerExecutionTest {
   }
 
   @IsTest
-  static void shouldSaveDisabledSchedule_WithoutCronJob() {
+  static void shouldRejectNullScheduleRequest() {
+    System.runAs(RHCRunManagerTestDataFactory.adminUser()) {
+      Test.startTest();
+      try {
+        RHCRunManagerScheduleService.save(null);
+        Assert.fail('Expected a null schedule request to be rejected.');
+      } catch (RHCRunManagerScheduleService.ScheduleException error) {
+        Assert.isTrue(
+          error.getMessage().contains('Schedule input is required.'),
+          'The failure should identify the missing schedule input.'
+        );
+      }
+      Test.stopTest();
+    }
+  }
+
+  @IsTest
+  static void shouldSaveDisabledScheduleWithoutCronJob() {
     System.runAs(RHCRunManagerTestDataFactory.adminUser()) {
     Record_Health_Check_Run_Definition__c definition = RHCRunManagerTestDataFactory.createDefinition('ALL_ACCESSIBLE', 'FAIL');
+    RHCRunManagerScheduleService.Request request = inactiveDailyRequest(definition.Id);
+    request.startDate = Date.today();
+    request.endDate = Date.today().addDays(30);
 
     Test.startTest();
-    Id scheduleId = RHCRunManagerScheduleService.save(null, definition.Id, false, 'DAILY', '03:00', null, Date.today(), Date.today().addDays(30));
+    Id scheduleId = RHCRunManagerScheduleService.save(request);
     Test.stopTest();
 
     Record_Health_Check_Schedule__c scheduleRecord = [SELECT Active__c, CronTriggerId__c, Frequency__c, StartDate__c, EndDate__c FROM Record_Health_Check_Schedule__c WHERE Id = :scheduleId];
@@ -111,12 +178,12 @@ private class RHCRunManagerExecutionTest {
   }
 
   @IsTest
-  static void shouldRejectSuppliedIdsDefinition_WhenScheduled() {
+  static void shouldRejectSuppliedIdsDefinitionWhenScheduled() {
     System.runAs(RHCRunManagerTestDataFactory.adminUser()) {
     Record_Health_Check_Run_Definition__c definition = RHCRunManagerTestDataFactory.createDefinition('SUPPLIED_IDS', 'FAIL');
     Boolean rejected = false;
     try {
-      RHCRunManagerScheduleService.save(null, definition.Id, true, 'DAILY', '03:00', null, null, null);
+      RHCRunManagerScheduleService.save(activeDailyRequest(definition.Id));
     } catch (RHCRunManagerScheduleService.ScheduleException error) {
       rejected = true;
     }
@@ -125,17 +192,19 @@ private class RHCRunManagerExecutionTest {
   }
 
   @IsTest
-  static void shouldAbortOnlyOwnedCron_WhenScheduleDisabled() {
+  static void shouldAbortOnlyOwnedCronWhenScheduleDisabled() {
     System.runAs(RHCRunManagerTestDataFactory.adminUser()) {
     Record_Health_Check_Run_Definition__c definition = RHCRunManagerTestDataFactory.createDefinition('ALL_ACCESSIBLE', 'FAIL');
 
     Test.startTest();
-    Id scheduleId = RHCRunManagerScheduleService.save(null, definition.Id, true, 'DAILY', '03:00', null, null, null);
+    Id scheduleId = RHCRunManagerScheduleService.save(activeDailyRequest(definition.Id));
     Record_Health_Check_Schedule__c activeSchedule = [
       SELECT CronTriggerId__c FROM Record_Health_Check_Schedule__c WHERE Id = :scheduleId
     ];
     Assert.isNotNull(activeSchedule.CronTriggerId__c, 'Active schedule should retain its exact owned CronTrigger.');
-    RHCRunManagerScheduleService.save(scheduleId, definition.Id, false, 'DAILY', '03:00', null, null, null);
+    RHCRunManagerScheduleService.Request disableRequest = inactiveDailyRequest(definition.Id);
+    disableRequest.scheduleId = scheduleId;
+    RHCRunManagerScheduleService.save(disableRequest);
     Test.stopTest();
 
     Record_Health_Check_Schedule__c disabledSchedule = [
@@ -148,7 +217,7 @@ private class RHCRunManagerExecutionTest {
   }
 
   @IsTest
-  static void shouldIgnoreInactiveSchedule_WhenFired() {
+  static void shouldIgnoreInactiveScheduleWhenFired() {
     System.runAs(RHCRunManagerTestDataFactory.adminUser()) {
     Record_Health_Check_Run_Definition__c definition = RHCRunManagerTestDataFactory.createDefinition('ALL_ACCESSIBLE', 'FAIL');
     Record_Health_Check_Schedule__c scheduleRecord = new Record_Health_Check_Schedule__c(
@@ -173,7 +242,7 @@ private class RHCRunManagerExecutionTest {
   }
 
   @IsTest
-  static void shouldHonorScheduleDateWindow_WhenFired() {
+  static void shouldHonorScheduleDateWindowWhenFired() {
     System.runAs(RHCRunManagerTestDataFactory.adminUser()) {
     Record_Health_Check_Run_Definition__c definition = RHCRunManagerTestDataFactory.createDefinition('ALL_ACCESSIBLE', 'FAIL');
     List<Record_Health_Check_Schedule__c> schedules = new List<Record_Health_Check_Schedule__c>{
@@ -205,12 +274,15 @@ private class RHCRunManagerExecutionTest {
   }
 
   @IsTest
-  static void shouldRejectSchedule_WhenDateWindowReversed() {
+  static void shouldRejectScheduleWhenDateWindowReversed() {
     System.runAs(RHCRunManagerTestDataFactory.adminUser()) {
     Record_Health_Check_Run_Definition__c definition = RHCRunManagerTestDataFactory.createDefinition('ALL_ACCESSIBLE', 'FAIL');
+    RHCRunManagerScheduleService.Request request = inactiveDailyRequest(definition.Id);
+    request.startDate = Date.today().addDays(1);
+    request.endDate = Date.today();
     Boolean rejected = false;
     try {
-      RHCRunManagerScheduleService.save(null, definition.Id, false, 'DAILY', '03:00', null, Date.today().addDays(1), Date.today());
+      RHCRunManagerScheduleService.save(request);
     } catch (RHCRunManagerScheduleService.ScheduleException error) {
       rejected = true;
     }
@@ -219,9 +291,9 @@ private class RHCRunManagerExecutionTest {
   }
 
   @IsTest
-  static void shouldDelegateActiveSchedule_ToSharedExecutionPath() {
+  static void shouldDelegateActiveScheduleToSharedExecutionPath() {
     System.runAs(RHCRunManagerTestDataFactory.adminUser()) {
-    RHCRunManagerTestDataFactory.createAccounts(1, true);
+    RHCRunManagerTestDataFactory.createAccounts(1);
     Record_Health_Check_Run_Definition__c definition = RHCRunManagerTestDataFactory.createDefinition('ALL_ACCESSIBLE', 'FAIL');
     Record_Health_Check_Schedule__c scheduleRecord = new Record_Health_Check_Schedule__c(
       RunDefinition__c = definition.Id,
@@ -239,5 +311,20 @@ private class RHCRunManagerExecutionTest {
     Assert.isNotNull(scheduleRecord.LastFiredAt__c, 'The schedule should record its firing time.');
     Assert.areEqual(1, [SELECT COUNT() FROM Record_Health_Check_Batch_Run__c WHERE Source__c = 'SCHEDULED' AND Schedule__c = :scheduleRecord.Id], 'The active schedule must delegate to the shared Batch path.');
     }
+  }
+
+  private static RHCRunManagerScheduleService.Request activeDailyRequest(Id definitionId) {
+    RHCRunManagerScheduleService.Request request = inactiveDailyRequest(definitionId);
+    request.active = true;
+    return request;
+  }
+
+  private static RHCRunManagerScheduleService.Request inactiveDailyRequest(Id definitionId) {
+    RHCRunManagerScheduleService.Request request = new RHCRunManagerScheduleService.Request();
+    request.definitionId = definitionId;
+    request.active = false;
+    request.frequency = 'DAILY';
+    request.preferredStartTime = '03:00';
+    return request;
   }
 }

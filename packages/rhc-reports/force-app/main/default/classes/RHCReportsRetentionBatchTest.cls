@@ -1,28 +1,29 @@
-@isTest
+@IsTest
 private class RHCReportsRetentionBatchTest {
-    @isTest
-    static void shouldDeleteExpiredResults_WhenBatchRuns() {
+    @IsTest
+    static void shouldDeleteExpiredResultsWhenBatchRuns() {
+        User principal = RHCReportsTestDataFactory.createStandardUser('reports.resultret');
+        System.runAs(principal) {
         insert RHCReportsTestDataFactory.resultFact(
-            'expired-result',
-            'FAIL',
-            Datetime.now().addDays(-100),
-            '006000000000001AAA',
-            'Close_Date_Complete'
+            new RHCReportsTestDataFactory.ResultFactRequest(
+                'expired-result',
+                'FAIL',
+                Datetime.now().addDays(-100)
+            )
         );
         insert RHCReportsTestDataFactory.resultFact(
-            'current-result',
-            'PASS',
-            Datetime.now(),
-            '006000000000001AAA',
-            'Close_Date_Complete'
+            new RHCReportsTestDataFactory.ResultFactRequest(
+                'current-result',
+                'PASS',
+                Datetime.now()
+            )
         );
         Test.startTest();
         Database.executeBatch(
-            new RHCReportsRetentionBatch(
+            RHCReportsRetentionBatch.withoutContinuation(
                 'RESULT',
                 Datetime.now().addDays(-90),
-                Date.today().addDays(-730),
-                RHCReportsRetentionBatch.ContinuationMode.DISABLED
+                Date.today().addDays(-730)
             ),
             200
         );
@@ -32,9 +33,12 @@ private class RHCReportsRetentionBatchTest {
             [SELECT COUNT() FROM Record_Health_Check_Report_Result__c],
             'Only the current Result Fact should remain.'
         );
+        }
     }
-    @isTest
-    static void shouldDeleteExpiredRuns_WhenBatchRuns() {
+    @IsTest
+    static void shouldDeleteExpiredRunsWhenBatchRuns() {
+        User principal = RHCReportsTestDataFactory.createStandardUser('reports.runret');
+        System.runAs(principal) {
         insert RHCReportsTestDataFactory.runFact(
             'expired-run',
             Datetime.now().addDays(-100)
@@ -42,11 +46,10 @@ private class RHCReportsRetentionBatchTest {
         insert RHCReportsTestDataFactory.runFact('current-run', Datetime.now());
         Test.startTest();
         Database.executeBatch(
-            new RHCReportsRetentionBatch(
+            RHCReportsRetentionBatch.withoutContinuation(
                 'RUN',
                 Datetime.now().addDays(-90),
-                Date.today().addDays(-730),
-                RHCReportsRetentionBatch.ContinuationMode.DISABLED
+                Date.today().addDays(-730)
             ),
             200
         );
@@ -56,20 +59,22 @@ private class RHCReportsRetentionBatchTest {
             [SELECT COUNT() FROM Record_Health_Check_Report_Run__c],
             'Only the current Run Fact should remain.'
         );
+        }
     }
-    @isTest
-    static void shouldDeleteExpiredSnapshots_WhenBatchRuns() {
+    @IsTest
+    static void shouldDeleteExpiredSnapshotsWhenBatchRuns() {
+        User principal = RHCReportsTestDataFactory.createStandardUser('reports.snapshotret');
+        System.runAs(principal) {
         insert new List<Record_Health_Check_Daily_Snapshot__c>{
             snapshot('expired-snapshot', Date.today().addDays(-800)),
             snapshot('current-snapshot', Date.today())
         };
         Test.startTest();
         Database.executeBatch(
-            new RHCReportsRetentionBatch(
+            RHCReportsRetentionBatch.withoutContinuation(
                 'SNAPSHOT',
                 Datetime.now().addDays(-90),
-                Date.today().addDays(-730),
-                RHCReportsRetentionBatch.ContinuationMode.DISABLED
+                Date.today().addDays(-730)
             ),
             200
         );
@@ -79,9 +84,12 @@ private class RHCReportsRetentionBatchTest {
             [SELECT COUNT() FROM Record_Health_Check_Daily_Snapshot__c],
             'Only the current snapshot should remain.'
         );
+        }
     }
-    @isTest
+    @IsTest
     static void shouldDefineCompleteRetentionChain() {
+        User principal = RHCReportsTestDataFactory.createStandardUser('reports.chain');
+        System.runAs(principal) {
         Assert.areEqual(
             'RUN',
             RHCReportsRetentionBatch.nextTargetName('RESULT'),
@@ -96,6 +104,7 @@ private class RHCReportsRetentionBatchTest {
             RHCReportsRetentionBatch.nextTargetName('SNAPSHOT'),
             'Snapshot cleanup must terminate the chain.'
         );
+        }
     }
     private static Record_Health_Check_Daily_Snapshot__c snapshot(
         String key,

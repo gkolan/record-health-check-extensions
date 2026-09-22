@@ -32,6 +32,8 @@ reconstruct earlier outcomes.
 - Delivery: route, Event ID, payload contract version, attempt count, timestamps, outcome, HTTP
   classification, and bounded error details.
 - Queue/retry/dead-letter state and guarded replay.
+- Integration Setting: the approved 1–3,650 day retention window used only by explicitly confirmed,
+  manual cleanup of completed `SUCCEEDED` and `DEAD_LETTER` deliveries.
 
 The package never stores credentials, arbitrary Apex class names, arbitrary templates, unrestricted
 response bodies, or raw diagnostic payloads.
@@ -75,3 +77,5 @@ corrective Flow execution belongs to RHC Actions.
 4. Authentication is available only through Named Credentials.
 5. Restricted content is absent from standard payload profiles.
 6. Removing Integrations does not affect core execution or another extension.
+7. Cleanup requires saved settings and administrator confirmation, deletes at most 1,000 oldest
+   completed terminal deliveries per transaction, and never deletes `PENDING` or `RETRY_WAIT` rows.

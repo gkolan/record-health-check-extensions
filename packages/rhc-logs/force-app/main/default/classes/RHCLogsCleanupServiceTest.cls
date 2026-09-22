@@ -69,10 +69,34 @@ private class RHCLogsCleanupServiceTest {
 
         Test.startTest();
         RHCLogsCleanupService.CleanupResult result = RHCLogsCleanupService.run(RHCLogsCleanupService.CleanupMode.AUTOMATED);
-        Test.stopTest();
-
         Assert.areEqual(2, result.deletedCount, 'One invocation must honor the configured delete bound');
         Assert.areEqual(1, [SELECT COUNT() FROM Record_Health_Check_Diagnostic_Log__c], 'Remaining work should be retry-safe');
+        Assert.areEqual(1, Limits.getQueueableJobs(), 'A full batch must enqueue one continuation');
+        Test.stopTest();
+
+        Assert.areEqual(0, [SELECT COUNT() FROM Record_Health_Check_Diagnostic_Log__c], 'The continuation drains the remaining backlog');
+    }
+
+    @IsTest
+    static void shouldStopContinuingAtTheLastAllowedHop() {
+        RHCLogsTestDataFactory.createSettings(7, 1, RHCLogsTestDataFactory.AutomationState.ENABLED);
+        insert new List<Record_Health_Check_Diagnostic_Log__c>{
+            RHCLogsTestDataFactory.buildLog('expired-a', FIXED_NOW.addDays(-10)),
+            RHCLogsTestDataFactory.buildLog('expired-b', FIXED_NOW.addDays(-10))
+        };
+        RHCLogsCleanupService.nowOverride = FIXED_NOW;
+
+        Test.startTest();
+        RHCLogsCleanupService.CleanupResult result = RHCLogsCleanupService.run(
+            RHCLogsCleanupService.CleanupMode.AUTOMATED,
+            RHCLogsCleanupService.MAX_CONTINUATIONS
+        );
+        Integer queued = Limits.getQueueableJobs();
+        Test.stopTest();
+
+        Assert.areEqual(1, result.deletedCount, 'The last hop still deletes one bounded batch');
+        Assert.areEqual(0, queued, 'The last allowed hop must not enqueue another continuation');
+        Assert.areEqual(1, [SELECT COUNT() FROM Record_Health_Check_Diagnostic_Log__c], 'Remaining rows wait for the next schedule');
     }
 
     @IsTest

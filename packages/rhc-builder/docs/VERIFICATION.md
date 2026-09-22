@@ -2,18 +2,18 @@
 
 ## Pre-version engineering verdict
 
-The current `packages/rhc-builder` source cleared every applicable local gate and the requested
-shared non-namespaced source-deployment gate on 2026-08-30. The backend candidate also has the
-documented namespaced and clean non-namespaced evidence below; the later guided-UX delta is locally
-namespace-neutral and was compiled in the shared non-namespaced org, but has not been redeployed to
-the namespaced org. No package, package container, or package version was created or registered. No
-production org was used. Runtime acceptance changed only the disposable scratch orgs described
-below.
+The current `packages/rhc-builder` source cleared every applicable local gate on 2026-09-21. The
+documented namespaced and non-namespaced source-deployment evidence below predates the latest small
+publication-control-flow and test-principal delta and therefore is not evidence for the exact
+working tree. No package, package container, or package version was created or registered. No
+production org was used.
 
-The engineering candidate is ready for source control and CI, but the repository itself is not yet a
-releaseable source artifact: Git reports `No commits yet on main`, zero tracked files, and no remote.
-Until the intended initial history is reviewed, committed, pushed, and both fail-closed workflows pass,
-**do not create a package version**.
+Builder is now tracked inside the `record-health-check-extensions` monorepo. As of 2026-09-20,
+Git reports 109 tracked Builder paths, a configured `origin`, and a current branch whose committed
+HEAD matches its upstream. The suite-wide working tree nevertheless contains uncommitted changes,
+so no workflow result can be treated as durable evidence for this exact candidate. Review, commit,
+and push the intended diff, then require both fail-closed workflows to pass before requesting a
+package version.
 
 This is a pre-version engineering verdict, not a final release verdict. Clean non-namespaced installation,
 upgrade, uninstall, package-version coverage readback, and artifact inspection require a new `04t`.
@@ -23,16 +23,17 @@ Creating that artifact remains prohibited until the release owner gives explicit
 
 | Check | Result |
 | --- | --- |
-| Salesforce Code Analyzer `Recommended` | 0 violations across PMD, CPD, ESLint, Regex, and retire-js (`/tmp/rhc-builder-code-analyzer-current.json`). |
-| LWC Jest | 2 suites and 32 tests passed, including card selection, just-in-time guidance, all preview states, stale-validation invalidation, and publication confirmation identity. |
-| Jest coverage | 88.01% statements, 67.75% branches, 94.11% functions, 88.95% lines; all configured floors passed. |
+| Salesforce Code Analyzer `Recommended` | 0 violations across PMD, CPD, ESLint, Regex, and retire-js (`/tmp/rhc-builder-recommended-20260921-0130.json`). |
+| LWC Jest | 2 suites and 33 tests passed, including card selection, just-in-time guidance, all preview states, stale-validation invalidation, and publication confirmation identity. |
+| Jest coverage | 88.09% statements, 66.79% branches, 94% functions, 88.8% lines; all configured floors passed. |
 | Official SLDS linter | 0 violations. |
 | Supplementary SLDS audit | 100/A theming, 100/A accessibility, 100/A code quality, and 97/A component usage. The only warning is the intentional native radio input required by the SLDS Visual Picker blueprint; its accessible label, description, checked state, and group semantics are covered by Jest. |
 | Manual LWC gate | Pass: loading, actionable error, status, empty, disabled, semantic section/article, Lightning base-component states, responsive card selection, just-in-time help, example-result preview, readable review summary, stale-validation warning, and explicit publication confirmation are present. |
-| npm audit | 0 known vulnerabilities across 574 dependencies. |
-| Metadata XML | All package XML passed `xmllint --noout`. |
+| npm audit | 0 known vulnerabilities across 526 dependencies. |
+| Metadata conversion | Salesforce source converted successfully to Metadata API format at `/tmp/rhc-builder-convert-20260921-0125`. |
+| Apex execution | `RHCBuilderMetadataServiceTest` was requested, but the CLI stopped before submission with `NoDefaultEnvError`; current org-side compilation and execution remain open. |
 | Runtime verifier syntax | `bash -n scripts/verify-runtime-lifecycle.sh` passed; workflow YAML parsed successfully. |
-| Repository diff hygiene | File formatting checks pass and temporary outputs were written outside the repository, but release governance is **blocked** because all files are untracked and the repository has no commit or remote. |
+| Repository diff hygiene | The 2026-08-30 package-local formatting checks passed and temporary outputs were written outside the repository. Builder is now tracked in the monorepo, but the current suite-wide working tree is dirty and lacks durable CI evidence for its exact diff. |
 | Dependency | Exactly `Record Health Check@2.0.4-2` (`04tak000000cZBFAA2`); no extension dependency. |
 | Mapping inventory | 18/18 Check Set fields and 44/44 Check fields, with deterministic allow-list serialization. |
 
@@ -195,13 +196,15 @@ core classes (`RecordHealthCheckBulkQuerySupportTest`, `RecordHealthCheckFieldPl
 runs its seven package-owned test classes explicitly; dependency health remains a separate core gate
 rather than allowing an installed dependency's packaged tests to make Builder results nondeterministic.
 
-## Remaining pre-version repository gate
+## Current-source CI gate
 
-The workspace is an uncommitted repository (`main` has no commits, no tracked files, and no remote).
-The source and workflow files therefore have not been reviewed as a commit and neither GitHub Actions
-workflow has produced durable CI evidence. The Salesforce workflow now fails closed when its Dev Hub
-secret is absent and runs `scripts/verify-runtime-lifecycle.sh` after isolated coverage, but it still
-must run successfully after the intended initial commit is pushed.
+Builder has 109 tracked paths in the monorepo, `origin` is configured, and the current branch's
+committed HEAD matches its upstream. However, the working tree contains uncommitted suite-wide
+changes, including Builder-adjacent documentation. The exact current candidate therefore has no
+durable CI result. The repository includes both the general validation workflow and Builder's
+Salesforce validation workflow; run both against the reviewed, committed candidate. The Salesforce
+workflow fails closed when its Dev Hub secret is absent and runs
+`scripts/verify-runtime-lifecycle.sh` after isolated coverage.
 
 This gate does not require a package version. Clear it before requesting permission to create one.
 

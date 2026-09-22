@@ -7,7 +7,7 @@ private class RHCRunManagerSubmitIdsActionTest {
   }
 
   @IsTest
-  static void shouldRemoveNullsAndDuplicates_WhenCurrentAndPriorParentMatch() {
+  static void shouldRemoveNullsAndDuplicatesWhenCurrentAndPriorParentMatch() {
     System.runAs(RHCRunManagerTestDataFactory.adminUser()) {
     Record_Health_Check_Run_Definition__c definition = RHCRunManagerTestDataFactory.createDefinition('SUPPLIED_IDS', 'FAIL');
     Account account = new Account(Name = 'Related parent');
@@ -30,7 +30,7 @@ private class RHCRunManagerSubmitIdsActionTest {
   }
 
   @IsTest
-  static void shouldReturnPerInputError_WhenDefinitionMissing() {
+  static void shouldReturnPerInputErrorWhenDefinitionMissing() {
     System.runAs(RHCRunManagerTestDataFactory.adminUser()) {
     RHCRunManagerSubmitIdsAction.Request requestValue = new RHCRunManagerSubmitIdsAction.Request();
     List<RHCRunManagerSubmitIdsAction.Response> responses = RHCRunManagerSubmitIdsAction.submit(
@@ -45,9 +45,9 @@ private class RHCRunManagerSubmitIdsActionTest {
   }
 
   @IsTest
-  static void shouldBulkStage251DistinctIds_WhenFlowBulkInput() {
+  static void shouldBulkStage251DistinctIdsWhenFlowBulkInput() {
     System.runAs(RHCRunManagerTestDataFactory.adminUser()) {
-    List<Account> accounts = RHCRunManagerTestDataFactory.createAccounts(251, true);
+    List<Account> accounts = RHCRunManagerTestDataFactory.createAccounts(251);
     Record_Health_Check_Run_Definition__c definition = RHCRunManagerTestDataFactory.createDefinition('SUPPLIED_IDS', 'FAIL');
     List<RHCRunManagerSubmitIdsAction.Request> requests = new List<RHCRunManagerSubmitIdsAction.Request>();
     for (Account account : accounts) {
@@ -69,7 +69,7 @@ private class RHCRunManagerSubmitIdsActionTest {
   }
 
   @IsTest
-  static void shouldRejectIdsFromWrongObject_WithoutStagingAnyRows() {
+  static void shouldRejectIdsFromWrongObjectWithoutStagingAnyRows() {
     System.runAs(RHCRunManagerTestDataFactory.adminUser()) {
     Record_Health_Check_Run_Definition__c definition = RHCRunManagerTestDataFactory.createDefinition('SUPPLIED_IDS', 'FAIL');
     Contact contact = new Contact(LastName = 'Wrong object');
@@ -115,7 +115,7 @@ private class RHCRunManagerSubmitIdsActionTest {
   }
 
   @IsTest
-  static void shouldUseCrossOwnerDefinition_WithoutGrantingExecutorConfigurationWrite() {
+  static void shouldUseCrossOwnerDefinitionWithoutGrantingExecutorConfigurationWrite() {
     Record_Health_Check_Run_Definition__c definition;
     Account account;
     System.runAs(RHCRunManagerTestDataFactory.adminUser()) {

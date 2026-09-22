@@ -18,6 +18,7 @@ compatible promoted contract.
 | Operate retention, aggregation, monitoring, and recovery | [Operations and security](OPERATIONS_AND_SECURITY.md) |
 | Diagnose an empty dashboard or missing events | [Troubleshooting](TROUBLESHOOTING.md) |
 | Change code, run tests, or build the package | [Contributor guide](CONTRIBUTING.md) |
+| Review static-analysis exceptions | [Code Analyzer suppressions](CODE-ANALYZER-SUPPRESSIONS.md) |
 | Review why core 2.0.4.2 is sufficient | [Core event gap analysis](GAP_ANALYSIS.md) |
 | Review validation evidence and release gates | [Package validation](PACKAGE_VALIDATION.md) |
 

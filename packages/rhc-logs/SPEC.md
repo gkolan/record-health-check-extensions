@@ -137,7 +137,9 @@ The handler:
 4. uses the unique Event ID destination field and partial-success `Database.insert(..., false)`;
 5. treats duplicate-value failures as successful duplicate suppression;
 6. rolls back the complete delivery and throws `EventBus.RetryableException` for transient lock or
-   unknown platform failures, allowing idempotent redelivery through the unique Event ID;
+   unknown platform failures only while the delivery retry count is below three, allowing
+   idempotent redelivery through the unique Event ID; after that bound, it records
+   `RETRY_EXHAUSTED` as permanent operational evidence instead of risking subscriber suspension;
 7. records bounded ingestion counts and sanitized permanent error categories without storing failed
    payloads; and
 8. performs no query, DML, notification, health-check invocation, Flow execution, or callout per

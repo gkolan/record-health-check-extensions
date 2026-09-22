@@ -19,7 +19,7 @@ version may be described as released.
 
 ## Package source gate
 
-From each package directory that will be released:
+From each npm-backed package directory that will be released:
 
 ```bash
 npm ci
@@ -27,6 +27,10 @@ npm test
 npm run test:coverage
 npm audit --audit-level=high
 ```
+
+RHC Agent Actions currently contains Apex and metadata only, so it has no npm install or Jest gate.
+Its source conversion, XML parsing, Code Analyzer, scratch-org compilation, and Apex tests still
+apply. Do not add an empty npm project merely to make the command list uniform.
 
 Convert the source to Metadata API format as an offline structure check:
 
@@ -47,11 +51,16 @@ SF_DISABLE_LOG_FILE=true sf code-analyzer run \
   --include-fixes
 ```
 
-Run the package's documented check-only deployment and Apex tests in a compatible namespaced scratch
-org containing only the pinned Record Health Check core dependency. Retain job IDs, component/test
+Run the package's documented check-only deployment and Apex tests in its required scratch-org
+matrix, containing only the pinned Record Health Check core dependency. This includes no-namespace
+source validation where the package's release ledger requires it. Retain job IDs, component/test
 counts, package Apex coverage, and analyzer summary as release evidence.
 
 ## 2GP and subscriber acceptance gate
+
+This section describes the release procedure after a release owner separately authorizes package
+artifact creation. A green source or CI gate is not authorization to create a container, version,
+or promotion artifact.
 
 - [ ] Create the package version with validation and code coverage; never use `--skip-validation`
       for a release candidate.

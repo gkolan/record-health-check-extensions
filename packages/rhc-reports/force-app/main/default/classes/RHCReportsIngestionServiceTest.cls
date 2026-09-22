@@ -1,7 +1,9 @@
-@isTest
+@IsTest
 private class RHCReportsIngestionServiceTest {
-    @isTest
-    static void shouldDeduplicateRuns_WhenBulkDeliveryRepeatsEventIds() {
+    @IsTest
+    static void shouldDeduplicateRunsWhenBulkDeliveryRepeatsEventIds() {
+        User principal = RHCReportsTestDataFactory.createStandardUser('reports.rundedup');
+        System.runAs(principal) {
         List<Record_Health_Check_Set_Run__e> events =
             new List<Record_Health_Check_Set_Run__e>();
         Datetime occurredAt = Datetime.newInstanceGMT(2026, 8, 20, 12, 0, 0);
@@ -23,9 +25,12 @@ private class RHCReportsIngestionServiceTest {
             [SELECT COUNT() FROM Record_Health_Check_Report_Run__c],
             'Unique Event IDs must create one Run Fact each across repeated deliveries.'
         );
+        }
     }
-    @isTest
-    static void shouldDeduplicateResults_WhenPlatformEventIsDeliveredTwice() {
+    @IsTest
+    static void shouldDeduplicateResultsWhenPlatformEventIsDeliveredTwice() {
+        User principal = RHCReportsTestDataFactory.createStandardUser('reports.resultdedup');
+        System.runAs(principal) {
         Record_Health_Check_Result__e eventRecord =
             RHCReportsTestDataFactory.resultEvent(
                 'result-event-1',
@@ -50,10 +55,13 @@ private class RHCReportsIngestionServiceTest {
             [SELECT COUNT() FROM Record_Health_Check_Report_Result__c],
             'Duplicate Result Event IDs must create one Result Fact.'
         );
+        }
     }
 
-    @isTest
-    static void shouldPersistRun_WhenPlatformEventSubscriberExecutes() {
+    @IsTest
+    static void shouldPersistRunWhenPlatformEventSubscriberExecutes() {
+        User principal = RHCReportsTestDataFactory.createStandardUser('reports.subscriber');
+        System.runAs(principal) {
         Test.startTest();
         EventBus.publish(
             RHCReportsTestDataFactory.runEvent(
@@ -69,9 +77,12 @@ private class RHCReportsIngestionServiceTest {
             [SELECT COUNT() FROM Record_Health_Check_Report_Run__c],
             'The Set Run subscriber must persist the delivered core event.'
         );
+        }
     }
-    @isTest
-    static void shouldIgnoreRestrictedAndUnsupportedResults_WhenReceived() {
+    @IsTest
+    static void shouldIgnoreRestrictedAndUnsupportedResultsWhenReceived() {
+        User principal = RHCReportsTestDataFactory.createStandardUser('reports.restricted');
+        System.runAs(principal) {
         Record_Health_Check_Result__e restricted =
             RHCReportsTestDataFactory.resultEvent(
                 'restricted-event',
@@ -96,9 +107,12 @@ private class RHCReportsIngestionServiceTest {
             [SELECT COUNT() FROM Record_Health_Check_Report_Result__c],
             'Restricted detail and unsupported contracts must not be retained.'
         );
+        }
     }
-    @isTest
-    static void shouldIgnoreNullAndEmptyInputs_WhenCalled() {
+    @IsTest
+    static void shouldIgnoreNullAndEmptyInputsWhenCalled() {
+        User principal = RHCReportsTestDataFactory.createStandardUser('reports.empty');
+        System.runAs(principal) {
         Test.startTest();
         RHCReportsIngestionService.ingestRuns(null);
         RHCReportsIngestionService.ingestRuns(
@@ -114,10 +128,13 @@ private class RHCReportsIngestionServiceTest {
             [SELECT COUNT() FROM Record_Health_Check_Report_Run__c],
             'Empty calls must not write facts.'
         );
+        }
     }
 
-    @isTest
-    static void shouldRejectAcceptedEvent_WhenRequiredFactFieldIsMissing() {
+    @IsTest
+    static void shouldRecordEvidenceAndContinueWhenRequiredFactFieldIsMissing() {
+        User principal = RHCReportsTestDataFactory.createStandardUser('reports.evidence');
+        System.runAs(principal) {
         Record_Health_Check_Result__e invalidEvent =
             RHCReportsTestDataFactory.resultEvent(
                 'invalid-result-event',
@@ -125,30 +142,47 @@ private class RHCReportsIngestionServiceTest {
                 Datetime.now()
             );
         invalidEvent.FrameworkVersion__c = null;
+        Record_Health_Check_Result__e validEvent =
+            RHCReportsTestDataFactory.resultEvent('valid-result-event', 'FAIL', Datetime.now());
 
         Test.startTest();
-        try {
-            RHCReportsIngestionService.ingestResults(
-                new List<Record_Health_Check_Result__e>{ invalidEvent }
-            );
-            Assert.fail('A failed fact upsert must not be treated as successful ingestion.');
-        } catch (RHCReportsIngestionService.RHCReportsIngestionException error) {
-            Assert.isTrue(
-                error.getMessage().contains('Unable to persist 1 Result Facts'),
-                'The exception must identify the failed fact type and count.'
-            );
-        }
+        RHCReportsIngestionService.ingestResults(
+            new List<Record_Health_Check_Result__e>{ invalidEvent, validEvent }
+        );
         Test.stopTest();
 
         Assert.areEqual(
-            0,
+            1,
             [SELECT COUNT() FROM Record_Health_Check_Report_Result__c],
-            'A failed accepted event must not leave a partial fact behind.'
+            'The valid fact is kept; the invalid one is dropped without suspending the subscriber.'
         );
+        Record_Health_Check_Report_Setting__c setting =
+            Record_Health_Check_Report_Setting__c.getOrgDefaults();
+        Assert.isNotNull(setting.LastIngestionFailureAt__c, 'The failure time is recorded.');
+        Assert.isTrue(
+            setting.LastIngestionErrorCodes__c.contains('REQUIRED_FIELD_MISSING'),
+            'The sanitized status code is recorded: ' + setting.LastIngestionErrorCodes__c
+        );
+        }
     }
 
-    @isTest
+    @IsTest
+    static void shouldStopRetryingWhenRedeliveriesAreExhausted() {
+        User principal = RHCReportsTestDataFactory.createStandardUser('reports.retrycap');
+        System.runAs(principal) {
+        RHCReportsIngestionService.retryCountOverride = 2;
+        Assert.isTrue(RHCReportsIngestionService.shouldRetry(), 'Redelivery two is within the bound');
+        RHCReportsIngestionService.retryCountOverride = 3;
+        Assert.isFalse(RHCReportsIngestionService.shouldRetry(), 'Redelivery three must stop retrying');
+        RHCReportsIngestionService.retryCountOverride = null;
+        Assert.isTrue(RHCReportsIngestionService.shouldRetry(), 'No trigger context means no retries yet');
+        }
+    }
+
+    @IsTest
     static void shouldClassifyOnlyTransientStatusSetsAsRetryable() {
+        User principal = RHCReportsTestDataFactory.createStandardUser('reports.retrytype');
+        System.runAs(principal) {
         Assert.isTrue(
             RHCReportsIngestionService.areAllRetryable(
                 new Set<String>{ 'UNABLE_TO_LOCK_ROW', 'SERVER_UNAVAILABLE' }
@@ -165,5 +199,6 @@ private class RHCReportsIngestionServiceTest {
             RHCReportsIngestionService.areAllRetryable(new Set<String>()),
             'An empty status set is not a retry signal.'
         );
+        }
     }
 }

@@ -28,19 +28,22 @@ extension.
 It does not evaluate records, run or schedule health checks, retain ordinary results, notify people,
 execute corrective Flows, make callouts, or access another extension.
 
-## Get started
+## First run
 
 1. Install core and then an approved RHC Logs 04t in a sandbox.
 2. Assign **RHC Logs Admin** narrowly. Assign **RHC Logs Viewer** only to approved support readers.
 3. Open **RHC Logs → RHC Logs Setup**.
 4. Confirm the canonical event contract is available and review which visible Check Sets publish.
 5. Assign core **Record Health Check Error Log Publisher** to every approved running identity.
-6. Configure Retention Days (1–365) and Cleanup Batch Size (1–9,998).
+6. Configure Retention Days (1–365) and Cleanup Batch Size (1–9,998). A full batch continues in
+   up to five bounded follow-up jobs so backlogs drain within one schedule.
 7. Save with automated cleanup still disabled, publish one synthetic test error, and review it.
 8. Enable the daily cleanup only after validating the boundary and permissions.
 9. Follow the [administrator guide](docs/ADMINISTRATION.md) before production use.
 
 No published Log event means there is nothing for this package to retain.
+The suite [install, first-run, and uninstall checklist](../../docs/FIRST_RUN.md) defines the common
+package lifecycle and restricted-data acceptance evidence.
 
 ## Security model
 

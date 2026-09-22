@@ -11,11 +11,13 @@
 | Manual approval                    | Designated approver            |
 | Flow failures                      | Flow support team              |
 | Package release and uninstall      | Release engineering            |
+| Retention approval and operation   | Legal/audit owner and Actions administrator |
 
 ## Daily checks
 
 1. Open **RHC Actions → Pending Actions**.
-2. Review records in `PENDING_REVIEW`, `QUEUED`, and `RETRY_WAIT`.
+2. Review records in `PENDING_REVIEW`, `QUEUED`, and `RETRY_WAIT`. Up to 50 pending-review rows
+   can be approved or rejected in one decision; each policy is re-validated when its Flow runs.
 3. Investigate old non-terminal records relative to the org's event and Queueable service levels.
 4. Open **Action History** and review `FAILED_RETRYABLE` and `FAILED_FINAL` outcomes.
 5. Correlate Event ID and Run ID to core evidence when necessary.
@@ -44,7 +46,7 @@ When a Flow causes an unexpected side effect:
 
 1. Deactivate the affected Corrective Action Policy.
 2. If multiple policies use the Flow, deactivate all of them.
-3. Do not delete Pending Action or Action History records.
+3. Do not run retention cleanup or otherwise delete Pending Action or Action History records.
 4. Pause the customer Flow only under the Flow owner's incident procedure.
 5. Preserve Event ID, Run ID, Record ID, Policy ID, Pending Action ID, History ID, user, times, and
    Flow Interview ID.
@@ -58,7 +60,7 @@ If unauthorized users can see or act on records:
 
 1. remove the inappropriate packaged Permission Set assignment;
 2. review role hierarchy, sharing rules, View All Data, Modify All Data, and administrative access;
-3. review the two Custom Permission assignments;
+3. review the three Custom Permission assignments, including Manage Retention;
 4. confirm the Platform Event subscriber configuration user;
 5. preserve audit records; and
 6. complete the organization's access incident process.
@@ -93,9 +95,26 @@ For a policy change:
 
 ## Retention and deletion
 
-The Day-1 package does not include a scheduled purge. Define retention with legal, audit, security,
-and storage owners before deleting package records. Packaged Permission Sets intentionally do not
-grant delete access.
+The package does not include a scheduled purge, and no packaged role receives direct delete CRUD on
+Pending Action or Action History. Define and approve retention with legal, audit, security, storage,
+and incident owners first.
+
+To run the guarded cleanup:
+
+1. confirm there is no incident, investigation, legal hold, or required export that needs the
+   eligible evidence;
+2. open **RHC Actions → RHC Actions Review** as a user assigned **RHC Actions Admin**;
+3. under **Action audit retention**, enter a whole number from 1 through 3,650 days and click
+   **Save retention settings**; the displayed 365-day value is only a recommendation until saved;
+4. verify the saved window and remember that changing it disables purge until it is saved;
+5. select the permanent-deletion acknowledgment and click **Purge eligible audit records**; and
+6. record the returned History, Pending Action, and total counts in the change ticket. Repeat only
+   under the same approved procedure if more eligible rows remain.
+
+Each request deletes at most 1,000 combined rows. It deletes oldest completed Action History first,
+then uses remaining capacity for old Pending Actions only in `SUCCEEDED`, `FAILED`, `SUPPRESSED`, or
+`REJECTED`. It never selects `PENDING_REVIEW`, `QUEUED`, `RUNNING`, or `RETRY_WAIT`. Deletion is
+irreversible in the package UI; use the organization's approved backup/export and restore process.
 
 ## Related runbooks
 

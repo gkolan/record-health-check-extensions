@@ -4,7 +4,8 @@
 
 RHC Alerts turns selected canonical Record Health Check outcomes into human notifications. It owns
 policy configuration, an operational delivery ledger, recipient resolution, cooldown and duplicate
-control, Custom Notification and email delivery, setup diagnostics, and its Lightning UI.
+control, Custom Notification and email delivery, setup diagnostics, bounded manual ledger cleanup,
+and its Lightning UI.
 
 It does not schedule or execute health checks, retain general result history, update checked
 business records, call external endpoints, or read another extension's objects or Apex. Its only
@@ -126,9 +127,11 @@ health-check screen does not imply that notification delivery has completed.
 | `RHCAlertsRecipientResolver`   | Resolves one active User or direct active User members of a Regular public Group                                                |
 | `RHCAlertsCoreMetadataGateway` | Reads public core Check and Check Set Custom Metadata for pickers and publication diagnostics                                   |
 | `RHCAlertsPolicyValidator`     | Pure canonical policy-value validation shared by the administrator save path and direct tests                                   |
-| `RHCAlertsAdminController`     | Thin user-mode policy administration, recipient, setup-assistant, and limit endpoints for Admin only                            |
+| `RHCAlertsAdminController`     | Thin user-facing endpoints that delegate policy and retention work while retaining setup-assistant and limit responses          |
+| `RHCAlertsPolicyAdminService`  | User-mode policy listing/save, bounded recipient-directory queries, and current-user test sends                                 |
+| `RHCAlertsRetentionService`    | User-mode singleton retention settings and bounded oldest-first terminal-delivery deletion                                      |
 | `RHCAlertsViewerController`    | Sole Viewer Apex surface; returns the bounded 500-row delivery-history projection in user mode                                  |
-| `rhcAlertsAdmin`               | Guided policy creation and publication-coverage UI                                                                              |
+| `rhcAlertsAdmin`               | Guided policy creation, publication coverage, and acknowledged manual retention UI                                              |
 | `rhcAlertsDeliveryHistory`     | Last 500 operational delivery rows visible to the current user                                                                  |
 
 ## Event contract decisions

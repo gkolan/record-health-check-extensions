@@ -45,9 +45,7 @@ public with sharing class RHCActionCaptureService {
       return;
     }
     context.canRunAutomatically = automaticPermissionOverride == null
-      ? FeatureManagement.checkPermission(
-          'RHC_Actions_Automatic_Execution'
-        )
+      ? FeatureManagement.checkPermission('RHC_Actions_Automatic_Execution')
       : automaticPermissionOverride;
     buildCandidates(events, context);
     if (context.candidates.isEmpty()) {
@@ -134,8 +132,8 @@ public with sharing class RHCActionCaptureService {
   @TestVisible
   private static void assertDmlCapacity(Integer candidateCount) {
     Integer remainingRows = Limits.getLimitDmlRows() - Limits.getDmlRows();
-    Integer remainingStatements = Limits.getLimitDmlStatements() -
-      Limits.getDmlStatements();
+    Integer remainingStatements =
+      Limits.getLimitDmlStatements() - Limits.getDmlStatements();
     if (candidateCount > remainingRows || remainingStatements < 1) {
       throw new TransientCaptureException(
         'The subscriber reached a safe transaction capacity boundary.'
@@ -170,8 +168,8 @@ public with sharing class RHCActionCaptureService {
         continue;
       }
       SaveClassification classification = classify(result.getErrors());
-      hasTransientFailure = hasTransientFailure ||
-        classification.transientFailure;
+      hasTransientFailure =
+        hasTransientFailure || classification.transientFailure;
       if (!classification.duplicate && classification.permanentError != null) {
         failureAudits.add(
           captureFailure(
@@ -198,10 +196,10 @@ public with sharing class RHCActionCaptureService {
     SaveClassification classification = new SaveClassification();
     for (Database.Error error : errors) {
       StatusCode errorStatus = error.getStatusCode();
-      classification.duplicate = classification.duplicate ||
-        errorStatus == StatusCode.DUPLICATE_VALUE;
-      classification.transientFailure = classification.transientFailure ||
-        isRetryable(errorStatus);
+      classification.duplicate =
+        classification.duplicate || errorStatus == StatusCode.DUPLICATE_VALUE;
+      classification.transientFailure =
+        classification.transientFailure || isRetryable(errorStatus);
       if (
         errorStatus != StatusCode.DUPLICATE_VALUE &&
         !isRetryable(errorStatus) &&
@@ -213,6 +211,10 @@ public with sharing class RHCActionCaptureService {
     return classification;
   }
 
+  // Audit persistence is deliberately best effort: rolling back successful pending-action
+  // capture would make a permanent audit-row defect poison event redelivery. The fixed fallback
+  // message contains no record, event, exception, or user-controlled detail.
+  @SuppressWarnings('PMD.AvoidDebugStatements')
   private static void persistFailureAudits(
     List<RHC_Action_History__c> failureAudits
   ) {

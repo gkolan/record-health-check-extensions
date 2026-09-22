@@ -1,6 +1,20 @@
 # RHC Run Manager Day 1 Release Evidence
 
-Last updated: 2026-08-30
+> **Current working-tree note (2026-09-20):** bounded manual operational-record retention, its
+> internal Setting object, Admin capability, Apex service/test, LWC controls, cancellation-service
+> separation, and documentation were added after the historical org evidence below. Local Jest (16
+> tests), coverage, generated-metadata, XML, Metadata API conversion, dependency audit, LWS,
+> repository, diff, and package-policy Recommended analysis checks pass. The stateful Batch uses a
+> typed launch request plus explicit execution/progress envelopes, and administrator mutations now
+> pass through a focused command boundary. The full strict root-policy scan has zero findings. No
+> authorized org is available, so this diff has not yet received server-side compilation or Apex
+> execution and is not release evidence.
+
+Historical org evidence captured: 2026-08-30
+
+Current-source note: the Apex source changed after these org runs. Local verification for the
+current diff is recorded in the suite verification document, but fresh org-side compilation and
+Apex execution are still required before this file can claim current-source deployment evidence.
 
 This file records reproducible evidence for the Day 1 beta. It distinguishes completed verification
 from packaging work that still requires an external Salesforce result.
@@ -28,7 +42,7 @@ the managed core correctly rejected shared execution. The factory now assigns bo
 permission sets and tolerates any additional matching permission set returned across namespace
 contexts.
 
-This proves that the current source compiles, deploys, and passes its Apex suite in a no-namespace
+This proves that the 2026-08-30 source compiled, deployed, and passed its Apex suite in a no-namespace
 subscriber org with the pinned managed core dependency. It is **not** package-install evidence:
 Run Manager was source-deployed, no Run Manager `04t` was created or installed, and package install,
 upgrade, uninstall, package-calculated coverage, and packaged Flow-action discoverability remain
@@ -56,7 +70,7 @@ tests, and zero component or test errors. Production-class coverage ranged from 
 | `RHCRunManagerSubmitIdsAction` | 78.22% |
 | `RHCRunManagerUninstallHandler` | 100% |
 
-This independently confirms current-source compilation and specified-test behavior in the package
+This independently confirms compilation and specified-test behavior for the 2026-08-30 source in the package
 namespace. It does not create a beta version or replace the clean subscriber package-install gate.
 
 ## 2026-08-30 robustness hardening and local gates

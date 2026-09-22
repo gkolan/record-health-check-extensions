@@ -40,7 +40,8 @@ Integrations are not required.
 
 ## How to read the screen
 
-The RHC Run Manager card contains three numbered tabs. Complete them from left to right the first
+The RHC Run Manager card contains four numbered tabs for administrators. Complete the first three
+from left to right the first
 time:
 
 1. **Run Definitions** answers what should run, which records are eligible, scope size, and retained
@@ -48,6 +49,8 @@ time:
 2. **Schedules** optionally starts eligible definitions on a safe recurrence.
 3. **Monitoring** shows one Batch Run per asynchronous job, one Run per Batch scope, and retained
    Results under each Run.
+4. **Retention** lets an administrator save a whole-day history window and run a separately
+   confirmed, bounded cleanup. Viewer and Executor users do not see this tab.
 
 Every table row has a downward-arrow action menu on the right. If you do not see it, widen the
 browser or horizontally scroll the table.
@@ -80,7 +83,7 @@ does not mean asynchronous evaluation has already finished. Use Monitoring to co
 
    | Permission set | Assign to | What it allows |
    | --- | --- | --- |
-   | **RHC Run Manager Admin** (`RHC_Run_Manager_Admin`) | Administrators | Create definitions and schedules, start runs, and monitor results |
+   | **RHC Run Manager Admin** (`RHC_Run_Manager_Admin`) | Administrators | Create definitions and schedules, start runs, monitor results, and manage manual retention |
    | **RHC Run Manager Viewer** (`RHC_Run_Manager_Viewer`) | Operations/support users | Read monitoring data without changing configuration |
    | **RHC Run Manager Executor** (`RHC_Run_Manager_Executor`) | Users whose record-triggered Flows submit IDs | Invoke the packaged Flow action and allow Run Manager-owned processing |
 
@@ -100,8 +103,8 @@ Flow action work.
 1. Click the **App Launcher** (the nine-dot grid).
 2. Search for `RHC Run Manager`.
 3. Click **RHC Run Manager**.
-4. Confirm that you see three tabs:
-   **1. Run Definitions**, **2. Schedules**, and **3. Monitoring**.
+4. Administrators should see **1. Run Definitions**, **2. Schedules**, **3. Monitoring**, and
+   **4. Retention**. Viewer users see the operational tabs but not retention controls.
 
 If the app is not visible, confirm that the RHC Run Manager Admin or Viewer permission set is
 assigned, then refresh the browser.
@@ -226,7 +229,9 @@ Use Run Now for **All Accessible** or **Guided Filtered** definitions.
 
 1. In **1. Run Definitions**, find the saved definition.
 2. Open the row-action menu at the right side of the row.
-3. Click **Run Now**.
+3. Click **Run Now**. While a Batch Run for the same definition is still queued or processing,
+   Run Now and schedules are refused with "already in progress"; wait for it to finish or use
+   **Cancel** on the Batch Run in **3. Monitoring**.
 4. Wait for the success message.
 5. Open **3. Monitoring**.
 6. Click the refresh icon until the Batch Run appears.
@@ -376,6 +381,26 @@ Common statuses:
 If a completed scope has Fail count 10 but only 8 retained result rows, investigate Capture Mode and
 status mix before treating it as data loss. SKIPPED is never retained; capture rules can exclude PASS
 or actionable details.
+
+## 8. Manage operational-record retention
+
+Retention is never automatic. The displayed 365-day value is only a recommendation until an
+administrator saves it.
+
+1. Open **4. Retention**.
+2. Enter a whole number from 1 through 3,650 in **Retain completed operational records for
+   (days)**.
+3. Click **Save retention settings**. Saving never deletes data.
+4. Review or export evidence required by your policy.
+5. Select the permanent-deletion acknowledgment.
+6. Click **Purge eligible operational records**.
+7. Read the success toast. One request deletes at most 1,000 rows; repeat only after reviewing the
+   result and remaining data.
+
+Cleanup drains old retained Results first, then empty terminal scope Runs, then empty terminal Batch
+Runs, and finally old submitted Requests. Batch Runs in `QUEUED` or `PROCESSING`, scope Runs in
+`IN_PROGRESS`, and Requests in `PENDING` are never eligible. Changing the number disables purge
+until the new value is saved, and every purge requires a fresh acknowledgment.
 
 ## Common configuration recipes
 

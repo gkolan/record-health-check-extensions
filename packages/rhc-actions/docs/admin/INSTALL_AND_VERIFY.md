@@ -107,12 +107,13 @@ extension as a workaround.
 6. Confirm these entries exist:
    - **RHC Actions Approve**
    - **RHC Actions Automatic Execution**
+   - **Manage RHC Actions Retention**
 7. In **Quick Find**, enter `Flows`.
 8. Click **Flows**.
 9. Confirm installing Actions did not create a customer corrective Flow. The package deliberately
    does not ship `Create_Data_Steward_Task` because the org owns corrective business behavior.
 
-**What you should see:** four packaged Permission Sets, two Custom Permissions, and no package-owned
+**What you should see:** four packaged Permission Sets, three Custom Permissions, and no package-owned
 business correction Flow.
 
 ## Step 6: Assign temporary setup access to the installer
@@ -157,7 +158,7 @@ runbook before creating configuration.
 - [ ] Record Health Check is at a supported version.
 - [ ] RHC Actions appears under Installed Packages.
 - [ ] Four packaged Permission Sets exist.
-- [ ] Two packaged Custom Permissions exist.
+- [ ] Three packaged Custom Permissions exist.
 - [ ] The RHC Actions app and four navigation items open.
 - [ ] No sibling RHC extension was installed to satisfy Actions.
 - [ ] Package versions and installation result are recorded in the change ticket.

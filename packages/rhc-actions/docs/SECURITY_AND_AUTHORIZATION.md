@@ -18,9 +18,9 @@ The LWC is not a security boundary. It never decides whether a user is an approv
 
 ## Permission Sets
 
-| Permission Set       | Custom Permissions  | Package object access                                                                | Intended identity                     |
-| -------------------- | ------------------- | ------------------------------------------------------------------------------------ | ------------------------------------- |
-| RHC Actions Admin    | Approve             | Create/read/edit Policy; read Pending/History                                        | Package administrator                 |
+| Permission Set       | Custom Permissions        | Package object access                                                                | Intended identity                     |
+| -------------------- | ------------------------- | ------------------------------------------------------------------------------------ | ------------------------------------- |
+| RHC Actions Admin    | Approve; Manage Retention | Create/read/edit Policy and Setting; read Pending/History                            | Package administrator                 |
 | RHC Actions Approver | Approve             | Read-only Policy, Pending, and History; lifecycle transition occurs in guarded Apex | Human reviewer                        |
 | RHC Actions Runtime  | Automatic Execution | Read Policy/History; create Pending; package services own later lifecycle writes     | Dedicated Platform Event runtime user |
 | RHC Actions Viewer   | None                | Read-only Policy, Pending, and History                                               | Auditor or support viewer             |
@@ -29,8 +29,29 @@ All four roles receive object-scoped View All for the three private package obje
 queue and audit records remain visible without `View All Data`. No role receives Modify All because
 Salesforce couples that permission to object Delete. Admins can edit policies they own; cross-owner
 policy reassignment or editing requires an explicitly governed administrative process. No
-Permission Set grants delete access. Retention and deletion require an explicitly reviewed future
-design, not casual record cleanup.
+Permission Set grants direct delete access on Pending Action or Action History. Instead, the Admin
+role receives `RHC_Actions_Manage_Retention`, which gates a narrow service operation described
+below. This preserves the no-direct-delete invariant while permitting governed disposition.
+
+## Retention authorization
+
+Retention uses a separate boundary from approval and execution:
+
+1. `RHC_Actions_Manage_Retention` must be assigned (Admin includes it; Approver, Runtime, and Viewer
+   do not);
+2. the user must have read/create/edit access to `RHC_Action_Setting__c` and its two fields;
+3. the singleton setting is read and written in user mode and must contain a whole number from 1
+   through 3,650;
+4. the UI requires an explicit permanent-deletion acknowledgment for each purge and disables purge
+   when the displayed setting is unsaved; and
+5. only then does `RHCActionRetentionService` use system-mode query/delete for package-owned audit
+   rows, because no role has unrestricted object delete CRUD.
+
+One request deletes at most 1,000 combined rows. Oldest completed Action History is selected first;
+remaining capacity can select only old Pending Actions in `SUCCEEDED`, `FAILED`, `SUPPRESSED`, or
+`REJECTED`. `PENDING_REVIEW`, `QUEUED`, `RUNNING`, and `RETRY_WAIT` are excluded. Cleanup is manual,
+not scheduled. Authorization does not replace legal hold, backup, evidence-preservation, or change
+approval procedures.
 
 ## Additional customer permissions
 
@@ -108,7 +129,10 @@ Security review must inspect the entire active Flow dependency tree.
 The Platform Event trigger delegates to a handler that processes at most 50 events per chunk,
 sets a resume checkpoint after every successful chunk, and uses bounded first-chunk retries only
 for transient storage failures. Duplicate idempotency keys are successful no-ops. Permanent
-capture failures create sanitized `FAILED_FINAL` history when capacity permits.
+capture failures create sanitized `FAILED_FINAL` history when capacity permits. If Salesforce
+rejects that best-effort history row, the package emits only a fixed error-level debug message with
+no record, event, exception, or user-controlled detail; it does not roll back already captured
+pending actions or poison event redelivery.
 
 The execution Queueable attaches a finalizer. An unhandled job failure moves eligible package
 records to a one-minute bounded retry or terminal failure based on the policy retry limit. If the

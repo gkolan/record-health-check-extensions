@@ -97,99 +97,129 @@ private class RHCActionCaptureServiceTest {
       FROM RHC_Pending_Action__c
       LIMIT 1
     ];
-    Assert.areEqual('QUEUED', action.Queue_Status__c, 'Automatic capture should queue execution.');
-    Assert.areEqual(1, asyncStub.enqueueCount, 'The chunk should create one Queueable request.');
-    Assert.areEqual(1, asyncStub.lastPendingIds.size(), 'The request should contain the captured action.');
-    Assert.areEqual(0, asyncStub.lastDelayMinutes, 'Initial execution must not be delayed.');
+    Assert.areEqual(
+      'QUEUED',
+      action.Queue_Status__c,
+      'Automatic capture should queue execution.'
+    );
+    Assert.areEqual(
+      1,
+      asyncStub.enqueueCount,
+      'The chunk should create one Queueable request.'
+    );
+    Assert.areEqual(
+      1,
+      asyncStub.lastPendingIds.size(),
+      'The request should contain the captured action.'
+    );
+    Assert.areEqual(
+      0,
+      asyncStub.lastDelayMinutes,
+      'Initial execution must not be delayed.'
+    );
   }
 
   @IsTest
   static void shouldSubscribeDirectlyWhenPlatformEventIsDelivered() {
-    RHCActionCaptureService.automaticPermissionOverride = false;
-    Test.startTest();
-    EventBus.publish(RHCActionTestDataFactory.eventRecord('bus-event'));
-    Test.getEventBus().deliver();
-    Test.stopTest();
-    Assert.areEqual(
-      1,
-      [SELECT COUNT() FROM RHC_Pending_Action__c],
-      'The packaged trigger should subscribe directly to the core event.'
-    );
+    System.runAs(new User(Id = UserInfo.getUserId())) {
+      RHCActionCaptureService.automaticPermissionOverride = false;
+      Test.startTest();
+      EventBus.publish(RHCActionTestDataFactory.eventRecord('bus-event'));
+      Test.getEventBus().deliver();
+      Test.stopTest();
+      Assert.areEqual(
+        1,
+        [SELECT COUNT() FROM RHC_Pending_Action__c],
+        'The packaged trigger should subscribe directly to the core event.'
+      );
+    }
   }
 
   @IsTest
   static void shouldClassifyOnlyTransientDatabaseFailuresAsRetryable() {
-    Assert.isTrue(
-      RHCActionCaptureService.isRetryable(StatusCode.UNABLE_TO_LOCK_ROW),
-      'Record locking can succeed on a later delivery.'
-    );
-    Assert.isTrue(
-      RHCActionCaptureService.isRetryable(StatusCode.UNKNOWN_EXCEPTION),
-      'Unknown platform failures are treated as transient.'
-    );
-    Assert.isFalse(
-      RHCActionCaptureService.isRetryable(StatusCode.FIELD_CUSTOM_VALIDATION_EXCEPTION),
-      'Permanent data validation failures must not loop through retries.'
-    );
+    System.runAs(new User(Id = UserInfo.getUserId())) {
+      Assert.isTrue(
+        RHCActionCaptureService.isRetryable(StatusCode.UNABLE_TO_LOCK_ROW),
+        'Record locking can succeed on a later delivery.'
+      );
+      Assert.isTrue(
+        RHCActionCaptureService.isRetryable(StatusCode.UNKNOWN_EXCEPTION),
+        'Unknown platform failures are treated as transient.'
+      );
+      Assert.isFalse(
+        RHCActionCaptureService.isRetryable(
+          StatusCode.FIELD_CUSTOM_VALIDATION_EXCEPTION
+        ),
+        'Permanent data validation failures must not loop through retries.'
+      );
+    }
   }
 
   @IsTest
   static void shouldStopBeforeCrossingTheDmlRowLimit() {
-    try {
-      RHCActionCaptureService.assertDmlCapacity(
-        Limits.getLimitDmlRows() + 1
-      );
-      Assert.fail('The service must stop at a safe capacity boundary.');
-    } catch (RHCActionCaptureService.TransientCaptureException expected) {
-      Assert.isTrue(
-        expected.getMessage().contains('capacity boundary'),
-        'The retry reason should be sanitized and operationally useful.'
-      );
+    System.runAs(new User(Id = UserInfo.getUserId())) {
+      try {
+        RHCActionCaptureService.assertDmlCapacity(Limits.getLimitDmlRows() + 1);
+        Assert.fail('The service must stop at a safe capacity boundary.');
+      } catch (RHCActionCaptureService.TransientCaptureException expected) {
+        Assert.isTrue(
+          expected.getMessage().contains('capacity boundary'),
+          'The retry reason should be sanitized and operationally useful.'
+        );
+      }
     }
   }
 
   @IsTest
   static void shouldIgnoreNullSubscriberInput() {
-    Test.startTest();
-    RHCActionResultSubscriberHandler.process(null);
-    Test.stopTest();
-    Assert.areEqual(
-      0,
-      [SELECT COUNT() FROM RHC_Pending_Action__c],
-      'Null subscriber input must be a no-op.'
-    );
+    System.runAs(new User(Id = UserInfo.getUserId())) {
+      Test.startTest();
+      RHCActionResultSubscriberHandler.process(null);
+      Test.stopTest();
+      Assert.areEqual(
+        0,
+        [SELECT COUNT() FROM RHC_Pending_Action__c],
+        'Null subscriber input must be a no-op.'
+      );
+    }
   }
 
   @IsTest
   static void shouldIgnoreEmptySubscriberInput() {
-    Test.startTest();
-    RHCActionResultSubscriberHandler.process(
-      new List<Record_Health_Check_Result__e>()
-    );
-    Test.stopTest();
-    Assert.areEqual(
-      0,
-      [SELECT COUNT() FROM RHC_Pending_Action__c],
-      'Empty subscriber input must be a no-op.'
-    );
+    System.runAs(new User(Id = UserInfo.getUserId())) {
+      Test.startTest();
+      RHCActionResultSubscriberHandler.process(
+        new List<Record_Health_Check_Result__e>()
+      );
+      Test.stopTest();
+      Assert.areEqual(
+        0,
+        [SELECT COUNT() FROM RHC_Pending_Action__c],
+        'Empty subscriber input must be a no-op.'
+      );
+    }
   }
 
   @IsTest
   static void shouldRethrowTransientFailureAfterACompletedChunk() {
-    RHCActionCaptureService.TransientCaptureException expected = new RHCActionCaptureService.TransientCaptureException(
-      'Deliberate transient failure'
-    );
-    Test.startTest();
-    try {
-      RHCActionResultSubscriberHandler.retryOrResume(expected, 1);
-      Assert.fail('A failure after a checkpoint must resume from that checkpoint.');
-    } catch (RHCActionCaptureService.TransientCaptureException actual) {
-      Assert.areEqual(
-        expected.getMessage(),
-        actual.getMessage(),
-        'The original transient classification must be preserved.'
+    System.runAs(new User(Id = UserInfo.getUserId())) {
+      RHCActionCaptureService.TransientCaptureException expected = new RHCActionCaptureService.TransientCaptureException(
+        'Deliberate transient failure'
       );
+      Test.startTest();
+      try {
+        RHCActionResultSubscriberHandler.retryOrResume(expected, 1);
+        Assert.fail(
+          'A failure after a checkpoint must resume from that checkpoint.'
+        );
+      } catch (RHCActionCaptureService.TransientCaptureException actual) {
+        Assert.areEqual(
+          expected.getMessage(),
+          actual.getMessage(),
+          'The original transient classification must be preserved.'
+        );
+      }
+      Test.stopTest();
     }
-    Test.stopTest();
   }
 }

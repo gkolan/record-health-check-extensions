@@ -1,6 +1,6 @@
 # RHC Integrations documentation
 
-> Last source review: August 30, 2026 · API 66.0 · package 0.1.0
+> Last source review: September 20, 2026 · API 66.0 · package 0.1.0
 
 This documentation describes the implementation in this repository. `SPEC.md` remains the product
 authority; source metadata and tests remain the executable authority.
@@ -54,7 +54,7 @@ Any source change must update the corresponding documentation in the same change
 
 | Source change | Required documentation |
 | --- | --- |
-| Route or ledger field | Configuration reference and administrator guide |
+| Route, ledger, or setting field | Configuration reference and administrator guide |
 | Payload key/profile/version | Payload contracts and receiver acceptance tests |
 | HTTP/retry classification | Delivery lifecycle and operations |
 | Permission/FLS/custom permission | Security model and assignment steps |

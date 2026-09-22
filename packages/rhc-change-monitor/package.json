@@ -1,0 +1,18 @@
+{
+  "name": "rhc-change-monitor",
+  "private": true,
+  "version": "0.1.0",
+  "license": "Apache-2.0",
+  "scripts": {
+    "adapter:check": "node scripts/generate-subscriber-adapter.mjs --check",
+    "adapter:generate": "node scripts/generate-subscriber-adapter.mjs",
+    "metadata:generate": "node generate_metadata.mjs",
+    "test": "npm run test:adapter-generator && npm run test:lwc",
+    "test:adapter-generator": "node --test scripts/generate-subscriber-adapter.test.mjs",
+    "test:lwc": "sfdx-lwc-jest -- --runInBand",
+    "test:coverage": "sfdx-lwc-jest --coverage -- --no-cache"
+  },
+  "devDependencies": {
+    "@salesforce/sfdx-lwc-jest": "^8.0.0"
+  }
+}

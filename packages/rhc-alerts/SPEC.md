@@ -34,6 +34,7 @@ Apex, or scheduled outcomes whenever the originating core request publishes the 
 
 - Alert Policy: identity/status/severity filters, human recipients, channel, cooldown, active state.
 - Alert Delivery: Event ID, policy, recipient count, attempt time, outcome, and bounded error code.
+- Alert Setting: one validated administrator-approved retention window for explicit bounded cleanup.
 - Deduplication and cooldown state.
 - The packaged `RHC_Alert` Custom Notification Type and its safe message/target contract.
 
@@ -82,3 +83,5 @@ or deliver system-to-system webhook payloads. External delivery belongs to RHC I
 5. Removing Alerts does not change core execution or another extension.
 6. Salesforce notification delivery satisfies the Custom Notification contract, including the
    global-bell boundary, safe target fallback, recipient caps, and no-read-receipt semantics.
+7. Manual retention cleanup deletes no `PENDING` work and no more than 1,000 oldest eligible
+   terminal deliveries per explicit administrator action.
