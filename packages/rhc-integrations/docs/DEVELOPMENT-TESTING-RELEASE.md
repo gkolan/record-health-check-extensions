@@ -114,16 +114,17 @@ promoted based only on the production unit-test dry-run.
 Use the current `code-analyzer` topic; v4 `scanner` commands are retired.
 
 ```sh
+mkdir -p ../../reports/code-analyzer
 sf code-analyzer run \
   --workspace force-app \
   --rule-selector Recommended \
-  --output-file code-analyzer-results.json
+  --output-file ../../reports/code-analyzer/rhc-integrations.json
 
 sf code-analyzer run \
   --workspace force-app \
   --rule-selector 'all:Security:1' \
   --rule-selector 'all:Security:2' \
-  --output-file code-analyzer-security-results.json
+  --output-file ../../reports/code-analyzer/rhc-integrations-security.json
 ```
 
 Preserve results as CI/release evidence. The final August 30 isolated CLI 2.149.9 / Code Analyzer

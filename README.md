@@ -115,6 +115,9 @@ installable release.
 
 The dated [suite verification ledger](docs/VERIFICATION_2026-09-20.md) records current local checks,
 CDC and notification readiness, and the evidence that still requires an authenticated org.
+[Core compatibility and dependency policy](docs/CORE_COMPATIBILITY.md) separates the promoted
+minimum install dependency from development-source validation, including the current 2.0.11
+compatibility evidence.
 
 Do not construct an installation URL from a package-container ID. Use only an installable `04t`
 subscriber package version documented by the selected extension, and confirm its current release
@@ -172,6 +175,7 @@ allow-listed routes and use Salesforce Named Credentials for authentication.
 | Install, verify, or uninstall an extension | [Install, first run, and uninstall](docs/FIRST_RUN.md) |
 | Install or configure one extension | The selected [package README](packages/README.md) |
 | Understand package boundaries | [Package standards](docs/architecture/package-standards.md) |
+| Check core-version compatibility | [Core compatibility and dependency policy](docs/CORE_COMPATIBILITY.md) |
 | Review how the projects evolved | [Architecture stocktake](docs/architecture/stocktake.md) |
 | Contribute or prepare a release | [Contributing guide](CONTRIBUTING.md) and [release gates](docs/RELEASING.md) |
 | Report a security issue | [Security policy](SECURITY.md) |

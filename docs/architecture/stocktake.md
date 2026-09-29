@@ -1,5 +1,9 @@
 # Architecture stocktake
 
+This document preserves the initial portfolio decisions and prototype disposition. For the current
+package inventory and validation state, use the [package index](../../packages/README.md) and
+[core compatibility ledger](../CORE_COMPATIBILITY.md).
+
 ## Decision summary
 
 The extension portfolio is still Day 1. Existing source is useful prototype material, but none of

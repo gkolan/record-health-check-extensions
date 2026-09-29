@@ -100,9 +100,10 @@ or coverage error. Update [Package validation](PACKAGE_VALIDATION.md) after ever
 Run Salesforce Code Analyzer Recommended with timestamped JSON and log files:
 
 ```bash
+mkdir -p ../../reports/code-analyzer
 sf code-analyzer run --rule-selector Recommended --target force-app \
-  --output-file ./code-analyzer-results-YYYYMMDD-HHMMSS.json \
-  --include-fixes 2>&1 | tee ./code-analyzer-results-YYYYMMDD-HHMMSS.log
+  --output-file ../../reports/code-analyzer/rhc-reports-YYYYMMDD-HHMMSS.json \
+  --include-fixes 2>&1 | tee ../../reports/code-analyzer/rhc-reports-YYYYMMDD-HHMMSS.log
 ```
 
 Release acceptance requires no unresolved severity 1 or 2 finding. Document remaining findings and

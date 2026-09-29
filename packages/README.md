@@ -11,6 +11,10 @@ implemented project:
 - never reads another extension's objects or calls another extension's Apex API; and
 - uses canonical core Platform Events when it must observe outcomes produced elsewhere.
 
+The dependency is the promoted minimum, not a statement that development stopped at 2.0.4. The
+[suite compatibility policy](../docs/CORE_COMPATIBILITY.md) records validation against newer core
+source without inventing an installable package version.
+
 | Project            | Package overview                                      |
 | ------------------ | ----------------------------------------------------- |
 | `rhc-logs`         | [RHC Logs](rhc-logs/README.md)                        |

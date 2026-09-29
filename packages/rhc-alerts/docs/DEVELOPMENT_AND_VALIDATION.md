@@ -135,9 +135,10 @@ or updated by runtime services.
 Run the Recommended selector and retain the timestamped JSON evidence:
 
 ```bash
+mkdir -p ../../reports/code-analyzer
 sf code-analyzer run --rule-selector Recommended \
   --target force-app/main/default \
-  --output-file ./code-analyzer-results-YYYYMMDD-HHMMSS.json
+  --output-file ../../reports/code-analyzer/rhc-alerts-YYYYMMDD-HHMMSS.json
 ```
 
 Parse results using the repository-approved Code Analyzer skill scripts. Release acceptance is zero

@@ -1,8 +1,9 @@
 # Extension suite verification — 2026-09-20
 
-This ledger describes the current working-tree verification. Historical deployment IDs in package
-release-evidence documents remain evidence for the source that was deployed on their stated dates;
-they are not automatically evidence for this later diff.
+This ledger is the working-tree verification snapshot from 2026-09-20. Historical deployment IDs
+in package release-evidence documents remain evidence for the source that was deployed on their
+stated dates; they are not automatically evidence for a later diff. For the newer 2.0.11
+development-source run, see the [core compatibility ledger](CORE_COMPATIBILITY.md).
 
 No namespace, package container, package version, installation, quick deploy, or production deploy
 was created during this work.

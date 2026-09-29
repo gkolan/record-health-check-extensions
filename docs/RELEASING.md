@@ -14,6 +14,8 @@ version may be described as released.
 - [ ] No credentials, tokens, private keys, installation keys, populated environment files, org
       state, generated reports, dependencies, or build artifacts are tracked.
 - [ ] README availability statements match each package's authoritative release evidence.
+- [ ] The shared core dependency points to a real promoted `04t`; source compatibility with an
+      unreleased core branch is recorded separately and is not presented as installable.
 - [ ] The release notes describe user-visible behavior, security implications, prerequisites,
       upgrade impact, and known limitations.
 
@@ -44,10 +46,11 @@ Run Salesforce Code Analyzer against package source. Severity 1 and 2 findings b
 record reviewed severity 3 findings and their disposition in the package's release evidence.
 
 ```bash
+mkdir -p reports/code-analyzer
 SF_DISABLE_LOG_FILE=true sf code-analyzer run \
   --rule-selector Recommended \
   --target 'force-app/**' \
-  --output-file code-analyzer-results-<timestamp>.json \
+  --output-file reports/code-analyzer/<package>-<timestamp>.json \
   --include-fixes
 ```
 
@@ -55,6 +58,11 @@ Run the package's documented check-only deployment and Apex tests in its require
 matrix, containing only the pinned Record Health Check core dependency. This includes no-namespace
 source validation where the package's release ledger requires it. Retain job IDs, component/test
 counts, package Apex coverage, and analyzer summary as release evidence.
+
+When evaluating an unreleased core line, also deploy that exact clean core source commit into a
+disposable org and validate every extension against it. Keep this source-compatibility evidence
+separate from subscriber install evidence, and repeat it after the core `04t` is promoted. See the
+[core compatibility and dependency policy](CORE_COMPATIBILITY.md).
 
 ## 2GP and subscriber acceptance gate
 

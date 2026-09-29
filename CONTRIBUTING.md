@@ -31,12 +31,13 @@ For a suite-level static review, run from the repository root so `code-analyzer.
 generated and dependency content, then target deployable package source explicitly:
 
 ```bash
+mkdir -p reports/code-analyzer
 SF_DISABLE_LOG_FILE=true sf code-analyzer run \
   --workspace packages \
   --target 'packages/*/force-app/**' \
   --rule-selector Recommended \
   --include-fixes \
-  --output-file code-analyzer-results-<timestamp>.json
+  --output-file reports/code-analyzer/suite-<timestamp>.json
 ```
 
 Keep Node repository utilities under their package validation scripts; do not broaden the

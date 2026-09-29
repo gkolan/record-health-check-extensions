@@ -73,6 +73,41 @@ public class RHCActionTestDataFactory {
     assignPermission('RHC_Actions_Runtime');
   }
 
+  /** Creates a dedicated user with the packaged administrator permission set. */
+  public static void createAdminUser() {
+    PermissionSet permissionSet = [
+      SELECT Id
+      FROM PermissionSet
+      WHERE Name = 'RHC_Actions_Admin'
+      LIMIT 1
+    ];
+    User userRecord = new User(
+      Alias = 'rhcact',
+      Email = 'rhc-actions-test@example.invalid',
+      EmailEncodingKey = 'UTF-8',
+      LastName = 'RHC Actions Test Admin',
+      LanguageLocaleKey = 'en_US',
+      LocaleSidKey = 'en_US',
+      ProfileId = UserInfo.getProfileId(),
+      TimeZoneSidKey = 'America/Chicago',
+      Username = 'rhc-actions-' + UserInfo.getOrganizationId() + '-' +
+        Crypto.getRandomLong() + '@example.invalid'
+    );
+    insert userRecord;
+    insert new PermissionSetAssignment(
+      AssigneeId = userRecord.Id,
+      PermissionSetId = permissionSet.Id
+    );
+  }
+
+  /**
+   * Returns the permissioned user created by the test setup transaction.
+   * @return Dedicated Actions administrator.
+   */
+  public static User adminUser() {
+    return [SELECT Id FROM User WHERE Alias = 'rhcact' LIMIT 1];
+  }
+
   private static void assignPermission(String permissionSetName) {
     PermissionSet permissionSet = [
       SELECT Id

@@ -36,9 +36,14 @@ pnpm-debug.log*
 
 # Generated analysis and test reports
 /reports/
+**/code-analyzer/
 test-results/
-code-analyzer-results*.json
 *-code-analyzer-results.json
+code-analyzer*.json
+code-analyzer*.csv
+code-analyzer*.html
+code-analyzer*.sarif
+code-analyzer*.xml
 .scannerwork/
 junit*.xml
 

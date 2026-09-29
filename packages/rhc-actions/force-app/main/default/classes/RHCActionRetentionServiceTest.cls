@@ -3,17 +3,16 @@
 private class RHCActionRetentionServiceTest {
   @TestSetup
   static void assignPermissions() {
-    RHCActionTestDataFactory.assignAdminPermission();
+    RHCActionTestDataFactory.createAdminUser();
   }
 
   @IsTest
   static void shouldRecommendSaveAndUpdateTheSingleton() {
-    RHCActionRetentionService.retentionPermissionOverride = true;
-    RHCActionRetentionService.Settings recommendation = RHCActionRetentionService.getSettings();
-    Assert.areEqual(365, recommendation.retentionDays, 'The unsaved recommendation should be conservative.');
-    Assert.isFalse(recommendation.configured, 'A recommendation must not authorize deletion.');
-
-    System.runAs(new User(Id = UserInfo.getUserId())) {
+    System.runAs(RHCActionTestDataFactory.adminUser()) {
+      RHCActionRetentionService.retentionPermissionOverride = true;
+      RHCActionRetentionService.Settings recommendation = RHCActionRetentionService.getSettings();
+      Assert.areEqual(365, recommendation.retentionDays, 'The unsaved recommendation should be conservative.');
+      Assert.isFalse(recommendation.configured, 'A recommendation must not authorize deletion.');
       RHCActionRetentionService.Settings saved = RHCActionRetentionService.saveSettings(30);
       Assert.areEqual(30, saved.retentionDays, 'The selected window should be returned.');
       Assert.isTrue(saved.configured, 'The singleton should now be explicit.');
@@ -30,7 +29,7 @@ private class RHCActionRetentionServiceTest {
 
   @IsTest
   static void shouldRejectUnauthorizedInvalidAndUnsavedCleanup() {
-    System.runAs(new User(Id = UserInfo.getUserId())) {
+    System.runAs(RHCActionTestDataFactory.adminUser()) {
       RHCActionRetentionService.retentionPermissionOverride = false;
       Assert.isFalse(RHCActionRetentionService.getSettings().canManage, 'Unauthorized users must not see controls.');
       assertHandled('permission', new Invocation('save', 30));
@@ -68,10 +67,11 @@ private class RHCActionRetentionServiceTest {
       history(policy.Id, 'recent-history', System.now().addDays(-2))
     };
 
-    System.runAs(new User(Id = UserInfo.getUserId())) {
+    RHCActionRetentionService.PurgeOutcome outcome;
+    System.runAs(RHCActionTestDataFactory.adminUser()) {
       RHCActionRetentionService.saveSettings(30);
+      outcome = RHCActionRetentionService.purge();
     }
-    RHCActionRetentionService.PurgeOutcome outcome = RHCActionRetentionService.purge();
 
     Assert.areEqual(1, outcome.historiesDeleted, 'Only old completed history should be removed.');
     Assert.areEqual(1, outcome.pendingActionsDeleted, 'Only an old terminal action should be removed.');
@@ -90,13 +90,13 @@ private class RHCActionRetentionServiceTest {
       histories.add(history(policy.Id, 'bounded-' + index, System.now().addDays(-61)));
     }
     insert histories;
-    System.runAs(new User(Id = UserInfo.getUserId())) {
+    RHCActionRetentionService.PurgeOutcome outcome;
+    System.runAs(RHCActionTestDataFactory.adminUser()) {
       RHCActionRetentionService.saveSettings(30);
+      Test.startTest();
+      outcome = RHCActionRetentionService.purge();
+      Test.stopTest();
     }
-
-    Test.startTest();
-    RHCActionRetentionService.PurgeOutcome outcome = RHCActionRetentionService.purge();
-    Test.stopTest();
 
     Assert.areEqual(1000, outcome.totalDeleted, 'One request must never delete more than the hard cap.');
     Assert.areEqual(1, [SELECT COUNT() FROM RHC_Action_History__c], 'Additional eligible evidence waits for another request.');

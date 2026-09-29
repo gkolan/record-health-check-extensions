@@ -122,10 +122,11 @@ coverage as package coverage.
 Preserve timestamped evidence:
 
 ```sh
+mkdir -p ../../reports/code-analyzer
 SF_DISABLE_LOG_FILE=true sf code-analyzer run \
   --rule-selector Recommended \
   --workspace force-app \
-  --output-file "./code-analyzer-results-YYYYMMDD-HHMMSS.json" \
+  --output-file "../../reports/code-analyzer/rhc-actions-YYYYMMDD-HHMMSS.json" \
   --view detail
 ```
 

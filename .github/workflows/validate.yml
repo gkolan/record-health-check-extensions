@@ -459,7 +459,9 @@ jobs:
       - name: Validate Salesforce source conversion
         run: sf project convert source --source-dir force-app --output-dir "${RUNNER_TEMP}/rhc-run-manager-mdapi"
       - name: Enforce recommended Code Analyzer findings
-        run: sf code-analyzer run --rule-selector Recommended --target force-app --workspace force-app --include-fixes --severity-threshold 3 --output-file "${RUNNER_TEMP}/rhc-run-manager-code-analyzer.json"
+        run: |
+          mkdir -p ../../reports/code-analyzer/logs/rhc-run-manager
+          sf code-analyzer run --rule-selector Recommended --target force-app --workspace force-app --include-fixes --severity-threshold 3 --output-file "${RUNNER_TEMP}/rhc-run-manager-code-analyzer.json"
       - name: Upload analyzer evidence
         if: always()
         uses: actions/upload-artifact@v4

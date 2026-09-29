@@ -114,10 +114,11 @@ npx @salesforce-ux/slds-linter@latest lint force-app/main/default/lwc/rhcRunMana
 ### Salesforce Code Analyzer
 
 ```bash
+mkdir -p ../../reports/code-analyzer/logs/rhc-run-manager
 sf code-analyzer run \
   --rule-selector Recommended \
   --target force-app/main/default \
-  --output-file code-analyzer-results.json
+  --output-file ../../reports/code-analyzer/rhc-run-manager.json
 ```
 
 Review `code-analyzer.yml` before changing exclusions. Exceptions must explain a product or platform

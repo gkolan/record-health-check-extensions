@@ -319,7 +319,7 @@ const objects = [
     enableReports: false,
     enableSearch: false,
     generateTab: false,
-    sharingModel: "PublicReadWrite",
+    sharingModel: "ReadWrite",
     description:
       "The Record Health Check Alert Setting object stores the administrator-approved delivery retention window used by bounded manual cleanup. It does not enable scheduled deletion. Commonly used to govern operational evidence disposition before an administrator explicitly purges terminal delivery records.",
     fields: [
@@ -509,7 +509,7 @@ const permission = (admin) => {
     const setting = admin && object.api.endsWith("Setting__c");
     const delivery = admin && object.api.endsWith("Delivery__c");
     parts.push(
-      `<objectPermissions><allowCreate>${policy || setting}</allowCreate><allowDelete>${policy || delivery}</allowDelete><allowEdit>${policy || setting}</allowEdit><allowRead>true</allowRead><modifyAllRecords>${policy || delivery}</modifyAllRecords><object>${object.api}</object><viewAllRecords>${!setting}</viewAllRecords></objectPermissions>`
+      `<objectPermissions><allowCreate>${policy || setting}</allowCreate><allowDelete>${policy || delivery}</allowDelete><allowEdit>${admin}</allowEdit><allowRead>true</allowRead><modifyAllRecords>${policy || delivery}</modifyAllRecords><object>${object.api}</object><viewAllRecords>${!setting}</viewAllRecords></objectPermissions>`
     );
   }
   parts.push(

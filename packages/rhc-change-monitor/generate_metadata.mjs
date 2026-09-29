@@ -6,11 +6,18 @@ const projectRoot = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(projectRoot, "force-app/main/default");
 const header = '<?xml version="1.0" encoding="UTF-8"?>\n';
 const namespace = ' xmlns="http://soap.sforce.com/2006/04/metadata"';
+const checkOnly = process.argv.includes("--check");
+const drift = [];
 const escapeXml = (value) => String(value).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
 const write = (relative, body) => {
   const target = path.join(root, relative);
+  const expected = header + body.trim() + "\n";
+  if (checkOnly) {
+    if (!fs.existsSync(target) || fs.readFileSync(target, "utf8") !== expected) drift.push(relative);
+    return;
+  }
   fs.mkdirSync(path.dirname(target), { recursive: true });
-  fs.writeFileSync(target, header + body.trim() + "\n");
+  fs.writeFileSync(target, expected);
 };
 const picklist = (values) => `<valueSet><restricted>true</restricted><valueSetDefinition><sorted>false</sorted>${values.map((value, index) => `<value><fullName>${value}</fullName><default>${index === 0}</default><label>${escapeXml(value.replaceAll("_", " "))}</label></value>`).join("")}</valueSetDefinition></valueSet>`;
 const fieldXml = (field) => {
@@ -76,7 +83,7 @@ const objects = [
     description: "The Record Health Check Change Setting object stores the administrator-approved evaluation retention window used by bounded manual cleanup. It does not enable scheduled deletion. Commonly used to govern operational evidence disposition before an administrator explicitly purges terminal Change Evaluations.",
     enableReports: false,
     enableSearch: false,
-    sharingModel: "PublicReadWrite",
+    sharingModel: "ReadWrite",
     visibility: "Public",
     fields: [
       { name: "SettingKey__c", label: "Setting Key", type: "Text", length: 80, external: true, unique: true, description: "Package-owned singleton key. The supported value is Default." },
@@ -124,3 +131,10 @@ write("permissionsets/RHC_Change_Monitor_Admin.permissionset-meta.xml", `<Permis
 write("permissionsets/RHC_Change_Monitor_Runtime.permissionset-meta.xml", `<PermissionSet${namespace}>${classes.map((name) => `<classAccesses><apexClass>${name}</apexClass><enabled>true</enabled></classAccesses>`).join("")}<description>Least-privilege data and Apex access for the configured Change Monitor asynchronous runtime principal. Assign together with a core runner permission set.</description>${runtimeFieldAccess}<hasActivationRequired>false</hasActivationRequired><label>RHC Change Monitor Runtime</label>${runtimeObjectAccess}${eventAccess}</PermissionSet>`);
 const viewerFieldAccess = operationalObjects.flatMap((object) => object.fields.map((field) => `<fieldPermissions><editable>false</editable><field>${object.api}.${field.name}</field><readable>true</readable></fieldPermissions>`)).join("");
 write("permissionsets/RHC_Change_Monitor_Viewer.permissionset-meta.xml", `<PermissionSet${namespace}><description>Read Change Monitor policy and bounded operational evidence without mutation rights.</description>${viewerFieldAccess}<hasActivationRequired>false</hasActivationRequired><label>RHC Change Monitor Viewer</label>${objectAccess(false)}</PermissionSet>`);
+
+if (drift.length) {
+  console.error(`Generated metadata drift detected:\n${drift.map((file) => `- ${file}`).join("\n")}`);
+  process.exitCode = 1;
+} else if (checkOnly) {
+  console.log("Generated RHC Change Monitor metadata is current.");
+}
