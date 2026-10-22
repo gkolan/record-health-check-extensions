@@ -59,7 +59,7 @@ check(!allSourceText.includes('Test.isRunningTest()'), 'Production code must not
 
 const suppressionDocumentation = read('docs/CODE-ANALYZER-SUPPRESSIONS.md');
 const suppressionCount = (allSourceText.match(/@SuppressWarnings\(/g) ?? []).length;
-check(suppressionCount === 11, `Expected 11 reviewed analyzer suppressions; found ${suppressionCount}`);
+check(suppressionCount === 12, `Expected 12 reviewed analyzer suppressions; found ${suppressionCount}`);
 check(
     suppressionDocumentation.includes('aggregate complexity 52'),
     'Analyzer suppression documentation must record the current Admin complexity'

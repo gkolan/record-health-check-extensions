@@ -201,9 +201,7 @@ public with sharing class RHCAlertsPolicyAdminService {
       .fields.getMap();
     for (String fieldName : POLICY_EDITOR_FIELDS) {
       Schema.SObjectField policyField = policyFields.get(fieldName);
-      if (
-        policyField == null || !policyField.getDescribe().isAccessible()
-      ) {
+      if (policyField == null || !policyField.getDescribe().isAccessible()) {
         throw handled('You do not have access to RHC Alerts policies.');
       }
     }

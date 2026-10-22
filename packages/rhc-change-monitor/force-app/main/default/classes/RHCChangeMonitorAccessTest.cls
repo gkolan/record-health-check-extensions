@@ -53,6 +53,12 @@ private class RHCChangeMonitorAccessTest {
     Action(String name) {
       this.name = name;
     }
+    /**
+     * Invokes the named controller entry point.
+     * @param method Unused callable method name.
+     * @param args Unused callable arguments.
+     * @return The controller entry point's result.
+     */
     public Object call(String method, Map<String, Object> args) {
       if (name == 'status') {
         return RHCChangeMonitorAdminController.getStatus();

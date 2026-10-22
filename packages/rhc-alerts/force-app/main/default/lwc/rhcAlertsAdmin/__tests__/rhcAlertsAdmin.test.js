@@ -708,40 +708,31 @@ describe("c-rhc-alerts-admin", () => {
     expect(purgeToast.message).toContain("2 terminal delivery record(s)");
   });
 
-  it("surfaces a bounded message when coverage analysis fails", async () => {
-    analyzeCoverage.mockRejectedValue({
-      body: { message: "Publication coverage could not be analyzed." }
-    });
+  async function coverageFailureToast() {
     const element = createElement("c-rhc-alerts-admin", { is: RhcAlertsAdmin });
     const toast = jest.fn();
     element.addEventListener("lightning__showtoast", toast);
     document.body.appendChild(element);
     await flush();
     await flush();
-
     element.shadowRoot.querySelectorAll("lightning-button")[1].click();
     await flush();
     await flush();
+    return toast.mock.calls[0][0].detail;
+  }
 
-    const detail = toast.mock.calls[0][0].detail;
+  it("surfaces a bounded message when coverage analysis fails", async () => {
+    analyzeCoverage.mockRejectedValue({
+      body: { message: "Publication coverage could not be analyzed." }
+    });
+    const detail = await coverageFailureToast();
     expect(detail.variant).toBe("error");
     expect(detail.message).toBe("Publication coverage could not be analyzed.");
   });
 
   it("falls back to a generic message when a failure carries no body", async () => {
     analyzeCoverage.mockRejectedValue(new Error("raw platform failure"));
-    const element = createElement("c-rhc-alerts-admin", { is: RhcAlertsAdmin });
-    const toast = jest.fn();
-    element.addEventListener("lightning__showtoast", toast);
-    document.body.appendChild(element);
-    await flush();
-    await flush();
-
-    element.shadowRoot.querySelectorAll("lightning-button")[1].click();
-    await flush();
-    await flush();
-
-    const detail = toast.mock.calls[0][0].detail;
+    const detail = await coverageFailureToast();
     expect(detail.message).toBe(
       "Try again or contact your Salesforce administrator."
     );

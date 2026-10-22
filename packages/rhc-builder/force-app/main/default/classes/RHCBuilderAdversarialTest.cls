@@ -3,6 +3,7 @@
  * configuration, malformed envelopes, authoring denial, and bulk authoring volume.
  */
 @IsTest
+@SuppressWarnings('PMD.CyclomaticComplexity')
 private class RHCBuilderAdversarialTest {
   private static final String VALID_QUERY = 'SELECT Id FROM Contact WHERE AccountId = {!record.Id}';
 

@@ -12,7 +12,7 @@ enabled and currently reports zero findings.
 | `RHCLogsCleanupScheduler.cls` (`findJobs`) | `ApexCRUDViolation` | The method explicitly checks `CronTrigger.isAccessible()` before querying the package job name. |
 | `RHCLogsAdminController.cls` | `CyclomaticComplexity` | The cohesive setup endpoint has aggregate complexity 52 against the rule threshold 50; its highest method complexity is 10 and work is split into focused helpers. |
 | `RHCLogsAdminController.cls` (`populateLogSummary`) | `AvoidNonRestrictiveQueries` | The setup dashboard intentionally computes count/min/max across the retained-log table. Salesforce rejects `LIMIT` on a non-grouped overall aggregate, and the aggregate returns exactly one row without materializing records. |
-| Four `*Test.cls` classes | `ApexUnitTestClassShouldHaveRunAs` | Persona-sensitive tests use explicit Viewer/Admin/unprivileged `System.runAs`. Wrapping every system-context unit test in `runAs` for the same current user adds no security evidence. |
+| Five `*Test.cls` classes | `ApexUnitTestClassShouldHaveRunAs` | Persona-sensitive tests use explicit Viewer/Admin/unprivileged `System.runAs`. Wrapping every system-context unit test in `runAs` for the same current user adds no security evidence. |
 
 Changing or adding a suppression requires updating this page and rerunning the full Recommended scan.
 

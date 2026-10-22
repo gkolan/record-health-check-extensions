@@ -3,6 +3,7 @@
  * boundaries, cancellation state integrity, supplied-ID replay, bulk volume, and error contracts.
  */
 @IsTest
+@SuppressWarnings('PMD.CyclomaticComplexity')
 private class RHCRunManagerAdversarialTest {
   private static final Integer RETENTION_DAYS = 30;
 
@@ -726,6 +727,7 @@ private class RHCRunManagerAdversarialTest {
 
   /** Stands in for a tenant job the package does not own. */
   private class ForeignSchedulable implements Schedulable {
+    @SuppressWarnings('PMD.EmptyStatementBlock')
     public void execute(SchedulableContext context) {
       // Intentionally empty: the test only needs the job to exist.
     }

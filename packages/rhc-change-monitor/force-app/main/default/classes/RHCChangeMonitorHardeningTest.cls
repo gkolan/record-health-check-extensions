@@ -1,8 +1,14 @@
 /** Red-scenario contract tests: hostile CDC input, claim-key idempotency, routing, and failure classification. */
 @IsTest
+@SuppressWarnings('PMD.ApexUnitTestClassShouldHaveRunAs')
 private class RHCChangeMonitorHardeningTest {
   private static final String SENTINEL = 'SENSITIVE-PAYLOAD-7f3a';
-  private static final String ACCOUNT_ID = '001000000000001AAA';
+  private static final String ACCOUNT_ID = fakeId(Account.SObjectType, 1);
+  private static final Id POLICY_ID = fakeId(Record_Health_Check_Change_Policy__c.SObjectType, 2);
+
+  private static String fakeId(Schema.SObjectType type, Integer suffix) {
+    return type.getDescribe().getKeyPrefix() + String.valueOf(suffix).leftPad(12, '0');
+  }
 
   @TestSetup
   static void assignPermissions() {
@@ -39,7 +45,7 @@ private class RHCChangeMonitorHardeningTest {
 
   @IsTest
   static void shouldRejectRecordIdsThatAreNotAListWithTypedException() {
-    expectInvalid(header(1, SENTINEL));
+    Assert.isFalse(expectInvalid(header(1, SENTINEL)).contains(SENTINEL), 'The rejected value must not be echoed.');
   }
 
   @IsTest
@@ -160,7 +166,7 @@ private class RHCChangeMonitorHardeningTest {
 
   @IsTest
   static void shouldProduceStableDelimiterSafeClaimKeys() {
-    Id policyId = '001000000000002AAA';
+    Id policyId = POLICY_ID;
     RHCChangeMonitorEventEnvelope base = RHCChangeMonitorTestDataFactory.accountEvent('UPDATE', new Set<String>{ 'Name' }, new List<String>{ ACCOUNT_ID });
     String key = RHCChangeMonitorClaimKey.create(base, policyId, ACCOUNT_ID);
     Assert.areEqual(key, RHCChangeMonitorClaimKey.create(base, policyId, ACCOUNT_ID), 'A replay yields the identical key.');
@@ -171,7 +177,7 @@ private class RHCChangeMonitorHardeningTest {
       RHCChangeMonitorClaimKey.create(base, policyId, '-'),
       'A null component is distinct from a literal dash.'
     );
-    Assert.areNotEqual(key, RHCChangeMonitorClaimKey.create(base, policyId, '001000000000009AAA'), 'Record ID participates.');
+    Assert.areNotEqual(key, RHCChangeMonitorClaimKey.create(base, policyId, fakeId(Account.SObjectType, 9)), 'Record ID participates.');
     RHCChangeMonitorEventEnvelope other = RHCChangeMonitorTestDataFactory.accountEvent('CREATE', new Set<String>(), new List<String>{ ACCOUNT_ID });
     Assert.areNotEqual(key, RHCChangeMonitorClaimKey.create(other, policyId, ACCOUNT_ID), 'Change type participates.');
     try {
@@ -187,21 +193,21 @@ private class RHCChangeMonitorHardeningTest {
     Record_Health_Check_Change_Policy__c policy = new Record_Health_Check_Change_Policy__c(
       Active__c = true, SourceObjectApiName__c = 'Account', ChangeTypes__c = null, ChangedFields__c = null
     );
-    RHCChangeMonitorEventEnvelope update = RHCChangeMonitorTestDataFactory.accountEvent('UPDATE', new Set<String>{ 'Name' }, new List<String>{ ACCOUNT_ID });
-    Assert.areEqual('CHANGE_TYPE_NOT_SELECTED', RHCChangeMonitorRoutingService.route(policy, update).reasonCode, 'No selected types means nothing dispatches.');
+    RHCChangeMonitorEventEnvelope updateEvent = RHCChangeMonitorTestDataFactory.accountEvent('UPDATE', new Set<String>{ 'Name' }, new List<String>{ ACCOUNT_ID });
+    Assert.areEqual('CHANGE_TYPE_NOT_SELECTED', RHCChangeMonitorRoutingService.route(policy, updateEvent).reasonCode, 'No selected types means nothing dispatches.');
     policy.ChangeTypes__c = 'update ,, CREATE';
-    Assert.isTrue(RHCChangeMonitorRoutingService.route(policy, update).shouldDispatch, 'Case and delimiters are tolerated; blank fields mean any update.');
+    Assert.isTrue(RHCChangeMonitorRoutingService.route(policy, updateEvent).shouldDispatch, 'Case and delimiters are tolerated; blank fields mean any update.');
     policy.ChangedFields__c = '\n  \nIndustry\r\n';
-    Assert.areEqual('CHANGED_FIELDS_NOT_MATCHED', RHCChangeMonitorRoutingService.route(policy, update).reasonCode, 'Unmatched field filter ignores.');
+    Assert.areEqual('CHANGED_FIELDS_NOT_MATCHED', RHCChangeMonitorRoutingService.route(policy, updateEvent).reasonCode, 'Unmatched field filter ignores.');
     policy.Active__c = null;
-    Assert.areEqual('POLICY_INACTIVE', RHCChangeMonitorRoutingService.route(policy, update).reasonCode, 'A null Active flag is inactive.');
+    Assert.areEqual('POLICY_INACTIVE', RHCChangeMonitorRoutingService.route(policy, updateEvent).reasonCode, 'A null Active flag is inactive.');
     policy.Active__c = true;
     policy.SourceObjectApiName__c = 'Contact';
-    Assert.areEqual('CORE_CONFIGURATION_INVALID', RHCChangeMonitorRoutingService.route(policy, update).reasonCode, 'A source mismatch is invalid configuration.');
+    Assert.areEqual('CORE_CONFIGURATION_INVALID', RHCChangeMonitorRoutingService.route(policy, updateEvent).reasonCode, 'A source mismatch is invalid configuration.');
     policy.SourceObjectApiName__c = 'Account';
     policy.ActiveAfter__c = System.now().addDays(1);
-    Assert.areEqual('EVENT_BEFORE_ACTIVATION', RHCChangeMonitorRoutingService.route(policy, update).reasonCode, 'Events before activation are ignored.');
-    for (List<Object> args : new List<List<Object>>{ new List<Object>{ null, update }, new List<Object>{ policy, null } }) {
+    Assert.areEqual('EVENT_BEFORE_ACTIVATION', RHCChangeMonitorRoutingService.route(policy, updateEvent).reasonCode, 'Events before activation are ignored.');
+    for (List<Object> args : new List<List<Object>>{ new List<Object>{ null, updateEvent }, new List<Object>{ policy, null } }) {
       try {
         RHCChangeMonitorRoutingService.route((Record_Health_Check_Change_Policy__c) args[0], (RHCChangeMonitorEventEnvelope) args[1]);
         Assert.fail('Null inputs must be rejected.');
@@ -234,7 +240,7 @@ private class RHCChangeMonitorHardeningTest {
     Record_Health_Check_Change_Evaluation__c claim = new Record_Health_Check_Change_Evaluation__c(SourceObjectApiName__c = 'Account', OccurredAt__c = System.now());
     Assert.areEqual('POLICY_INACTIVE', RHCChangeMonitorDispatchSupport.revalidationReason(claim), 'No policy is inactive.');
     claim.Policy__r = new Record_Health_Check_Change_Policy__c(Active__c = true, SourceObjectApiName__c = 'Contact');
-    claim.Policy__c = '001000000000002AAA';
+    claim.Policy__c = POLICY_ID;
     Assert.areEqual('CORE_CONFIGURATION_INVALID', RHCChangeMonitorDispatchSupport.revalidationReason(claim), 'Source drift is invalid.');
     claim.Policy__r.SourceObjectApiName__c = 'Account';
     claim.Policy__r.ActiveAfter__c = System.now().addDays(1);

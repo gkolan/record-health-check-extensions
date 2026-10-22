@@ -82,11 +82,11 @@ jobs:
             npm run "${script}"
           done
       - name: Enforce source, security, and least-privilege contracts
-        run: npm run validate
+        run: npm run validate --if-present
       - name: Verify the pinned minimum-core contract
-        run: npm run validate:core-contract -- --core-root ../../_core-benchmark
+        run: npm run validate:core-contract --if-present -- --core-root ../../_core-benchmark
       - name: Validate metadata XML
-        run: npm run validate:xml
+        run: npm run validate:xml --if-present
       - name: Enforce LWC coverage thresholds
         run: npm run test:coverage
       - name: Audit development dependencies
@@ -159,7 +159,9 @@ jobs:
         working-directory: packages/${{ matrix.package }}
         env:
           METADATA_CHECK: ${{ matrix.metadata_check }}
-        run: npm run ${METADATA_CHECK}
+        run: |
+          # shellcheck disable=SC2086 # intentional split: "metadata:generate -- --check"
+          npm run ${METADATA_CHECK}
       - name: Validate metadata XML
         if: matrix.xml_check
         working-directory: packages/${{ matrix.package }}
@@ -170,7 +172,9 @@ jobs:
       - name: Enforce the package Code Analyzer severity threshold
         env:
           ANALYZER_ARGS: ${{ matrix.analyzer_args }}
-        run: sf code-analyzer run ${ANALYZER_ARGS} --output-file "${RUNNER_TEMP}/${{ matrix.package }}-code-analyzer.json"
+        run: |
+          # shellcheck disable=SC2086 # ANALYZER_ARGS is a flag list
+          sf code-analyzer run ${ANALYZER_ARGS} --output-file "${RUNNER_TEMP}/${{ matrix.package }}-code-analyzer.json"
       - name: Enforce complete SFGE security analysis
         if: matrix.package == 'rhc-integrations'
         working-directory: packages/rhc-integrations

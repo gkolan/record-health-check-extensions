@@ -67,8 +67,7 @@ public with sharing class RHCIntegrationDeadLetterController {
             throw new AuraHandledException('Only an accessible dead-letter delivery can be replayed.');
         }
         List<Id> replayIds = prepareReplayDeliveries(deliveries);
-        List<Record_Health_Check_Integration_Delivery__c> accessibleDeliveries = sanitizeReplayDeliveries(deliveries);
-        Database.update(accessibleDeliveries, AccessLevel.USER_MODE);
+        update as user sanitizeReplayDeliveries(deliveries);
         System.enqueueJob(new RHCIntegrationDeliveryQueueable(replayIds));
         return replayIds.size();
     }

@@ -78,7 +78,9 @@ jobs:
       - name: Run Apex tests with coverage
         env:
           TEST_ARGS: ${{ matrix.test_args }}
-        run: sf apex run test --target-org ${{ matrix.org_alias }} ${TEST_ARGS} --code-coverage --wait 30 --result-format human
+        run: |
+          # shellcheck disable=SC2086 # TEST_ARGS is a flag list
+          sf apex run test --target-org ${{ matrix.org_alias }} ${TEST_ARGS} --code-coverage --wait 30 --result-format human
       - name: Delete disposable scratch org
         if: always()
         continue-on-error: true

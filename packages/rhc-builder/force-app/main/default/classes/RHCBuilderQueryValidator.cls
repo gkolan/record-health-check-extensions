@@ -172,7 +172,10 @@ public inherited sharing class RHCBuilderQueryValidator {
     // from a deleted one. describeSObjects() throws only when the type truly does not exist.
     Schema.DescribeSObjectResult description;
     try {
-      description = Schema.describeSObjects(new List<String>{ rootObject })[0];
+      description = Schema.describeSObjects(
+        new List<String>{ rootObject },
+        SObjectDescribeOptions.DEFERRED
+      )[0];
     } catch (Exception error) {
       addError(
         issues,
