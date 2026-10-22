@@ -6,6 +6,11 @@ public with sharing class RHCAlertsViewerController {
    */
   @AuraEnabled
   public static List<Record_Health_Check_Alert_Delivery__c> listDeliveries() {
+    if (
+      !Schema.SObjectType.Record_Health_Check_Alert_Delivery__c.isAccessible()
+    ) {
+      throw handled('You do not have access to RHC Alerts delivery history.');
+    }
     return [
       SELECT
         Id,
@@ -31,5 +36,11 @@ public with sharing class RHCAlertsViewerController {
       ORDER BY CreatedDate DESC
       LIMIT 500
     ];
+  }
+
+  private static AuraHandledException handled(String message) {
+    AuraHandledException error = new AuraHandledException(message);
+    error.setMessage(message);
+    return error;
   }
 }

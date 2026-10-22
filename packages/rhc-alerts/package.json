@@ -24,5 +24,11 @@
     "@salesforce/sfdx-lwc-jest": "8.0.0",
     "prettier": "3.8.4",
     "prettier-plugin-apex": "2.2.6"
+  },
+  "overrides": {
+    "braces": "npm:@dieub/braces-depth-guard@3.0.3-pn.3",
+    "@istanbuljs/load-nyc-config": {
+      "js-yaml": "4.3.2"
+    }
   }
 }

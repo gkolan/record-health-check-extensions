@@ -60,7 +60,7 @@ public with sharing class RHCReportsSetupController {
             ? latestCompletedDate
             : setting.LastAggregatedDate__c.addDays(1);
         if (Limits.getQueueableJobs() >= Limits.getLimitQueueableJobs()) {
-            throw new AuraHandledException('Too many asynchronous jobs are queued. Try again shortly.');
+            throw handled('Too many asynchronous jobs are queued. Try again shortly.');
         }
         System.enqueueJob(
             new RHCReportsDailyAggregationQueueable(
@@ -81,7 +81,7 @@ public with sharing class RHCReportsSetupController {
     public static SettingDTO saveSettings(SaveSettingsInput input) {
         requireManager();
         if (input == null) {
-            throw new AuraHandledException('Reporting settings are required.');
+            throw handled('Reporting settings are required.');
         }
         validateDays(input.detailedRetentionDays, 'Detailed retention', 1, 3650);
         validateDays(input.snapshotRetentionDays, 'Snapshot retention', 1, 36500);
@@ -132,7 +132,7 @@ public with sharing class RHCReportsSetupController {
     public static Id aggregateNow(Date snapshotDate) {
         requireManager();
         if (snapshotDate == null || snapshotDate >= Date.today()) {
-            throw new AuraHandledException('Choose a completed date before today.');
+            throw handled('Choose a completed date before today.');
         }
         SettingDTO setting = getSettings();
         return System.enqueueJob(
@@ -142,9 +142,20 @@ public with sharing class RHCReportsSetupController {
             )
         );
     }
+    /**
+     * Builds an Aura-safe error. setMessage is required: without it the Aura boundary
+     * reports "Script-thrown exception" instead of the admin-facing text.
+     * @param message admin-facing text
+     * @return exception carrying the admin-facing message
+     */
+    private static AuraHandledException handled(String message) {
+        AuraHandledException error = new AuraHandledException(message);
+        error.setMessage(message);
+        return error;
+    }
     private static void requireManager() {
         if (!FeatureManagement.checkPermission('Manage_RHC_Reports')) {
-            throw new AuraHandledException('Manage RHC Reports permission is required.');
+            throw handled('Manage RHC Reports permission is required.');
         }
     }
     private static void validateDays(
@@ -154,18 +165,18 @@ public with sharing class RHCReportsSetupController {
         Integer maximum
     ) {
         if (value == null || value < minimum || value > maximum) {
-            throw new AuraHandledException(
+            throw handled(
                 label + ' must be between ' + minimum + ' and ' + maximum + ' days.'
             );
         }
     }
     private static void validateTimeZone(String timeZoneId) {
         if (String.isBlank(timeZoneId)) {
-            throw new AuraHandledException('Aggregation time zone is required.');
+            throw handled('Aggregation time zone is required.');
         }
         TimeZone zone = TimeZone.getTimeZone(timeZoneId);
         if (zone == null || (zone.getID() == 'GMT' && timeZoneId != 'GMT')) {
-            throw new AuraHandledException('Enter a valid Salesforce time-zone ID.');
+            throw handled('Enter a valid Salesforce time-zone ID.');
         }
     }
     private static void abortExisting(String cronTriggerId) {

@@ -2,7 +2,7 @@
 
 > Last reviewed: September 20, 2026
 > Package API version: 66.0
-> Minimum Record Health Check core: 2.0.4.2 (`04tak000000cZBFAA2`)
+> Minimum Record Health Check core: 2.0.11.4 (`04tak000000nGjZAAU`)
 
 Use this guide to install, configure, test, operate, and safely disable RHC Integrations. It assumes
 Lightning Experience and a sandbox-first release process.
@@ -64,7 +64,7 @@ Do not start the production installation until every row is complete.
 
 | Item | What to obtain | Owner |
 | --- | --- | --- |
-| Sandbox | A sandbox where core 2.0.4.2 is already installed and configured | Salesforce admin |
+| Sandbox | A sandbox where core 2.0.11.4 is already installed and configured | Salesforce admin |
 | RHC Integrations installation URL | An installation URL containing the promoted RHC Integrations `04t` ID | Package release owner |
 | Integration user | A dedicated active Salesforce user; do not use a person's account | Salesforce security owner |
 | External endpoint | Base URL, such as `https://service.example.com` | External-system owner |
@@ -89,7 +89,7 @@ If the browser's domain doesn't match that value at any point, stop.
 3. In **Quick Find**, enter `Installed Packages`.
 4. Select **Installed Packages**.
 5. Find **Record Health Check**.
-6. Confirm its version is **2.0.4.2** or a later version explicitly certified by the RHC
+6. Confirm its version is **2.0.11.4** or a later version explicitly certified by the RHC
    Integrations release notes.
 7. If it is missing or older, stop and install or upgrade core before continuing.
 

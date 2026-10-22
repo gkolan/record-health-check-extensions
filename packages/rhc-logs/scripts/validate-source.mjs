@@ -149,8 +149,8 @@ for (const field of requiredDiagnosticFields) {
 const project = JSON.parse(read('sfdx-project.json'));
 check(project.namespace === 'rhc', 'Package namespace configuration must remain rhc');
 check(
-    project.packageDirectories?.[0]?.dependencies?.[0]?.package === 'Record Health Check@2.0.4-2',
-    'Package dependency must remain pinned to promoted core 2.0.4-2'
+    project.packageDirectories?.[0]?.dependencies?.[0]?.package === 'Record Health Check@2.0.11-4',
+    'Package dependency must remain pinned to promoted core 2.0.11-4'
 );
 
 const packageManifest = JSON.parse(read('package.json'));

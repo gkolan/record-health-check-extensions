@@ -21,7 +21,7 @@ client secrets, authorization headers, session IDs, or response bodies.
 
 | Package | Expected version/ID | Installed version | Evidence location | Pass |
 | --- | --- | --- | --- | :---: |
-| Record Health Check | 2.0.4.2 / `04tak000000cZBFAA2` | | | |
+| Record Health Check | 2.0.11.4 / `04tak000000nGjZAAU` | | | |
 | RHC Integrations | promoted `04t` supplied by release owner | | | |
 
 ## Runtime and credential configuration

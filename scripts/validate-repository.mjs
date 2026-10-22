@@ -108,26 +108,16 @@ assert(
         validationWorkflow.includes('8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8'),
     'Repository CI must run the pinned, checksum-verified Actionlint 1.7.12 binary'
 );
-const staticJobByPackage = new Map([
-    ['rhc-actions', 'rhc-actions-static'],
-    ['rhc-alerts', 'rhc-alerts-code-analyzer'],
-    ['rhc-builder', 'builder-static-analysis'],
-    ['rhc-change-monitor', 'remaining-salesforce-static'],
-    ['rhc-integrations', 'rhc-integrations-static'],
-    ['rhc-logs', 'rhc-logs-static'],
-    ['rhc-reports', 'rhc-reports-static'],
-    ['rhc-run-manager', 'run-manager-static'],
-    ['rhc-agent-actions', 'remaining-salesforce-static']
-]);
+const analyzerPackages = packageDirectories.map((directory) => path.basename(directory));
 const orgWorkflowByPackage = new Map([
-    ['rhc-actions', 'rhc-actions-salesforce-validate.yml'],
+    ['rhc-actions', 'package-salesforce-validate.yml'],
     ['rhc-agent-actions', 'remaining-salesforce-validate.yml'],
     ['rhc-alerts', 'remaining-salesforce-validate.yml'],
     ['rhc-builder', 'rhc-builder-salesforce-validate.yml'],
     ['rhc-change-monitor', 'remaining-salesforce-validate.yml'],
     ['rhc-integrations', 'remaining-salesforce-validate.yml'],
     ['rhc-logs', 'remaining-salesforce-validate.yml'],
-    ['rhc-reports', 'rhc-reports-salesforce-validate.yml'],
+    ['rhc-reports', 'package-salesforce-validate.yml'],
     ['rhc-run-manager', 'remaining-salesforce-validate.yml']
 ]);
 const documentationByPackage = new Map([
@@ -187,6 +177,7 @@ const documentationByPackage = new Map([
     }]
 ]);
 const npmPackageNames = [];
+const lwcPackageNames = [];
 const forbiddenValidationCommands = [
     'sf package create',
     'sf package version create',
@@ -291,6 +282,9 @@ for (const packageDirectory of packageDirectories) {
     assert(fs.existsSync(packageFile) || lwcControllers.length === 0, `${packageName} ships LWC code without a test harness`);
     if (fs.existsSync(packageFile)) {
         npmPackageNames.push(packageName);
+        if (lwcControllers.length > 0) {
+            lwcPackageNames.push(packageName);
+        }
         const manifest = readJson(packageFile);
         assert(fs.existsSync(path.join(packageDirectory, 'package-lock.json')), `${packageName} is missing package-lock.json`);
         assert(fs.existsSync(path.join(packageDirectory, '.forceignore')), `${packageName} is missing .forceignore`);
@@ -298,18 +292,23 @@ for (const packageDirectory of packageDirectories) {
             assert(manifest.private === true, `${packageName} must remain private to prevent accidental npm publishing`);
             assert(manifest.license === 'Apache-2.0', `${packageName} must declare Apache-2.0`);
             assert(manifest.scripts?.test, `${packageName} must expose npm test`);
-            const jestVersion = manifest.devDependencies?.['@salesforce/sfdx-lwc-jest'];
-            assert(/^\^?8\./.test(jestVersion ?? ''), `${packageName} must use sfdx-lwc-jest 8.x`);
+            if (lwcControllers.length > 0) {
+                const jestVersion = manifest.devDependencies?.['@salesforce/sfdx-lwc-jest'];
+                assert(/^\^?8\./.test(jestVersion ?? ''), `${packageName} must use sfdx-lwc-jest 8.x`);
+            }
         }
     }
 }
 
-for (const [packageName, jobName] of staticJobByPackage) {
-    const job = workflowJob(validationWorkflow, jobName);
-    assert(job, `${packageName} is missing its ${jobName} CI job`);
-    assert(job.includes(packageName), `${jobName} does not select ${packageName}`);
-    assert(job.includes('sf project convert source'), `${jobName} does not validate source conversion`);
-    assert(job.includes('sf code-analyzer run'), `${jobName} does not run Salesforce Code Analyzer`);
+const analyzerJob = workflowJob(validationWorkflow, 'analyzer');
+assert(analyzerJob, 'Repository CI is missing its analyzer matrix job');
+assert(analyzerJob.includes('sf project convert source'), 'The analyzer matrix does not validate source conversion');
+assert(analyzerJob.includes('sf code-analyzer run'), 'The analyzer matrix does not run Salesforce Code Analyzer');
+for (const packageName of analyzerPackages) {
+    assert(
+        new RegExp(`- package: ${escapeRegExp(packageName)}\\n[\\s\\S]*?severity-threshold \\d`).test(analyzerJob),
+        `${packageName} is missing from the Code Analyzer matrix with a severity threshold`
+    );
 }
 
 for (const [packageName, workflowName] of orgWorkflowByPackage) {
@@ -346,20 +345,22 @@ for (const workflowFile of walk(path.join(root, '.github', 'workflows'), (file) 
     }
 }
 
-const lwcJob = workflowJob(validationWorkflow, 'lwc');
-for (const packageName of npmPackageNames) {
+const lwcJob = workflowJob(validationWorkflow, 'npm-gates');
+for (const packageName of lwcPackageNames) {
     assert(lwcJob.includes(`- ${packageName}`), `${packageName} is missing from the npm CI matrix`);
 }
 assert(lwcJob.includes('npm run test:coverage'), 'The npm CI matrix does not enforce test coverage');
 assert(lwcJob.includes('npm audit --audit-level=high'), 'The npm CI matrix does not enforce dependency auditing');
+for (const script of ['npm run validate', 'npm run validate:core-contract', 'npm run validate:xml']) {
+    assert(lwcJob.includes(script), `The npm CI matrix does not run ${script}`);
+}
 assert(
-    lwcJob.includes("matrix.package == 'rhc-change-monitor'") && lwcJob.includes('npm run test:adapter-generator'),
+    lwcJob.includes('test:adapter-generator'),
     'The npm CI matrix does not run Change Monitor adapter-generator tests'
 );
 
-const remainingStaticJob = workflowJob(validationWorkflow, 'remaining-salesforce-static');
 assert(
-    remainingStaticJob.includes('npm run metadata:generate -- --check'),
+    analyzerJob.includes('metadata_check: metadata:generate -- --check'),
     'The Change Monitor static CI gate does not verify generated metadata'
 );
 
@@ -380,8 +381,8 @@ console.log(
     `${markdownCount} Markdown files, and ${linkCount} local links checked.`
 );
 console.log(
-    `CI contract: ${staticJobByPackage.size} source projects and ` +
-    `${npmPackageNames.length} npm-backed packages covered; ` +
+    `CI contract: ${analyzerPackages.length} source projects and ` +
+    `${npmPackageNames.length} npm-backed packages (${lwcPackageNames.length} with LWC tests) covered; ` +
     `${orgWorkflowByPackage.size} org-validation paths configured.`
 );
 console.log(`Documentation contract: admin, security, operations, and release guidance mapped for all packages.`);

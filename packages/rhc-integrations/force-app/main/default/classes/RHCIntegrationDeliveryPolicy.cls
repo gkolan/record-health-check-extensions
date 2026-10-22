@@ -220,7 +220,8 @@ public with sharing class RHCIntegrationDeliveryPolicy {
       route.RelativeEndpoint__c.startsWith('/') &&
       !route.RelativeEndpoint__c.startsWith('//') &&
       !route.RelativeEndpoint__c.contains('://') &&
-      !route.RelativeEndpoint__c.contains('\\\\') &&
+      !route.RelativeEndpoint__c.contains('\\') &&
+      !route.RelativeEndpoint__c.containsIgnoreCase('%2e') &&
       !route.RelativeEndpoint__c.contains('?') &&
       !route.RelativeEndpoint__c.contains('#') &&
       !route.RelativeEndpoint__c.contains('..');

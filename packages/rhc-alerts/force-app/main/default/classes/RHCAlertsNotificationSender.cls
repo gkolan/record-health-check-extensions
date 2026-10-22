@@ -3,6 +3,9 @@
 // runtime never queries checked business data here; recipient User access is resolved upstream.
 @SuppressWarnings('PMD.ApexCRUDViolation')
 public inherited sharing class RHCAlertsNotificationSender {
+  @TestVisible
+  private static Id cachedNotificationTypeId;
+
   /**
    * Sends a complete configured audience atomically where the platform API supports it.
    * @param row Claimed delivery row with its parent policy relationship populated.
@@ -33,17 +36,8 @@ public inherited sharing class RHCAlertsNotificationSender {
     ) {
       throw new NotificationException('CUSTOM_NOTIFICATION_RECIPIENT_LIMIT');
     }
-    List<CustomNotificationType> types = [
-      SELECT Id
-      FROM CustomNotificationType
-      WHERE DeveloperName = 'RHC_Alert'
-      LIMIT 1
-    ];
-    if (types.isEmpty()) {
-      throw new NotificationException('NOTIFICATION_TYPE_UNAVAILABLE');
-    }
     Messaging.CustomNotification notification = new Messaging.CustomNotification();
-    notification.setNotificationTypeId(types[0].Id);
+    notification.setNotificationTypeId(notificationTypeId());
     notification.setTitle('Record health check alert');
     notification.setBody(messageBody(row));
     String target = resolveTarget(row);
@@ -128,5 +122,22 @@ public inherited sharing class RHCAlertsNotificationSender {
 
   /** Sanitized notification failure whose message is a bounded package code. */
   public class NotificationException extends Exception {
+  }
+
+  private static Id notificationTypeId() {
+    if (cachedNotificationTypeId != null) {
+      return cachedNotificationTypeId;
+    }
+    List<CustomNotificationType> types = [
+      SELECT Id
+      FROM CustomNotificationType
+      WHERE DeveloperName = 'RHC_Alert'
+      LIMIT 1
+    ];
+    if (types.isEmpty()) {
+      throw new NotificationException('NOTIFICATION_TYPE_UNAVAILABLE');
+    }
+    cachedNotificationTypeId = types[0].Id;
+    return cachedNotificationTypeId;
   }
 }

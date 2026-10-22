@@ -125,6 +125,6 @@ Package identity:
 - Container: `0Hoak0000005Lv3CAE`
 - Namespace: `rhc`
 - Source line: `0.1.0.NEXT`
-- Pinned core dependency: `Record Health Check@2.0.4-2`
+- Pinned core dependency: `Record Health Check@2.0.11-4`
 
 </details>

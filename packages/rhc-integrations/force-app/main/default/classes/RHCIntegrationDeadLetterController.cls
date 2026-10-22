@@ -67,7 +67,8 @@ public with sharing class RHCIntegrationDeadLetterController {
             throw new AuraHandledException('Only an accessible dead-letter delivery can be replayed.');
         }
         List<Id> replayIds = prepareReplayDeliveries(deliveries);
-        update as user sanitizeReplayDeliveries(deliveries);
+        List<Record_Health_Check_Integration_Delivery__c> accessibleDeliveries = sanitizeReplayDeliveries(deliveries);
+        Database.update(accessibleDeliveries, AccessLevel.USER_MODE);
         System.enqueueJob(new RHCIntegrationDeliveryQueueable(replayIds));
         return replayIds.size();
     }
@@ -177,7 +178,7 @@ public with sharing class RHCIntegrationDeadLetterController {
     private static void resetForReplay(Record_Health_Check_Integration_Delivery__c delivery) {
         delivery.Status__c = 'PENDING';
         delivery.AttemptCount__c = 0;
-        delivery.ReplayCount__c = (delivery.ReplayCount__c ?? 0) + 1;
+        delivery.ReplayCount__c = (delivery.ReplayCount__c == null ? 0 : delivery.ReplayCount__c) + 1;
         delivery.NextAttemptAt__c = null;
         delivery.CompletedAt__c = null;
         delivery.HttpStatus__c = null;

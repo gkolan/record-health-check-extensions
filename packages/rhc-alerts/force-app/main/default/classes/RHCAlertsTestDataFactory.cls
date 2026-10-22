@@ -148,4 +148,54 @@ public class RHCAlertsTestDataFactory {
       RecordId__c = String.valueOf(recordId)
     );
   }
+
+  /**
+   * Creates one synthetic active Standard User with no package permission set.
+   * @param keyValue Unique test key.
+   * @return Inserted user holding only baseline profile access.
+   */
+  public static User createStandardUser(String keyValue) {
+    Profile standardProfile = [
+      SELECT Id
+      FROM Profile
+      WHERE Name = 'Standard User'
+      LIMIT 1
+    ];
+    String uniqueValue =
+      keyValue +
+      '-' +
+      String.valueOf(Datetime.now().getTime()) +
+      String.valueOf(Crypto.getRandomInteger()).right(4);
+    User userRecord = new User(
+      Alias = keyValue.left(8),
+      Email = uniqueValue + '@example.invalid',
+      EmailEncodingKey = 'UTF-8',
+      LastName = 'RHC Alerts ' + keyValue,
+      LanguageLocaleKey = 'en_US',
+      LocaleSidKey = 'en_US',
+      ProfileId = standardProfile.Id,
+      TimeZoneSidKey = 'America/Chicago',
+      Username = uniqueValue + '@example.invalid'
+    );
+    insert userRecord;
+    return userRecord;
+  }
+
+  /**
+   * Assigns one packaged permission set by developer name.
+   * @param userId Target user.
+   * @param permissionSetName Packaged permission-set developer name.
+   */
+  public static void assignPermissionSet(Id userId, String permissionSetName) {
+    PermissionSet permissionSetRecord = [
+      SELECT Id
+      FROM PermissionSet
+      WHERE Name = :permissionSetName
+      LIMIT 1
+    ];
+    insert new PermissionSetAssignment(
+      AssigneeId = userId,
+      PermissionSetId = permissionSetRecord.Id
+    );
+  }
 }

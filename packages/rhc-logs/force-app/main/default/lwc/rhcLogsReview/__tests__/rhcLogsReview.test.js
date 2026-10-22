@@ -142,6 +142,43 @@ describe('c-rhc-logs-review', () => {
         expect(element.shadowRoot.querySelector('lightning-datatable').data).toHaveLength(2);
     });
 
+    it('keeps pagination on applied filters until Apply Filters is clicked', async () => {
+        search.mockResolvedValue({ rows: [{ Id: 'old' }], hasMore: true, nextOccurredAt: '2026-08-30T12:00:00.000Z', nextId: 'old' });
+        const element = createElement('c-rhc-logs-review', { is: RhcLogsReview });
+        document.body.appendChild(element);
+        await flushPromises();
+        [...element.shadowRoot.querySelectorAll('lightning-input')].find(input => input.name === 'code').dispatchEvent(
+            new CustomEvent('change', { detail: { value: 'NEW_CODE' } })
+        );
+        [...element.shadowRoot.querySelectorAll('lightning-button')].find(button => button.label === 'Load More Logs').click();
+        await flushPromises();
+        expect(search.mock.calls[1][0].filter.code).toBeUndefined();
+        expect(search.mock.calls[1][0].filter.cursorId).toBe('old');
+        element.shadowRoot.querySelector('lightning-datatable').dispatchEvent(
+            new CustomEvent('rowaction', { detail: { action: { name: 'details' }, row: { Id: 'old' } } })
+        );
+        [...element.shadowRoot.querySelectorAll('lightning-button')].find(button => button.label === 'Apply Filters').click();
+        await flushPromises();
+        expect(search).toHaveBeenLastCalledWith({ filter: expect.objectContaining({ code: 'NEW_CODE', cursorId: undefined }) });
+        expect(element.shadowRoot.querySelector('[data-region="details"]')).toBeNull();
+    });
+
+    it.each(['resolve', 'reject'])('ignores an obsolete search %s after filters are applied', async outcome => {
+        let resolveOld;
+        let rejectOld;
+        search.mockImplementationOnce(() => new Promise((resolve, reject) => { resolveOld = resolve; rejectOld = reject; }))
+            .mockResolvedValueOnce({ rows: [{ Id: 'new' }], hasMore: false });
+        const element = createElement('c-rhc-logs-review', { is: RhcLogsReview });
+        document.body.appendChild(element);
+        [...element.shadowRoot.querySelectorAll('lightning-button')].find(button => button.label === 'Apply Filters').click();
+        await flushPromises();
+        if (outcome === 'resolve') resolveOld({ rows: [{ Id: 'old' }], hasMore: true });
+        else rejectOld(new Error('Obsolete failure'));
+        await flushPromises();
+        expect(element.shadowRoot.querySelector('lightning-datatable').data).toEqual([{ Id: 'new' }]);
+        expect(element.shadowRoot.querySelector('.error-message')).toBeNull();
+    });
+
     it('ignores unrelated row actions', async () => {
         search.mockResolvedValue({
             rows: [{ Id: 'a00000000000001AAA', Name: 'RHL-0000001' }],

@@ -1,5 +1,5 @@
 /** Produces versioned, delimiter-safe CDC event-policy-record claim identities. */
-public class RHCChangeMonitorClaimKey {
+public inherited sharing class RHCChangeMonitorClaimKey {
   private static final String VERSION = 'rhc-change-monitor-claim-v1';
 
   @SuppressWarnings('PMD.EmptyStatementBlock')

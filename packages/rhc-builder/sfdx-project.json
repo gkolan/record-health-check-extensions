@@ -10,7 +10,7 @@
       "definitionFile": "config/project-scratch-def.json",
       "dependencies": [
         {
-          "package": "Record Health Check@2.0.4-2"
+          "package": "Record Health Check@2.0.11-4"
         }
       ]
     }
@@ -22,7 +22,7 @@
   "packageAliases": {
     "Record Health Check Builder": "0Hoak0000005Fb7CAE",
     "Record Health Check": "0Hoak0000004kKPCAY",
-    "Record Health Check@2.0.4-2": "04tak000000cZBFAA2",
+    "Record Health Check@2.0.11-4": "04tak000000nGjZAAU",
     "Record Health Check Builder@0.2.0-1": "04tak000000ckt3AAA"
   }
 }

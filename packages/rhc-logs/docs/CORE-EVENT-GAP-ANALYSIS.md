@@ -12,3 +12,16 @@ JSON is retained only as a bounded opaque value, never parsed into a second cont
 
 Minimum promoted subscriber version: Record Health Check@2.0.4-2 / 04tak000000cZBFAA2.
 
+Source compatibility was also checked against promoted core 2.0.11.4's creation commit
+`5905f999dfee391bd4ff029611023f157e60e8ee` on October 13, 2026. The Log event schema, logger,
+publication control, publisher permission, and settings provider are unchanged from the minimum
+core baseline. Contract 1.0 still has no Execution Source field. The subsequent subscriber-source
+dry run passed 34 Apex tests at 95.15% coverage; see [Runtime verification](RUNTIME-VERIFICATION.md).
+Acceptance of an actual installable Logs artifact remains pending.
+
+Reproduce the current-release check from this package:
+
+```bash
+npm run validate:core-contract -- --core-ref 5905f999dfee391bd4ff029611023f157e60e8ee
+```
+

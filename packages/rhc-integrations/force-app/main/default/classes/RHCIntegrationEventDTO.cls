@@ -2,7 +2,7 @@
  * Canonical, minimal event shape used by the integration pipeline.
  */
 @SuppressWarnings('PMD.ExcessivePublicCount')
-public class RHCIntegrationEventDTO {
+public inherited sharing class RHCIntegrationEventDTO {
   /** Canonical event family: RESULT, RUN, or LOG. */
   public String eventType { get; set; }
   /** Stable event idempotency identifier supplied by core. */

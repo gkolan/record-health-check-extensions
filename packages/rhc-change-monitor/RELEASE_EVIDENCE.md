@@ -8,7 +8,7 @@ org IDs below are historical evidence and must not be described as verification 
 
 ## Implemented contract surface
 
-- Nine-package repository project pinned to API `66.0` and core `2.0.4-2`.
+- Nine-package repository project pinned to API `66.0` and core `2.0.11-4`.
 - Policy and minimal Change Evaluation ledger metadata.
 - Actual ChangeEvent sObject intake boundary with header-only extraction.
 - Versioned SHA-256 event-policy-record claims.

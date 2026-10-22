@@ -51,6 +51,37 @@ See the [administrator guide](ADMIN_GUIDE.md), [specification](SPEC.md),
 [security guidance](docs/SECURITY.md), and [operations guidance](docs/OPERATIONS.md).
 Release status and remaining gates are tracked in [release evidence](RELEASE_EVIDENCE.md).
 
+## Local verification
+
+```bash
+npm ci
+npm test            # source contracts plus XML well-formedness
+npm run validate    # source contracts only
+npm run validate:xml
+npm audit --audit-level=high
+```
+
+`npm run validate` asserts the pinned core dependency, API version 66.0, the `rhc` namespace,
+explicit sharing and metadata companions on every Apex class, and that
+`RHC_Agent_Actions_User` grants Apex access only. There is no `test:coverage` script: the
+package ships no JavaScript, so there is nothing for Jest to cover. Apex tests need a
+namespaced scratch org with core installed, as described in
+[release evidence](RELEASE_EVIDENCE.md):
+
+```bash
+sf org create scratch --definition-file config/project-scratch-def.json --alias rhc-aa --duration-days 1
+sf package install --package 04tak000000nGjZAAU --target-org rhc-aa --wait 30 --publish-wait 10 --no-prompt
+sf project deploy start --source-dir force-app --target-org rhc-aa --test-level NoTestRun --wait 30
+sf apex run test --target-org rhc-aa --test-level RunLocalTests --code-coverage --result-format human --wait 30
+```
+
+`RHCAgentActionsTest` covers the behavioural contract. `RHCAgentActionsAdversarialTest`
+covers hostile input: an Agentforce planner is an LLM, so every invocable input is treated as
+untrusted. It asserts null and empty request lists, over-sized planner batches, missing and
+mismatched record IDs, quoted and wildcard Check Set names, out-of-range finding caps, unsafe
+correlation IDs, permission denial, and that every error path returns a typed classification
+carrying no org ID, username, record ID or Apex diagnostic.
+
 ## Current availability
 
 Source only; no `0Ho` container is registered. The five-test shared no-namespace run from

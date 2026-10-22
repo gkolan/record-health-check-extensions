@@ -237,3 +237,21 @@ On September 20, 2026, for the current source diff:
 - an Apex run covering all five test classes stopped before submission because no default or target
   org is configured, so current Salesforce compilation and execution remain unverified. No package
   container, package version, namespace, deploy, or release artifact was created by this change.
+
+## Red-team coverage
+
+`RHCActionAdversarialTest` covers the abuse paths the behavioural suites leave open, each
+assertion running under the packaged permissioned identity through `System.runAs`:
+
+- crafted approval facts — only half an approval, and an approval stamped onto an automatic
+  policy — must not become a second route to execution;
+- no queue state other than `QUEUED` and a due `RETRY_WAIT` may execute, and an ineligible
+  action writes no audit row;
+- 200 actions through `RHCActionExecutionService.execute` must hold a constant SOQL and DML
+  cost, which is what catches a query-in-loop regression;
+- hostile Flow API names must resolve to no Flow through the bound `FlowDefinitionView` query;
+- review batches that are empty, contain a null, or exceed 50 are rejected without changing
+  state;
+- retention purges only rows strictly outside the window, asserting the surviving set as well
+  as the deleted set, and rejects every out-of-range window;
+- an unconfigured policy table is inert, and policy matching is exact.

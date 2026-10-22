@@ -560,4 +560,191 @@ describe("c-rhc-alerts-admin", () => {
       })
     );
   });
+
+  it("joins selected statuses into the canonical semicolon-delimited contract value", async () => {
+    const element = createElement("c-rhc-alerts-admin", { is: RhcAlertsAdmin });
+    document.body.appendChild(element);
+    await flush();
+    await flush();
+
+    const change = (field, value) => {
+      element.shadowRoot
+        .querySelector(`[data-field="${field}"]`)
+        .dispatchEvent(new CustomEvent("change", { detail: { value } }));
+    };
+    change("DisplayName__c", "Status contract policy");
+    change("QualifiedApiName__c", "rhc__Account_Readiness");
+    change("RecipientId__c", "005000000000001");
+    element.shadowRoot.querySelector("lightning-dual-listbox").dispatchEvent(
+      new CustomEvent("change", {
+        detail: { value: ["FAIL", "UNABLE_TO_EVALUATE", "ERROR"] }
+      })
+    );
+    element.shadowRoot
+      .querySelectorAll(
+        "lightning-input, lightning-combobox, lightning-dual-listbox"
+      )
+      .forEach((input) => {
+        input.reportValidity = jest.fn(() => true);
+      });
+
+    element.shadowRoot.querySelectorAll("lightning-button")[0].click();
+    await flush();
+    await flush();
+
+    expect(savePolicy).toHaveBeenCalledWith({
+      policy: expect.objectContaining({
+        MatchingStatuses__c: "FAIL;UNABLE_TO_EVALUATE;ERROR"
+      })
+    });
+  });
+
+  it("clears the selected statuses when every status is deselected", async () => {
+    const element = createElement("c-rhc-alerts-admin", { is: RhcAlertsAdmin });
+    document.body.appendChild(element);
+    await flush();
+    await flush();
+
+    const change = (field, value) => {
+      element.shadowRoot
+        .querySelector(`[data-field="${field}"]`)
+        .dispatchEvent(new CustomEvent("change", { detail: { value } }));
+    };
+    change("DisplayName__c", "Empty status policy");
+    change("QualifiedApiName__c", "rhc__Account_Readiness");
+    change("RecipientId__c", "005000000000001");
+    element.shadowRoot
+      .querySelector("lightning-dual-listbox")
+      .dispatchEvent(new CustomEvent("change", { detail: { value: [] } }));
+    element.shadowRoot
+      .querySelectorAll(
+        "lightning-input, lightning-combobox, lightning-dual-listbox"
+      )
+      .forEach((input) => {
+        input.reportValidity = jest.fn(() => true);
+      });
+
+    element.shadowRoot.querySelectorAll("lightning-button")[0].click();
+    await flush();
+    await flush();
+
+    expect(savePolicy).toHaveBeenCalledWith({
+      policy: expect.objectContaining({ MatchingStatuses__c: "" })
+    });
+  });
+
+  it("saves the retention window and keeps cleanup manual", async () => {
+    const element = createElement("c-rhc-alerts-admin", { is: RhcAlertsAdmin });
+    const toast = jest.fn();
+    element.addEventListener("lightning__showtoast", toast);
+    document.body.appendChild(element);
+    await flush();
+    await flush();
+
+    const daysInput = element.shadowRoot.querySelector("[data-retention-days]");
+    daysInput.value = 45;
+    daysInput.reportValidity = jest.fn(() => true);
+    daysInput.dispatchEvent(new CustomEvent("change"));
+
+    element.shadowRoot.querySelector('[data-action="save-retention"]').click();
+    await flush();
+    await flush();
+
+    expect(saveRetentionSettings).toHaveBeenCalledWith({ retentionDays: 45 });
+    expect(toast.mock.calls[0][0].detail.variant).toBe("success");
+    expect(toast.mock.calls[0][0].detail.message).toContain(
+      "Cleanup remains manual"
+    );
+  });
+
+  it("does not save the retention window when the input is invalid", async () => {
+    const element = createElement("c-rhc-alerts-admin", { is: RhcAlertsAdmin });
+    document.body.appendChild(element);
+    await flush();
+    await flush();
+
+    const daysInput = element.shadowRoot.querySelector("[data-retention-days]");
+    daysInput.reportValidity = jest.fn(() => false);
+    element.shadowRoot.querySelector('[data-action="save-retention"]').click();
+    await flush();
+
+    expect(saveRetentionSettings).not.toHaveBeenCalled();
+  });
+
+  it("refuses to purge until retention is configured and the admin confirms", async () => {
+    getRetentionSettings.mockResolvedValue({
+      retentionDays: 90,
+      configured: true,
+      maxDeleteRows: 1000
+    });
+    const element = createElement("c-rhc-alerts-admin", { is: RhcAlertsAdmin });
+    const toast = jest.fn();
+    element.addEventListener("lightning__showtoast", toast);
+    document.body.appendChild(element);
+    await flush();
+    await flush();
+
+    const purgeButton = element.shadowRoot.querySelector(
+      '[data-action="purge-deliveries"]'
+    );
+    purgeButton.click();
+    await flush();
+    expect(purgeDeliveries).not.toHaveBeenCalled();
+
+    const confirm = element.shadowRoot.querySelector(
+      "[data-retention-confirm]"
+    );
+    confirm.checked = true;
+    confirm.dispatchEvent(new CustomEvent("change"));
+    await flush();
+
+    purgeButton.click();
+    await flush();
+    await flush();
+
+    expect(purgeDeliveries).toHaveBeenCalledTimes(1);
+    const purgeToast = toast.mock.calls[toast.mock.calls.length - 1][0].detail;
+    expect(purgeToast.variant).toBe("success");
+    expect(purgeToast.message).toContain("2 terminal delivery record(s)");
+  });
+
+  it("surfaces a bounded message when coverage analysis fails", async () => {
+    analyzeCoverage.mockRejectedValue({
+      body: { message: "Publication coverage could not be analyzed." }
+    });
+    const element = createElement("c-rhc-alerts-admin", { is: RhcAlertsAdmin });
+    const toast = jest.fn();
+    element.addEventListener("lightning__showtoast", toast);
+    document.body.appendChild(element);
+    await flush();
+    await flush();
+
+    element.shadowRoot.querySelectorAll("lightning-button")[1].click();
+    await flush();
+    await flush();
+
+    const detail = toast.mock.calls[0][0].detail;
+    expect(detail.variant).toBe("error");
+    expect(detail.message).toBe("Publication coverage could not be analyzed.");
+  });
+
+  it("falls back to a generic message when a failure carries no body", async () => {
+    analyzeCoverage.mockRejectedValue(new Error("raw platform failure"));
+    const element = createElement("c-rhc-alerts-admin", { is: RhcAlertsAdmin });
+    const toast = jest.fn();
+    element.addEventListener("lightning__showtoast", toast);
+    document.body.appendChild(element);
+    await flush();
+    await flush();
+
+    element.shadowRoot.querySelectorAll("lightning-button")[1].click();
+    await flush();
+    await flush();
+
+    const detail = toast.mock.calls[0][0].detail;
+    expect(detail.message).toBe(
+      "Try again or contact your Salesforce administrator."
+    );
+    expect(detail.message).not.toContain("raw platform failure");
+  });
 });

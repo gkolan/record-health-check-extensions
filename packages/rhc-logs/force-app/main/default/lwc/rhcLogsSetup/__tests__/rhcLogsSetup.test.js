@@ -99,6 +99,25 @@ describe('c-rhc-logs-setup', () => {
         expect(runCleanup).toHaveBeenCalledTimes(1);
     });
 
+    it.each(['SUCCESS', 'PARTIAL_FAILURE', 'SKIPPED_OVERLAP', 'DISABLED_OR_UNCONFIGURED', 'INSUFFICIENT_ACCESS'])(
+        'reports the returned cleanup outcome %s', async status => {
+            getStatus.mockResolvedValue(STATUS);
+            runCleanup.mockResolvedValue({ status, deletedCount: 2, failureCount: status === 'PARTIAL_FAILURE' ? 1 : 0 });
+            const element = createElement('c-rhc-logs-setup', { is: RhcLogsSetup });
+            const toast = jest.fn();
+            element.addEventListener('lightning__showtoast', toast);
+            document.body.appendChild(element);
+            await flushPromises();
+            element.shadowRoot.querySelectorAll('lightning-button')[1].click();
+            await flushPromises();
+            const detail = toast.mock.calls[0][0].detail;
+            expect(detail.variant).toBe(status === 'SUCCESS' ? 'success' : 'warning');
+            expect(detail.message).toBe(status === 'SUCCESS'
+                ? 'Cleanup batch completed: 2 logs deleted. Follow-up batches may still be running.'
+                : `Cleanup outcome: ${status}. 2 logs deleted; ${status === 'PARTIAL_FAILURE' ? 1 : 0} failed.`);
+        }
+    );
+
     it('shows a sanitized setup error', async () => {
         getStatus.mockRejectedValue({ body: { message: 'Access denied.' } });
         const element = createElement('c-rhc-logs-setup', { is: RhcLogsSetup });
@@ -145,5 +164,40 @@ describe('c-rhc-logs-setup', () => {
 
         expect(element.shadowRoot.querySelector('.error-message').textContent)
             .toContain('The request could not be completed.');
+    });
+
+    it('summarizes publication safely when the status itself is absent', async () => {
+        getStatus.mockResolvedValue(null);
+        const element = createElement('c-rhc-logs-setup', { is: RhcLogsSetup });
+        document.body.appendChild(element);
+        await flushPromises();
+
+        expect(element.shadowRoot.textContent).toContain('0 of 0 visible Check Sets publish Log events.');
+    });
+
+    it('summarizes publication safely when no Check Sets are visible', async () => {
+        getStatus.mockResolvedValue({ ...STATUS, checkSets: undefined });
+        const element = createElement('c-rhc-logs-setup', { is: RhcLogsSetup });
+        document.body.appendChild(element);
+        await flushPromises();
+
+        expect(element.shadowRoot.textContent).toContain('0 of 0 visible Check Sets publish Log events.');
+    });
+
+    it('reports an unknown cleanup outcome when the result carries no status or counts', async () => {
+        getStatus.mockResolvedValue(STATUS);
+        runCleanup.mockResolvedValue(null);
+        const element = createElement('c-rhc-logs-setup', { is: RhcLogsSetup });
+        const toast = jest.fn();
+        element.addEventListener('lightning__showtoast', toast);
+        document.body.appendChild(element);
+        await flushPromises();
+
+        element.shadowRoot.querySelectorAll('lightning-button')[1].click();
+        await flushPromises();
+
+        const detail = toast.mock.calls[0][0].detail;
+        expect(detail.variant).toBe('warning');
+        expect(detail.message).toBe('Cleanup outcome: UNKNOWN. 0 logs deleted; 0 failed.');
     });
 });

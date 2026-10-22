@@ -1,6 +1,6 @@
 /** Configurable callout mock that captures the request without returning real response content. */
 @IsTest
-public class RHCIntegrationHttpMock implements HttpCalloutMock {
+public with sharing class RHCIntegrationHttpMock implements HttpCalloutMock {
   public static HttpRequest capturedRequest;
   private Integer statusCode;
   private String responseBody;

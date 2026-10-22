@@ -25,10 +25,14 @@ Filter on occurrence date, severity, code, Run ID, exact Check Set developer nam
 developer name, or Record ID. Core Log contract 1.0 has no Execution Source field; RHC Logs does not
 infer one. Open a row through standard record navigation. Sharing, object permission, and field
 access remain authoritative. Use **Load More Logs** to continue through stable keyset pages.
+Filter edits take effect only after **Apply Filters**, which starts a new list and closes old details.
+An older request cannot replace or append to the newly applied search.
 
 The Setup operations snapshot includes unsupported contract rows, ingestion outcome/error
 categories, duplicate and failure counts, cleanup outcome/counts, and cleanup lease state. These
 fields are package-owned and intentionally read-only even for RHC Logs Admin.
+Manual cleanup reports the returned status and counts. A skipped or partially failed batch shows
+a warning; a successful batch may still have follow-up jobs running.
 
 Use **Recent Logs**, **Critical Logs**, and **Requires Investigation** list views for common triage.
 All current core Log events have level ERROR; the Critical view intentionally shows those errors.

@@ -32,306 +32,8 @@ jobs:
       - name: Validate package contracts and documentation links
         run: node scripts/validate-repository.mjs
 
-  rhc-actions-static:
-    name: RHC Actions source and analyzer gates
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: packages/rhc-actions
-    steps:
-      - name: Check out source
-        uses: actions/checkout@v6
-      - name: Check out minimum promoted core contract
-        uses: actions/checkout@v6
-        with:
-          repository: gkolan/record-health-check
-          ref: 74fe1d6
-          path: _core-benchmark
-      - name: Set up Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: packages/rhc-actions/package-lock.json
-      - name: Install locked dependencies
-        run: npm ci
-      - name: Enforce source and least-privilege contracts
-        run: npm run validate
-      - name: Verify the pinned minimum-core contract
-        run: npm run validate:core-contract -- --core-root ../../_core-benchmark
-      - name: Validate metadata XML
-        run: npm run validate:xml
-      - name: Enforce LWC coverage thresholds
-        run: npm run test:coverage
-      - name: Audit development dependencies
-        run: npm audit --audit-level=high
-      - name: Install pinned Salesforce CLI and Code Analyzer
-        run: |
-          npm install --global @salesforce/cli@2.149.9
-          echo y | sf plugins install code-analyzer@5.14.0
-      - name: Validate Salesforce source conversion
-        run: sf project convert source --source-dir force-app --output-dir "${RUNNER_TEMP}/rhc-actions-mdapi"
-      - name: Enforce zero critical, high, and moderate Recommended findings
-        run: sf code-analyzer run --workspace force-app --target force-app --rule-selector Recommended --include-fixes --severity-threshold 3 --output-file "${RUNNER_TEMP}/rhc-actions-code-analyzer.json"
-      - name: Upload analyzer evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: rhc-actions-code-analyzer-${{ github.sha }}
-          path: ${{ runner.temp }}/rhc-actions-code-analyzer.json
-          if-no-files-found: error
-          retention-days: 90
-
-  rhc-alerts-contracts:
-    name: RHC Alerts source contracts
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: packages/rhc-alerts
-    steps:
-      - name: Check out source
-        uses: actions/checkout@v6
-      - name: Check out minimum promoted core contract
-        uses: actions/checkout@v6
-        with:
-          repository: gkolan/record-health-check
-          ref: 74fe1d6
-          path: _core-benchmark
-      - name: Set up Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: packages/rhc-alerts/package-lock.json
-      - name: Install locked dependencies
-        run: npm ci --ignore-scripts
-      - name: Verify generated metadata is current
-        run: npm run generate:check
-      - name: Enforce package formatting
-        run: npm run format:check
-      - name: Enforce package, permission, validation, and async contracts
-        run: npm run validate
-      - name: Verify the pre-package lock cannot be bypassed
-        run: npm run test:prepackage-lock
-      - name: Verify the pinned minimum-core event and metadata contract
-        run: npm run validate:core-contract -- --core-root ../../_core-benchmark
-      - name: Validate XML syntax
-        run: npm run validate:xml
-      - name: Enforce LWC coverage thresholds
-        run: npm run test:coverage
-      - name: Enforce pinned SLDS compliance
-        run: npm run validate:slds
-      - name: Audit locked development dependencies
-        run: npm audit --audit-level=high
-
-  rhc-alerts-code-analyzer:
-    name: RHC Alerts Code Analyzer
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check out source
-        uses: actions/checkout@v6
-      - name: Set up Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: 22
-      - name: Install pinned Salesforce CLI and Code Analyzer
-        run: |
-          npm install --global @salesforce/cli@2.149.9
-          echo y | sf plugins install code-analyzer@5.14.0
-      - name: Record analyzer toolchain
-        run: |
-          sf --version
-          sf plugins --core
-      - name: Convert RHC Alerts source locally
-        working-directory: packages/rhc-alerts
-        run: sf project convert source --root-dir force-app --output-dir "$RUNNER_TEMP/rhc-alerts-mdapi" --package-name "RHC Alerts Source Check"
-      - name: Enforce zero Recommended findings
-        run: |
-          mkdir -p code-analyzer
-          sf code-analyzer run --workspace packages/rhc-alerts/force-app --target packages/rhc-alerts/force-app --rule-selector Recommended --include-fixes --severity-threshold 5 --output-file code-analyzer/rhc-alerts.json
-      - name: Upload analyzer evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: rhc-alerts-code-analyzer-${{ github.sha }}
-          path: code-analyzer/rhc-alerts.json
-          if-no-files-found: error
-          retention-days: 90
-
-  rhc-logs-static:
-    name: RHC Logs source and analyzer gates
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: packages/rhc-logs
-    steps:
-      - name: Check out source
-        uses: actions/checkout@v6
-      - name: Check out minimum promoted core contract
-        uses: actions/checkout@v6
-        with:
-          repository: gkolan/record-health-check
-          ref: 74fe1d6022f819397fc879c076f4f4dd2093cfab
-          path: _core-benchmark
-      - name: Set up Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: packages/rhc-logs/package-lock.json
-      - name: Install locked dependencies
-        run: npm ci
-      - name: Enforce package security and source contracts
-        run: npm run validate
-      - name: Verify the pinned minimum-core contract
-        run: npm run validate:core-contract -- --core-root ../../_core-benchmark
-      - name: Validate metadata XML
-        run: npm run validate:xml
-      - name: Enforce core-level LWC coverage thresholds
-        run: npm run test:coverage
-      - name: Audit development dependencies
-        run: npm audit --audit-level=high
-      - name: Install pinned Salesforce CLI and Code Analyzer
-        run: |
-          npm install --global @salesforce/cli@2.149.9
-          echo y | sf plugins install code-analyzer@5.14.0
-      - name: Validate Salesforce source conversion
-        run: sf project convert source --source-dir force-app --output-dir "${RUNNER_TEMP}/rhc-logs-mdapi"
-      - name: Enforce zero Recommended findings
-        run: sf code-analyzer run --workspace force-app --target force-app --rule-selector Recommended --include-fixes --severity-threshold 5 --output-file "${RUNNER_TEMP}/rhc-logs-code-analyzer.json"
-      - name: Upload analyzer evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: rhc-logs-code-analyzer-${{ github.sha }}
-          path: ${{ runner.temp }}/rhc-logs-code-analyzer.json
-          if-no-files-found: error
-          retention-days: 90
-
-  rhc-reports-static:
-    name: RHC Reports source and analyzer gates
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: packages/rhc-reports
-    steps:
-      - name: Check out source
-        uses: actions/checkout@v6
-      - name: Check out minimum promoted core contract
-        uses: actions/checkout@v6
-        with:
-          repository: gkolan/record-health-check
-          ref: 74fe1d6022f819397fc879c076f4f4dd2093cfab
-          path: _core-benchmark
-      - name: Set up Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: packages/rhc-reports/package-lock.json
-      - name: Install locked dependencies
-        run: npm ci
-      - name: Enforce reporting, security, retention, and async contracts
-        run: npm run validate
-      - name: Verify the pinned minimum-core event contract
-        run: npm run validate:core-contract -- --core-root ../../_core-benchmark
-      - name: Validate metadata XML
-        run: npm run validate:xml
-      - name: Enforce LWC coverage thresholds
-        run: npm run test:coverage
-      - name: Audit development dependencies
-        run: npm audit --audit-level=high
-      - name: Install pinned Salesforce CLI and Code Analyzer
-        run: |
-          npm install --global @salesforce/cli@2.149.9
-          echo y | sf plugins install code-analyzer@5.14.0
-      - name: Validate Salesforce source conversion
-        run: sf project convert source --source-dir force-app --output-dir "${RUNNER_TEMP}/rhc-reports-mdapi"
-      - name: Enforce zero severity 1 and 2 findings
-        run: sf code-analyzer run --workspace force-app --target force-app --rule-selector Recommended --include-fixes --severity-threshold 2 --output-file "${RUNNER_TEMP}/rhc-reports-code-analyzer.json"
-      - name: Upload analyzer evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: rhc-reports-code-analyzer-${{ github.sha }}
-          path: ${{ runner.temp }}/rhc-reports-code-analyzer.json
-          if-no-files-found: error
-          retention-days: 90
-
-  rhc-integrations-static:
-    name: RHC Integrations source, coverage, and analyzer gates
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: packages/rhc-integrations
-    steps:
-      - name: Check out source
-        uses: actions/checkout@v6
-      - name: Check out minimum promoted core contract
-        uses: actions/checkout@v6
-        with:
-          repository: gkolan/record-health-check
-          ref: 74fe1d6022f819397fc879c076f4f4dd2093cfab
-          path: _core-benchmark
-      - name: Set up Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: packages/rhc-integrations/package-lock.json
-      - name: Install locked dependencies
-        run: npm ci
-      - name: Enforce package, metadata-reference, and runtime safety contracts
-        run: npm run validate
-      - name: Verify the pinned minimum-core event contract
-        run: npm run validate:core-contract -- --core-root ../../_core-benchmark
-      - name: Validate metadata XML
-        run: npm run validate:xml
-      - name: Enforce LWC coverage thresholds
-        run: npm run test:coverage
-      - name: Audit development dependencies
-        run: npm audit --audit-level=high
-      - name: Install pinned Salesforce CLI and Code Analyzer
-        run: |
-          npm install --global @salesforce/cli@2.149.9
-          echo y | sf plugins install code-analyzer@5.15.0
-      - name: Record analyzer toolchain
-        run: |
-          sf --version
-          sf plugins --core
-      - name: Validate Salesforce source conversion locally
-        run: sf project convert source --root-dir force-app --output-dir "${RUNNER_TEMP}/rhc-integrations-mdapi"
-      - name: Enforce zero severity 1, 2, and 3 findings
-        run: sf code-analyzer run --rule-selector Recommended --target force-app --include-fixes --severity-threshold 3 --output-file "${RUNNER_TEMP}/rhc-integrations-code-analyzer.json"
-      - name: Enforce complete SFGE security analysis
-        run: |
-          set -o pipefail
-          sf code-analyzer run --rule-selector 'all:Security:1' --rule-selector 'all:Security:2' --target force-app --include-fixes --severity-threshold 2 --output-file "${RUNNER_TEMP}/rhc-integrations-security-analyzer.json" 2>&1 | tee "${RUNNER_TEMP}/rhc-integrations-security-analyzer.log"
-          npm run validate:analyzer-log -- "${RUNNER_TEMP}/rhc-integrations-security-analyzer.log" sfge
-      - name: Bind analyzer evidence to the checked-out revision
-        if: always()
-        run: >-
-          npm run capture:release-evidence --
-          --output "${RUNNER_TEMP}/rhc-integrations-release-evidence.json"
-          --core-ref 74fe1d6022f819397fc879c076f4f4dd2093cfab
-          --artifact "${RUNNER_TEMP}/rhc-integrations-code-analyzer.json"
-          --artifact "${RUNNER_TEMP}/rhc-integrations-security-analyzer.json"
-          --artifact "${RUNNER_TEMP}/rhc-integrations-security-analyzer.log"
-      - name: Upload revision-bound analyzer evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: rhc-integrations-code-analyzer-${{ github.sha }}
-          path: |
-            ${{ runner.temp }}/rhc-integrations-code-analyzer.json
-            ${{ runner.temp }}/rhc-integrations-security-analyzer.json
-            ${{ runner.temp }}/rhc-integrations-security-analyzer.log
-            ${{ runner.temp }}/rhc-integrations-release-evidence.json
-          if-no-files-found: error
-          retention-days: 90
-
-  lwc:
-    name: LWC tests (${{ matrix.package }})
+  npm-gates:
+    name: Source, contract, and coverage gates (${{ matrix.package }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -345,12 +47,24 @@ jobs:
           - rhc-logs
           - rhc-reports
           - rhc-run-manager
+        include:
+          - package: rhc-alerts
+            npm_ci_flags: --ignore-scripts
+            extra_scripts: generate:check format:check test:prepackage-lock validate:slds
+          - package: rhc-change-monitor
+            extra_scripts: test:adapter-generator
     defaults:
       run:
         working-directory: packages/${{ matrix.package }}
     steps:
       - name: Check out source
         uses: actions/checkout@v6
+      - name: Check out minimum promoted core contract
+        uses: actions/checkout@v6
+        with:
+          repository: gkolan/record-health-check
+          ref: b839c4916315c5129812bbf401e3ea7e99c7a326
+          path: _core-benchmark
       - name: Set up Node.js
         uses: actions/setup-node@v6
         with:
@@ -358,24 +72,66 @@ jobs:
           cache: npm
           cache-dependency-path: packages/${{ matrix.package }}/package-lock.json
       - name: Install locked dependencies
-        run: npm ci
-      - name: Run Change Monitor adapter-generator tests
-        if: matrix.package == 'rhc-change-monitor'
-        run: npm run test:adapter-generator
-      - name: Run LWC tests and coverage thresholds
+        run: npm ci ${{ matrix.npm_ci_flags }}
+      - name: Run package-specific gates
+        if: matrix.extra_scripts
+        env:
+          EXTRA_SCRIPTS: ${{ matrix.extra_scripts }}
+        run: |
+          for script in ${EXTRA_SCRIPTS}; do
+            npm run "${script}"
+          done
+      - name: Enforce source, security, and least-privilege contracts
+        run: npm run validate
+      - name: Verify the pinned minimum-core contract
+        run: npm run validate:core-contract -- --core-root ../../_core-benchmark
+      - name: Validate metadata XML
+        run: npm run validate:xml
+      - name: Enforce LWC coverage thresholds
         run: npm run test:coverage
       - name: Audit development dependencies
         run: npm audit --audit-level=high
 
-  remaining-salesforce-static:
-    name: Static source gate (${{ matrix.package }})
+  analyzer:
+    name: Code Analyzer gate (${{ matrix.package }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        package:
-          - rhc-change-monitor
-          - rhc-agent-actions
+        include:
+          - package: rhc-actions
+            analyzer: 5.14.0
+            analyzer_args: --workspace packages/rhc-actions/force-app --target packages/rhc-actions/force-app --rule-selector Recommended --include-fixes --severity-threshold 3
+          - package: rhc-agent-actions
+            analyzer: 5.15.0
+            analyzer_args: --workspace packages/rhc-agent-actions/force-app/main/default --config-file code-analyzer.yml --severity-threshold 5
+            xml_check: true
+          - package: rhc-alerts
+            analyzer: 5.14.0
+            analyzer_args: --workspace packages/rhc-alerts/force-app --target packages/rhc-alerts/force-app --rule-selector Recommended --include-fixes --severity-threshold 5
+          - package: rhc-builder
+            analyzer: 5.14.0
+            analyzer_args: --workspace packages/rhc-builder --target packages/rhc-builder/force-app --rule-selector Recommended --severity-threshold 3
+          - package: rhc-change-monitor
+            analyzer: 5.15.0
+            analyzer_args: --workspace packages/rhc-change-monitor/force-app/main/default --config-file code-analyzer.yml --severity-threshold 5
+            metadata_check: metadata:generate -- --check
+            xml_check: true
+          - package: rhc-integrations
+            analyzer: 5.15.0
+            analyzer_args: --workspace packages/rhc-integrations --target packages/rhc-integrations/force-app --rule-selector Recommended --include-fixes --severity-threshold 3
+            npm_ci: true
+          - package: rhc-logs
+            analyzer: 5.14.0
+            analyzer_args: --workspace packages/rhc-logs/force-app --target packages/rhc-logs/force-app --rule-selector Recommended --include-fixes --severity-threshold 5
+          - package: rhc-reports
+            analyzer: 5.14.0
+            analyzer_args: --workspace packages/rhc-reports/force-app --target packages/rhc-reports/force-app --rule-selector Recommended --include-fixes --severity-threshold 2
+          - package: rhc-run-manager
+            analyzer: 5.15.0
+            analyzer_args: --workspace packages/rhc-run-manager/force-app --target packages/rhc-run-manager/force-app --rule-selector Recommended --include-fixes --severity-threshold 3
+            metadata_check: metadata:check
+            xml_check: true
     steps:
       - name: Check out source
         uses: actions/checkout@v6
@@ -385,88 +141,62 @@ jobs:
           node-version: 22
           package-manager-cache: false
       - name: Install pinned Salesforce CLI and Code Analyzer
+        env:
+          ANALYZER_VERSION: ${{ matrix.analyzer }}
         run: |
           npm install --global @salesforce/cli@2.149.9
-          echo y | sf plugins install code-analyzer@5.15.0
-      - name: Verify Change Monitor generated metadata is current
-        if: matrix.package == 'rhc-change-monitor'
-        working-directory: packages/rhc-change-monitor
-        run: npm run metadata:generate -- --check
+          echo y | sf plugins install "code-analyzer@${ANALYZER_VERSION}"
+      - name: Record analyzer toolchain
+        run: |
+          sf --version
+          sf plugins --core
+      - name: Install locked dependencies
+        if: matrix.npm_ci
+        working-directory: packages/${{ matrix.package }}
+        run: npm ci
+      - name: Verify generated metadata is current
+        if: matrix.metadata_check
+        working-directory: packages/${{ matrix.package }}
+        env:
+          METADATA_CHECK: ${{ matrix.metadata_check }}
+        run: npm run ${METADATA_CHECK}
       - name: Validate metadata XML
+        if: matrix.xml_check
         working-directory: packages/${{ matrix.package }}
         run: python3 -c "import pathlib,xml.etree.ElementTree as ET; [ET.parse(path) for path in pathlib.Path('force-app').rglob('*.xml')]"
       - name: Validate Salesforce source conversion
         working-directory: packages/${{ matrix.package }}
         run: sf project convert source --root-dir force-app --output-dir "${RUNNER_TEMP}/${{ matrix.package }}-mdapi"
-      - name: Enforce the repository Code Analyzer policy
-        run: sf code-analyzer run --workspace "packages/${{ matrix.package }}/force-app/main/default" --config-file code-analyzer.yml --severity-threshold 5 --output-file "${RUNNER_TEMP}/${{ matrix.package }}-code-analyzer.json"
+      - name: Enforce the package Code Analyzer severity threshold
+        env:
+          ANALYZER_ARGS: ${{ matrix.analyzer_args }}
+        run: sf code-analyzer run ${ANALYZER_ARGS} --output-file "${RUNNER_TEMP}/${{ matrix.package }}-code-analyzer.json"
+      - name: Enforce complete SFGE security analysis
+        if: matrix.package == 'rhc-integrations'
+        working-directory: packages/rhc-integrations
+        run: |
+          set -o pipefail
+          sf code-analyzer run --rule-selector 'all:Security:1' --rule-selector 'all:Security:2' --target force-app --include-fixes --severity-threshold 2 --output-file "${RUNNER_TEMP}/rhc-integrations-security-analyzer.json" 2>&1 | tee "${RUNNER_TEMP}/rhc-integrations-security-analyzer.log"
+          npm run validate:analyzer-log -- "${RUNNER_TEMP}/rhc-integrations-security-analyzer.log" sfge
+      - name: Bind analyzer evidence to the checked-out revision
+        if: always() && matrix.package == 'rhc-integrations'
+        working-directory: packages/rhc-integrations
+        run: >-
+          npm run capture:release-evidence --
+          --output "${RUNNER_TEMP}/rhc-integrations-release-evidence.json"
+          --core-ref b839c4916315c5129812bbf401e3ea7e99c7a326
+          --artifact "${RUNNER_TEMP}/rhc-integrations-code-analyzer.json"
+          --artifact "${RUNNER_TEMP}/rhc-integrations-security-analyzer.json"
+          --artifact "${RUNNER_TEMP}/rhc-integrations-security-analyzer.log"
       - name: Upload analyzer evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.package }}-code-analyzer-${{ github.sha }}
-          path: ${{ runner.temp }}/${{ matrix.package }}-code-analyzer.json
-          if-no-files-found: error
-          retention-days: 90
-
-  builder-static-analysis:
-    name: RHC Builder static and source gates
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check out source
-        uses: actions/checkout@v6
-      - name: Set up Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: 22
-          package-manager-cache: false
-      - name: Install pinned Salesforce CLI and Code Analyzer
-        run: |
-          npm install --global @salesforce/cli@2.149.9
-          echo y | sf plugins install code-analyzer@5.14.0
-      - name: Record analyzer toolchain
-        run: |
-          sf --version
-          sf plugins --core
-      - name: Run blocking Recommended analysis
-        run: sf code-analyzer run --workspace packages/rhc-builder --target packages/rhc-builder/force-app --rule-selector Recommended --severity-threshold 3
-      - name: Validate Salesforce source conversion
-        working-directory: packages/rhc-builder
-        run: sf project convert source --source-dir force-app --output-dir /tmp/rhc-builder-mdapi
-
-  run-manager-static:
-    name: Run Manager metadata and Apex static gates
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: packages/rhc-run-manager
-    steps:
-      - name: Check out source
-        uses: actions/checkout@v6
-      - name: Set up Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: 22
-          package-manager-cache: false
-      - name: Install pinned Salesforce CLI and Code Analyzer
-        run: |
-          npm install --global @salesforce/cli@2.149.9
-          echo y | sf plugins install code-analyzer@5.15.0
-      - name: Verify generated metadata is current
-        run: npm run metadata:check
-      - name: Validate package XML
-        run: python3 -c "import pathlib,xml.etree.ElementTree as ET; [ET.parse(path) for path in pathlib.Path('force-app').rglob('*.xml')]"
-      - name: Validate Salesforce source conversion
-        run: sf project convert source --source-dir force-app --output-dir "${RUNNER_TEMP}/rhc-run-manager-mdapi"
-      - name: Enforce recommended Code Analyzer findings
-        run: |
-          mkdir -p ../../reports/code-analyzer/logs/rhc-run-manager
-          sf code-analyzer run --rule-selector Recommended --target force-app --workspace force-app --include-fixes --severity-threshold 3 --output-file "${RUNNER_TEMP}/rhc-run-manager-code-analyzer.json"
-      - name: Upload analyzer evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: rhc-run-manager-code-analyzer-${{ github.sha }}
-          path: ${{ runner.temp }}/rhc-run-manager-code-analyzer.json
+          path: |
+            ${{ runner.temp }}/${{ matrix.package }}-code-analyzer.json
+            ${{ runner.temp }}/${{ matrix.package }}-security-analyzer.json
+            ${{ runner.temp }}/${{ matrix.package }}-security-analyzer.log
+            ${{ runner.temp }}/${{ matrix.package }}-release-evidence.json
           if-no-files-found: error
           retention-days: 90

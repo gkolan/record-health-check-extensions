@@ -103,6 +103,7 @@ public with sharing class RHCIntegrationDeliveryFactory {
       'CRITICAL' => 3
     };
     return ranks.containsKey(eventSeverity) &&
+      ranks.containsKey(minimumSeverity) &&
       ranks.get(eventSeverity) >= ranks.get(minimumSeverity);
   }
 

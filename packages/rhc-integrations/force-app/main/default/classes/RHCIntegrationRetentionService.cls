@@ -31,7 +31,7 @@ public with sharing class RHCIntegrationRetentionService {
         List<Record_Health_Check_Integration_Setting__c> settings = loadSettings();
         result.configured = !settings.isEmpty();
         if (result.configured) {
-            result.retentionDays = settings[0].RetentionDays__c.intValue();
+            result.retentionDays = settings[0].RetentionDays__c?.intValue() ?? DEFAULT_RETENTION_DAYS;
         }
         return result;
     }
@@ -82,7 +82,7 @@ public with sharing class RHCIntegrationRetentionService {
         if (settings.isEmpty()) {
             throw handled('Save retention settings before purging Integration Deliveries.');
         }
-        Integer retentionDays = settings[0].RetentionDays__c.intValue();
+        Integer retentionDays = settings[0].RetentionDays__c?.intValue();
         validateRetentionDays(retentionDays);
         Datetime cutoff = Datetime.now().addDays(-retentionDays);
         List<Record_Health_Check_Integration_Delivery__c> deliveries = [

@@ -5,15 +5,15 @@ package. Package registration and installable-version status vary by project. RH
 an implementation preview whose package registration remains blocked by CDC feasibility gates. Every
 implemented project:
 
-- declares only `Record Health Check@2.0.4-2` as a package dependency;
+- declares only `Record Health Check@2.0.11-4` as a package dependency;
 - uses the core `rhc` namespace and Metadata API version `66.0`;
 - owns its configuration, runtime records, permissions, tests, and uninstall boundary;
 - never reads another extension's objects or calls another extension's Apex API; and
 - uses canonical core Platform Events when it must observe outcomes produced elsewhere.
 
-The dependency is the promoted minimum, not a statement that development stopped at 2.0.4. The
-[suite compatibility policy](../docs/CORE_COMPATIBILITY.md) records validation against newer core
-source without inventing an installable package version.
+The dependency is the promoted minimum: subscribers on core versions earlier than `2.0.11.4`
+cannot install these extensions. The [suite compatibility policy](../docs/CORE_COMPATIBILITY.md)
+records the evidence behind that minimum and what the raise has not yet proven.
 
 | Project            | Package overview                                      |
 | ------------------ | ----------------------------------------------------- |

@@ -82,4 +82,72 @@ describe("c-rhc-alerts-delivery-history", () => {
       element.shadowRoot.querySelector("lightning-datatable").data[0].Outcome__c
     ).toBe("FAILED");
   });
+
+  it("falls back to a bounded message when the failure carries no body", async () => {
+    listDeliveries.mockRejectedValue(new Error("raw platform failure"));
+    const element = createElement("c-rhc-alerts-delivery-history", {
+      is: RhcAlertsDeliveryHistory
+    });
+    document.body.appendChild(element);
+    await flush();
+    expect(element.shadowRoot.textContent).toContain(
+      "Delivery history could not be loaded."
+    );
+    expect(element.shadowRoot.textContent).not.toContain(
+      "raw platform failure"
+    );
+  });
+
+  it("ignores a refresh requested while rows are already loading", async () => {
+    let releaseSecondCall;
+    listDeliveries
+      .mockResolvedValueOnce([
+        { Id: "a04", Name: "RHC-AD-000004", Outcome__c: "DELIVERED" }
+      ])
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            releaseSecondCall = () =>
+              resolve([
+                { Id: "a05", Name: "RHC-AD-000005", Outcome__c: "SUPPRESSED" }
+              ]);
+          })
+      );
+    const element = createElement("c-rhc-alerts-delivery-history", {
+      is: RhcAlertsDeliveryHistory
+    });
+    document.body.appendChild(element);
+    await flush();
+    expect(listDeliveries).toHaveBeenCalledTimes(1);
+
+    const refreshButton = element.shadowRoot.querySelector("lightning-button");
+    refreshButton.click();
+    await flush();
+    expect(listDeliveries).toHaveBeenCalledTimes(2);
+
+    // Rows are already loaded and a reload is still in flight, so this click is ignored.
+    refreshButton.click();
+    await flush();
+    expect(listDeliveries).toHaveBeenCalledTimes(2);
+
+    releaseSecondCall();
+    await flush();
+    expect(
+      element.shadowRoot.querySelector("lightning-datatable").data[0].Outcome__c
+    ).toBe("SUPPRESSED");
+  });
+
+  it("renders an empty policy name when the delivery has no parent policy", async () => {
+    listDeliveries.mockResolvedValue([
+      { Id: "a06", Name: "RHC-AD-000006", Outcome__c: "FAILED" }
+    ]);
+    const element = createElement("c-rhc-alerts-delivery-history", {
+      is: RhcAlertsDeliveryHistory
+    });
+    document.body.appendChild(element);
+    await flush();
+    expect(
+      element.shadowRoot.querySelector("lightning-datatable").data[0].policyName
+    ).toBe("");
+  });
 });

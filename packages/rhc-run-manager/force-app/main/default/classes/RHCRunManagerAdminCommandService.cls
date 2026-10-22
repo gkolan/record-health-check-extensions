@@ -110,6 +110,10 @@ public with sharing class RHCRunManagerAdminCommandService {
   }
 
   private static AuraHandledException handled(String message) {
-    return new AuraHandledException(message);
+    // setMessage is required: without it the Aura boundary reports
+    // "Script-thrown exception" instead of the admin-facing text.
+    AuraHandledException error = new AuraHandledException(message);
+    error.setMessage(message);
+    return error;
   }
 }

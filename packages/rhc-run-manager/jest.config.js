@@ -12,6 +12,6 @@ module.exports = {
     "!force-app/main/default/lwc/**/__tests__/**",
   ],
   coverageThreshold: {
-    global: { branches: 80, functions: 80, lines: 80, statements: 80 },
+    global: { branches: 80, functions: 100, lines: 100, statements: 92 },
   },
 };

@@ -7,7 +7,7 @@
       "versionName": "RHC Actions 0.1.0",
       "versionNumber": "0.1.0.NEXT",
       "versionDescription": "Approved corrective Flow actions for actionable Record Health Check outcomes.",
-      "dependencies": [{ "package": "Record Health Check@2.0.4-2" }]
+      "dependencies": [{ "package": "Record Health Check@2.0.11-4" }]
     }
   ],
   "name": "RHCActions",
@@ -16,7 +16,7 @@
   "sourceApiVersion": "66.0",
   "packageAliases": {
     "Record Health Check": "0Hoak0000004kKPCAY",
-    "Record Health Check@2.0.4-2": "04tak000000cZBFAA2",
+    "Record Health Check@2.0.11-4": "04tak000000nGjZAAU",
     "RHC Actions": "0Hoak0000005M6LCAU"
   }
 }

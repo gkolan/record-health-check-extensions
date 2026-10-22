@@ -18,11 +18,19 @@ jobs:
       - id: check
         env:
           SFDX_AUTH_URL: ${{ secrets.SFDX_AUTH_URL }}
+          IS_FORK_PR: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository }}
         run: |
-          if [ -z "${SFDX_AUTH_URL}" ]; then
-            echo "::error::SFDX_AUTH_URL is not configured; the required Builder org gate cannot run."
-            exit 1
+          if [ -n "${SFDX_AUTH_URL}" ]; then
+            echo "has-secret=true" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
+          echo "has-secret=false" >> "$GITHUB_OUTPUT"
+          if [ "${IS_FORK_PR}" = "true" ]; then
+            echo "::warning::SFDX_AUTH_URL is not available to fork pull requests; Builder org validation is skipped for this run."
+            exit 0
+          fi
+          echo "::error::SFDX_AUTH_URL is not configured, so Builder org validation cannot run. Failing instead of reporting a green run for gates that never executed."
+          exit 1
 
   builder-source-tests:
     needs: check-dev-hub-secret
@@ -72,8 +80,22 @@ jobs:
             echo "::error::Expected no namespace, found '$namespace'."
             exit 1
           fi
-      - name: Install pinned core dependency
-        run: sf package install --package 04tak000000cZBFAA2 --target-org ${{ matrix.org_alias }} --wait 30 --publish-wait 10 --no-prompt
+      - name: Check out core source for the non-namespaced leg
+        if: matrix.mode == 'non-namespaced'
+        uses: actions/checkout@v6
+        with:
+          repository: gkolan/record-health-check
+          ref: b839c4916315c5129812bbf401e3ea7e99c7a326
+          path: _core-source
+      - name: Install pinned core as a managed package
+        if: matrix.mode == 'namespaced'
+        run: sf package install --package 04tak000000nGjZAAU --target-org ${{ matrix.org_alias }} --wait 30 --publish-wait 10 --no-prompt
+      - name: Deploy pinned core as unmanaged source
+        # See the comment in remaining-salesforce-validate.yml: the managed package cannot
+        # satisfy unprefixed core references in a no-namespace org.
+        if: matrix.mode == 'non-namespaced'
+        working-directory: _core-source/packages/record-health-check
+        run: sf project deploy start --source-dir force-app --target-org ${{ matrix.org_alias }} --test-level NoTestRun --wait 30
       - name: Dry-run Builder source with package-owned tests
         working-directory: packages/rhc-builder
         run: >-

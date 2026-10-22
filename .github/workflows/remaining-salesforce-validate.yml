@@ -28,13 +28,19 @@ jobs:
       - id: check
         env:
           SFDX_AUTH_URL: ${{ secrets.SFDX_AUTH_URL }}
+          IS_FORK_PR: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository }}
         run: |
-          if [ -z "${SFDX_AUTH_URL}" ]; then
-            echo "::warning::SFDX_AUTH_URL is not configured; remaining org validation cannot run."
-            echo "has-secret=false" >> "$GITHUB_OUTPUT"
-          else
+          if [ -n "${SFDX_AUTH_URL}" ]; then
             echo "has-secret=true" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
+          echo "has-secret=false" >> "$GITHUB_OUTPUT"
+          if [ "${IS_FORK_PR}" = "true" ]; then
+            echo "::warning::SFDX_AUTH_URL is not available to fork pull requests; remaining org validation is skipped for this run."
+            exit 0
+          fi
+          echo "::error::SFDX_AUTH_URL is not configured, so remaining org validation cannot run. Failing instead of reporting a green run for gates that never executed."
+          exit 1
 
   source-tests:
     needs: check-dev-hub-secret
@@ -104,8 +110,24 @@ jobs:
             echo "::error::Expected no namespace; found '$namespace'."
             exit 1
           fi
-      - name: Install pinned core dependency
-        run: sf package install --package 04tak000000cZBFAA2 --target-org "${{ matrix.package }}-${{ matrix.namespace_mode }}-ci" --wait 30 --publish-wait 10 --no-prompt --json > "${RUNNER_TEMP}/core-install-result.json"
+      - name: Check out core source for the no-namespace leg
+        if: matrix.namespace_mode == 'no-namespace'
+        uses: actions/checkout@v6
+        with:
+          repository: gkolan/record-health-check
+          ref: b839c4916315c5129812bbf401e3ea7e99c7a326
+          path: _core-source
+      - name: Install pinned core as a managed package
+        if: matrix.namespace_mode == 'namespaced'
+        run: sf package install --package 04tak000000nGjZAAU --target-org "${{ matrix.package }}-${{ matrix.namespace_mode }}-ci" --wait 30 --publish-wait 10 --no-prompt --json > "${RUNNER_TEMP}/core-install-result.json"
+      - name: Deploy pinned core as unmanaged source
+        # A no-namespace org cannot consume the managed package: core's types resolve only as
+        # rhc.X there, while extension source references them unprefixed. The documented
+        # no-namespace method (packages/rhc-change-monitor/docs/SHARED_NO_NAMESPACE_ORG.md)
+        # is core deployed as unmanaged source, which is what this step does.
+        if: matrix.namespace_mode == 'no-namespace'
+        working-directory: _core-source/packages/record-health-check
+        run: sf project deploy start --source-dir force-app --target-org "${{ matrix.package }}-${{ matrix.namespace_mode }}-ci" --test-level NoTestRun --wait 30 --json > "${RUNNER_TEMP}/core-install-result.json"
       - name: Validate source and local Apex tests
         working-directory: packages/${{ matrix.package }}
         run: sf project deploy start --source-dir force-app --target-org "${{ matrix.package }}-${{ matrix.namespace_mode }}-ci" --test-level RunLocalTests --dry-run --wait 30 --json > "${RUNNER_TEMP}/deploy-validation-result.json"

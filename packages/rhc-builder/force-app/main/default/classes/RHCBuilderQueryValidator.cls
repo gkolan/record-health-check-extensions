@@ -145,6 +145,50 @@ public inherited sharing class RHCBuilderQueryValidator {
         'Query must use a core-supported scope-safe shape and at most one {!record...} token.',
         'UNSUPPORTED_BULK_QUERY_SHAPE'
       );
+    } else if (String.isNotBlank(query)) {
+      requireReadableRoot(issues, fieldName, query);
+    }
+  }
+
+  /**
+   * Rejects a query whose root object is absent or unreadable, so authoring fails before
+   * publication instead of at every end user's evaluation.
+   * @param issues Accumulated builder issues.
+   * @param fieldName Local query field path.
+   * @param query Candidate SOQL template.
+   */
+  private static void requireReadableRoot(
+    List<Object> issues,
+    String fieldName,
+    String query
+  ) {
+    Matcher rootMatcher = Pattern.compile('(?i)\\bFROM\\s+([A-Za-z][A-Za-z0-9_]*)')
+      .matcher(query);
+    if (!rootMatcher.find()) {
+      return;
+    }
+    String rootObject = rootMatcher.group(1);
+    // Schema.getGlobalDescribe() is access-filtered, so it cannot tell an unreadable object
+    // from a deleted one. describeSObjects() throws only when the type truly does not exist.
+    Schema.DescribeSObjectResult description;
+    try {
+      description = Schema.describeSObjects(new List<String>{ rootObject })[0];
+    } catch (Exception error) {
+      addError(
+        issues,
+        fieldName,
+        'Query object ' + rootObject + ' does not identify an object in this org.',
+        'INVALID_CONFIG'
+      );
+      return;
+    }
+    if (!description.isAccessible() || !description.isQueryable()) {
+      addError(
+        issues,
+        fieldName,
+        'Query object ' + rootObject + ' is not readable by you.',
+        'RECORD_NOT_ACCESSIBLE'
+      );
     }
   }
 

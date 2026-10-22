@@ -5,7 +5,7 @@
 
 ## Install and authorize
 
-1. Install promoted Record Health Check 2.0.4.2 (`04tak000000cZBFAA2`).
+1. Install promoted Record Health Check 2.0.11.4 (`04tak000000nGjZAAU`).
 2. Install the independently created RHC Integrations 2GP version. No other extension is required.
 3. Assign `RHC Integrations Admin` to configuration owners, `Operator` to delivery operators,
    `Viewer` to read-only observers, and `Runtime` to the dedicated integration user that owns the

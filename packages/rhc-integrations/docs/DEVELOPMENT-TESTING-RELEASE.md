@@ -41,8 +41,8 @@ restricted Log detail fields from extension Apex.
 - Namespace: `rhc`
 - Source API: 66.0
 - Package version: `0.1.0.NEXT`
-- Only package dependency: `Record Health Check@2.0.4-2`
-- Immutable core 04t: `04tak000000cZBFAA2`
+- Only package dependency: `Record Health Check@2.0.11-4`
+- Immutable core 04t: `04tak000000nGjZAAU`
 - Extension container: `0Hoak0000005Lv3CAE`
 
 Day 1 means no aliases, migrations, compatibility shims, deprecated APIs, or fallback secrets.
@@ -193,7 +193,7 @@ sf org create scratch \
   --wait 30
 
 sf package install \
-  --package 04tak000000cZBFAA2 \
+  --package 04tak000000nGjZAAU \
   --target-org rhc-integrations-install-check \
   --wait 30 \
   --publish-wait 30 \
