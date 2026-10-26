@@ -2,10 +2,10 @@
 
 ## Minimum compatible promoted core version
 
-The minimum compatible promoted version is **Record Health Check 2.0.4.2**
-(`04tak000000cZBFAA2`, dependency alias `Record Health Check@2.0.4-2`). It is the earliest promoted
-version in the authoritative core catalog that supplies the canonical Run, Result, and Log event
-shapes consumed here with event contract `1.0`. The extension package pins that immutable 04t
+The minimum compatible promoted version is **Record Health Check 2.0.11.4**
+(`04tak000000nGjZAAU`, dependency alias `Record Health Check@2.0.11-4`), the declared suite floor. Core 2.0.4.2
+(`04tak000000cZBFAA2`), the previous floor, also supplied the canonical Run, Result, and Log event
+shapes consumed here with event contract `1.0`. The extension package pins the immutable 2.0.11.4 04t
 dependency and API version 66.0.
 
 ## Contract assessment

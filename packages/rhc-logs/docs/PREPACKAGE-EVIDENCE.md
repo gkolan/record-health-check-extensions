@@ -21,7 +21,7 @@ Create `namespaced.json` and `no-namespace.json` with this structure after the c
   "deploy": { "status": "Succeeded", "jobId": "0Af..." },
   "tests": {
     "outcome": "Passed",
-    "methods": 29,
+    "methods": 34,
     "coveragePercent": 95.0,
     "runId": "707..."
   },
@@ -38,7 +38,7 @@ Create `namespaced.json` and `no-namespace.json` with this structure after the c
 }
 ```
 
-Use `"shape": "no-namespace"` in `no-namespace.json`. Coverage must be at least 95%, all 29 or
+Use `"shape": "no-namespace"` in `no-namespace.json`. Coverage must be at least 95%, all 34 or
 more Apex tests must pass, and the deploy/test IDs must be retained from Salesforce CLI JSON.
 
 ## Exact CI evidence

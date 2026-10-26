@@ -7,3 +7,5 @@
 - `ATTENTION` results (`UNABLE_TO_EVALUATE`, `ERROR`) usually indicate a Check definition or
   permission problem, not a data problem.
 - No scheduled jobs, no retention, nothing to uninstall beyond the classes and permission set.
+- Before any deployment, run `npm ci && npm test && npm audit --audit-level=high` in this
+  package; see [Local verification](../README.md#local-verification).

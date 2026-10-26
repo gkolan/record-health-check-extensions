@@ -38,7 +38,8 @@ if (requiredEngine === 'sfge') {
     const identifiedCount = Number(identifiedMatches.at(-1)[1]);
     const analyzedPathCount = Number(analyzedMatches.at(-1)[1]);
     const analyzedEntryPointCount = Number(analyzedMatches.at(-1)[2]);
-    if (analyzedPathCount !== identifiedCount || analyzedEntryPointCount !== identifiedCount) {
+    // One entry point can yield several paths; completeness means every entry point was analyzed.
+    if (analyzedEntryPointCount !== identifiedCount || analyzedPathCount < identifiedCount) {
         console.error(
             `SFGE analysis is incomplete: identified ${identifiedCount}, analyzed `
             + `${analyzedPathCount} paths from ${analyzedEntryPointCount} entry points`

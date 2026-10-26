@@ -168,8 +168,8 @@ const project = JSON.parse(read('sfdx-project.json'));
 check(project.namespace === 'rhc', 'Package namespace must remain rhc');
 check(project.sourceApiVersion === '66.0', 'Package API version must remain 66.0');
 check(
-  project.packageDirectories?.[0]?.dependencies?.[0]?.package === 'Record Health Check@2.0.4-2',
-  'Package dependency must remain pinned to promoted core 2.0.4-2'
+  project.packageDirectories?.[0]?.dependencies?.[0]?.package === 'Record Health Check@2.0.11-4',
+  'Package dependency must remain pinned to promoted core 2.0.11-4'
 );
 
 if (failures.length > 0) {

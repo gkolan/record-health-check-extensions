@@ -4,7 +4,7 @@
 
 RHC Integrations is an independently installable 2GP extension that converts approved canonical
 Record Health Check Platform Events into bounded outbound HTTP requests. Its only package dependency
-is Record Health Check core 2.0.4.2 (`04tak000000cZBFAA2`). It does not query another extension,
+is Record Health Check core 2.0.11.4 (`04tak000000nGjZAAU`). It does not query another extension,
 invoke another extension's Apex, update checked records, notify humans, or retain a reporting fact
 table.
 

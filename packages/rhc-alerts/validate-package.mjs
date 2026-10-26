@@ -29,12 +29,12 @@ assert(
 );
 assert(
   JSON.stringify(packageDirectory?.dependencies) ===
-    JSON.stringify([{ package: "Record Health Check@2.0.4-2" }]),
-  "RHC Alerts must depend on exactly Record Health Check@2.0.4-2."
+    JSON.stringify([{ package: "Record Health Check@2.0.11-4" }]),
+  "RHC Alerts must depend on exactly Record Health Check@2.0.11-4."
 );
 assert(
   /^04t[a-zA-Z0-9]{12}(?:[a-zA-Z0-9]{3})?$/.test(
-    project.packageAliases?.["Record Health Check@2.0.4-2"] ?? ""
+    project.packageAliases?.["Record Health Check@2.0.11-4"] ?? ""
   ),
   "The core dependency alias must resolve to a 04t package version."
 );

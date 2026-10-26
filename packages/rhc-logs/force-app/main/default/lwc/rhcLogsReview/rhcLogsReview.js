@@ -20,6 +20,8 @@ export default class RhcLogsReview extends NavigationMixin(LightningElement) {
     loading = true;
     errorMessage;
     filters = { pageSize: 100 };
+    appliedFilters = { pageSize: 100 };
+    requestId = 0;
     nextCursor;
     hasMore = false;
     selectedRow;
@@ -33,37 +35,42 @@ export default class RhcLogsReview extends NavigationMixin(LightningElement) {
     }
 
     applyFilters() {
+        this.appliedFilters = { ...this.filters };
         this.rows = [];
+        this.selectedRow = undefined;
         this.nextCursor = undefined;
         this.hasMore = false;
         this.load();
     }
 
     loadMore() {
-        this.load();
+        if (!this.loading) this.load();
     }
 
     async load() {
+        const requestId = ++this.requestId;
         this.loading = true;
         this.errorMessage = undefined;
         try {
             const page = await search({
                 filter: {
-                    ...this.filters,
+                    ...this.appliedFilters,
                     cursorOccurredAt: this.nextCursor?.occurredAt,
                     cursorId: this.nextCursor?.id
                 }
             });
+            if (requestId !== this.requestId) return;
             this.rows = [...this.rows, ...(page.rows || [])];
             this.hasMore = Boolean(page.hasMore);
             this.nextCursor = this.hasMore
                 ? { occurredAt: page.nextOccurredAt, id: page.nextId }
                 : undefined;
         } catch (error) {
+            if (requestId !== this.requestId) return;
             this.errorMessage =
                 error?.body?.message || error?.message || 'Logs could not be loaded.';
         } finally {
-            this.loading = false;
+            if (requestId === this.requestId) this.loading = false;
         }
     }
 

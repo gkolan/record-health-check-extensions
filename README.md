@@ -115,9 +115,9 @@ installable release.
 
 The dated [suite verification ledger](docs/VERIFICATION_2026-09-20.md) records current local checks,
 CDC and notification readiness, and the evidence that still requires an authenticated org.
-[Core compatibility and dependency policy](docs/CORE_COMPATIBILITY.md) separates the promoted
-minimum install dependency from development-source validation, including the current 2.0.11
-compatibility evidence.
+[Core compatibility and dependency policy](docs/CORE_COMPATIBILITY.md) records the promoted
+minimum install dependency, currently `2.0.11-4`, the evidence behind it, and the 2GP lifecycle
+checks the raise has not yet proven.
 
 Do not construct an installation URL from a package-container ID. Use only an installable `04t`
 subscriber package version documented by the selected extension, and confirm its current release

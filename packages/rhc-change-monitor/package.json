@@ -6,6 +6,8 @@
   "scripts": {
     "adapter:check": "node scripts/generate-subscriber-adapter.mjs --check",
     "adapter:generate": "node scripts/generate-subscriber-adapter.mjs",
+    "validate": "node scripts/validate-source.mjs",
+    "validate:xml": "python3 -c \"import pathlib,xml.etree.ElementTree as ET; [ET.parse(path) for path in pathlib.Path('force-app').rglob('*.xml')]\"",
     "metadata:generate": "node generate_metadata.mjs",
     "test": "npm run test:adapter-generator && npm run test:lwc",
     "test:adapter-generator": "node --test scripts/generate-subscriber-adapter.test.mjs",
@@ -13,6 +15,12 @@
     "test:coverage": "sfdx-lwc-jest --coverage -- --no-cache"
   },
   "devDependencies": {
-    "@salesforce/sfdx-lwc-jest": "^8.0.0"
+    "@salesforce/sfdx-lwc-jest": "8.0.0"
+  },
+  "overrides": {
+    "braces": "npm:@dieub/braces-depth-guard@3.0.3-pn.3",
+    "@istanbuljs/load-nyc-config": {
+      "js-yaml": "4.3.2"
+    }
   }
 }

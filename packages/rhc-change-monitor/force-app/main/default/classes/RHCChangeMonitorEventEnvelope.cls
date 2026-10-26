@@ -3,7 +3,7 @@
  * Global visibility is required so subscriber-owned triggers can cross a package namespace.
  */
 @SuppressWarnings('PMD.AvoidGlobalModifier')
-global class RHCChangeMonitorEventEnvelope {
+global inherited sharing class RHCChangeMonitorEventEnvelope {
   /** Exact durable source-object API name. */
   global String sourceObjectApiName { get; private set; }
   /** Exact Salesforce change-event type API name. */

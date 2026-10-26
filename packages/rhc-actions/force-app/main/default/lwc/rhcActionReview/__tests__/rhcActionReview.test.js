@@ -361,4 +361,225 @@ describe("c-rhc-action-review", () => {
       element.shadowRoot.querySelector("[role='alert']").textContent,
     ).toContain("Retention purge denied");
   });
+
+  // Every remote call the reviewer can trigger must surface a message instead of failing
+  // silently: a swallowed error would leave an approver believing an action was queued.
+  it("surfaces the first load failure", async () => {
+    getPendingActions.mockRejectedValueOnce({
+      body: { message: "Queue read denied" },
+    });
+    const element = createElement("c-rhc-action-review", {
+      is: RhcActionReview,
+    });
+    document.body.appendChild(element);
+    await flushPromises();
+    expect(
+      element.shadowRoot.querySelector("[role='alert']").textContent,
+    ).toContain("Queue read denied");
+    // The table still renders, but a failed read must never show stale or partial rows.
+    expect(
+      element.shadowRoot.querySelector("lightning-datatable").data,
+    ).toEqual([]);
+  });
+
+  it("surfaces a reload failure after a successful bulk approval", async () => {
+    const element = createElement("c-rhc-action-review", {
+      is: RhcActionReview,
+    });
+    document.body.appendChild(element);
+    await flushPromises();
+    element.shadowRoot.querySelector("lightning-datatable").dispatchEvent(
+      new CustomEvent("rowselection", {
+        detail: { selectedRows: [pending[0]] },
+      }),
+    );
+    await flushPromises();
+    getPendingActions.mockRejectedValueOnce({
+      body: { message: "Queue reload denied" },
+    });
+    element.shadowRoot
+      .querySelector("[data-action='approve-selected']")
+      .click();
+    await flushPromises();
+    expect(runActions).toHaveBeenCalledWith({
+      pendingActionIds: ["a00000000000001AAA"],
+    });
+    expect(
+      element.shadowRoot.querySelector("[role='alert']").textContent,
+    ).toContain("Queue reload denied");
+  });
+
+  it("surfaces a bulk approval failure without clearing the selection", async () => {
+    runActions.mockRejectedValueOnce({
+      body: { message: "Bulk approval denied" },
+    });
+    const element = createElement("c-rhc-action-review", {
+      is: RhcActionReview,
+    });
+    document.body.appendChild(element);
+    await flushPromises();
+    element.shadowRoot.querySelector("lightning-datatable").dispatchEvent(
+      new CustomEvent("rowselection", {
+        detail: { selectedRows: [pending[0]] },
+      }),
+    );
+    await flushPromises();
+    element.shadowRoot
+      .querySelector("[data-action='approve-selected']")
+      .click();
+    await flushPromises();
+    expect(
+      element.shadowRoot.querySelector("[role='alert']").textContent,
+    ).toContain("Bulk approval denied");
+    // The failed batch is still selected so the reviewer can retry it deliberately.
+    expect(
+      element.shadowRoot.querySelector("[data-action='approve-selected']")
+        .disabled,
+    ).toBe(false);
+  });
+
+  it("rejects a selected batch in one decision", async () => {
+    rejectActions.mockResolvedValueOnce({ processed: 1, skipped: 2 });
+    const element = createElement("c-rhc-action-review", {
+      is: RhcActionReview,
+    });
+    document.body.appendChild(element);
+    await flushPromises();
+    element.shadowRoot.querySelector("lightning-datatable").dispatchEvent(
+      new CustomEvent("rowselection", {
+        detail: { selectedRows: [pending[0]] },
+      }),
+    );
+    await flushPromises();
+    element.shadowRoot.querySelector("[data-action='reject-selected']").click();
+    await flushPromises();
+    expect(rejectActions).toHaveBeenCalledWith({
+      pendingActionIds: ["a00000000000001AAA"],
+    });
+    expect(runActions).not.toHaveBeenCalled();
+  });
+
+  it("surfaces a bulk rejection failure", async () => {
+    rejectActions.mockRejectedValueOnce({
+      body: { message: "Bulk rejection denied" },
+    });
+    const element = createElement("c-rhc-action-review", {
+      is: RhcActionReview,
+    });
+    document.body.appendChild(element);
+    await flushPromises();
+    element.shadowRoot.querySelector("lightning-datatable").dispatchEvent(
+      new CustomEvent("rowselection", {
+        detail: { selectedRows: [pending[0]] },
+      }),
+    );
+    await flushPromises();
+    element.shadowRoot.querySelector("[data-action='reject-selected']").click();
+    await flushPromises();
+    expect(
+      element.shadowRoot.querySelector("[role='alert']").textContent,
+    ).toContain("Bulk rejection denied");
+  });
+
+  it("surfaces a single-action approval failure", async () => {
+    runAction.mockRejectedValueOnce({
+      body: { message: "Single approval denied" },
+    });
+    const element = createElement("c-rhc-action-review", {
+      is: RhcActionReview,
+    });
+    document.body.appendChild(element);
+    await flushPromises();
+    element.shadowRoot.querySelector("lightning-datatable").dispatchEvent(
+      new CustomEvent("rowaction", {
+        detail: { action: { name: "review" }, row: pending[0] },
+      }),
+    );
+    await flushPromises();
+    element.shadowRoot.querySelector("[data-action='run']").click();
+    await flushPromises();
+    expect(
+      element.shadowRoot.querySelector("[role='alert']").textContent,
+    ).toContain("Single approval denied");
+  });
+
+  it("surfaces a single-action rejection failure", async () => {
+    rejectAction.mockRejectedValueOnce({
+      body: { message: "Single rejection denied" },
+    });
+    const element = createElement("c-rhc-action-review", {
+      is: RhcActionReview,
+    });
+    document.body.appendChild(element);
+    await flushPromises();
+    element.shadowRoot.querySelector("lightning-datatable").dispatchEvent(
+      new CustomEvent("rowaction", {
+        detail: { action: { name: "review" }, row: pending[0] },
+      }),
+    );
+    await flushPromises();
+    element.shadowRoot.querySelector("[data-action='reject']").click();
+    await flushPromises();
+    expect(
+      element.shadowRoot.querySelector("[role='alert']").textContent,
+    ).toContain("Single rejection denied");
+  });
+
+  it("closes the review dialog without deciding anything", async () => {
+    const element = createElement("c-rhc-action-review", {
+      is: RhcActionReview,
+    });
+    document.body.appendChild(element);
+    await flushPromises();
+    element.shadowRoot.querySelector("lightning-datatable").dispatchEvent(
+      new CustomEvent("rowaction", {
+        detail: { action: { name: "review" }, row: pending[0] },
+      }),
+    );
+    await flushPromises();
+    expect(element.shadowRoot.querySelector("[data-action='run']")).not.toBeNull();
+    const cancel = [
+      ...element.shadowRoot.querySelectorAll("lightning-button"),
+    ].find((button) => button.label === "Cancel");
+    cancel.click();
+    await flushPromises();
+    expect(element.shadowRoot.querySelector("[data-action='run']")).toBeNull();
+    expect(runAction).not.toHaveBeenCalled();
+    expect(rejectAction).not.toHaveBeenCalled();
+  });
+
+  it("ignores a row action it does not own", async () => {
+    const element = createElement("c-rhc-action-review", {
+      is: RhcActionReview,
+    });
+    document.body.appendChild(element);
+    await flushPromises();
+    element.shadowRoot.querySelector("lightning-datatable").dispatchEvent(
+      new CustomEvent("rowaction", {
+        detail: { action: { name: "delete" }, row: pending[0] },
+      }),
+    );
+    await flushPromises();
+    expect(element.shadowRoot.querySelector("[data-action='run']")).toBeNull();
+  });
+
+  it("falls back through every error shape a remote call can return", async () => {
+    // body.message, then a bare Error, then an opaque rejection with neither.
+    for (const [rejection, expected] of [
+      [{ body: { message: "From body" } }, "From body"],
+      [new Error("From message"), "From message"],
+      [{}, "RHC Actions could not complete the request."],
+    ]) {
+      getPendingActions.mockRejectedValueOnce(rejection);
+      const element = createElement("c-rhc-action-review", {
+        is: RhcActionReview,
+      });
+      document.body.appendChild(element);
+      await flushPromises();
+      expect(
+        element.shadowRoot.querySelector("[role='alert']").textContent,
+      ).toContain(expected);
+      document.body.removeChild(element);
+    }
+  });
 });

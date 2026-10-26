@@ -8,8 +8,8 @@ import { fileURLToPath } from 'node:url';
 const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const repositoryRoot = path.resolve(packageRoot, '../..');
 const evidenceRoot = path.join(packageRoot, 'release-evidence', 'prepackage');
-const coreCommit = '74fe1d6022f819397fc879c076f4f4dd2093cfab';
-const requiredTestMethods = 29;
+const coreCommit = 'b839c4916315c5129812bbf401e3ea7e99c7a326';
+const requiredTestMethods = 34;
 const minimumCoverage = 95;
 const failures = [];
 

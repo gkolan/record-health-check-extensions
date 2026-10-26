@@ -11,7 +11,7 @@ another commit, an earlier metadata shape, or an uncommitted workspace are not t
 | Commit SHA | `PENDING` for a release candidate. Repository HEAD is `08f377d952996873d739d6832736355a42494b19` and matches its upstream, but the scoped Integrations source is currently modified and uncommitted. |
 | Package version | `0.1.0.NEXT` |
 | Source API | `66.0` |
-| Core dependency | `Record Health Check@2.0.4-2` / `04tak000000cZBFAA2` |
+| Core dependency | `Record Health Check@2.0.11-4` / `04tak000000nGjZAAU` |
 | CI run URL | `PENDING` |
 | Candidate package version (`04t`) | `PENDING` |
 

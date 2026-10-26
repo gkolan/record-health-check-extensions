@@ -1,0 +1,11 @@
+{
+  "name": "rhc-agent-actions",
+  "private": true,
+  "version": "0.1.0",
+  "license": "Apache-2.0",
+  "scripts": {
+    "validate": "node scripts/validate-source.mjs",
+    "validate:xml": "python3 -c \"import pathlib,xml.etree.ElementTree as ET; [ET.parse(path) for path in pathlib.Path('force-app').rglob('*.xml')]\"",
+    "test": "npm run validate && npm run validate:xml"
+  }
+}

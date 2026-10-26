@@ -105,7 +105,7 @@ is stored.
 
 ### RHC Logs Settings (`Record_Health_Check_Log_Settings__c`)
 
-Private-sharing singleton keyed by the fixed unique Settings Key `Default` (with the same record
+Public Read/Write singleton keyed by the fixed unique Settings Key `Default` (with the same record
 name). A package-owned object is required
 because retention must be deliberately mutable by an administrator, scheduling state must be
 observable, and protected Custom Metadata is not safely subscriber-editable.
@@ -201,8 +201,9 @@ field access is absent.
   no Settings mutation, cleanup, scheduling, event publication, or event-subscription permission.
 
 The Platform Event trigger runs as Salesforce event automation; no dedicated runtime permission set
-is introduced unless clean-subscriber validation proves one is required. Package objects use Private
-sharing. Guest and public access are unsupported.
+is introduced unless clean-subscriber validation proves one is required. Diagnostic Logs use Private
+sharing; Settings uses Public Read/Write so approved admins can manage the same singleton across
+owners, subject to object and field permissions. Guest and public access are unsupported.
 
 ## Setup-assistant findings
 

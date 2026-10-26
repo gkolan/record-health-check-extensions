@@ -71,19 +71,22 @@ export default class RhcLogsSetup extends LightningElement {
     }
 
     async handleCleanup() {
-        await this.perform(runCleanup, 'Bounded cleanup completed.');
+        await this.perform(runCleanup);
     }
 
     async perform(operation, successMessage) {
         this.loading = true;
         this.errorMessage = undefined;
         try {
-            await operation();
+            const result = await operation();
+            const cleanupSucceeded = result?.status === 'SUCCESS';
             this.dispatchEvent(
                 new ShowToastEvent({
                     title: 'RHC Logs',
-                    message: successMessage,
-                    variant: 'success'
+                    message: successMessage || (cleanupSucceeded
+                        ? `Cleanup batch completed: ${result.deletedCount} logs deleted. Follow-up batches may still be running.`
+                        : `Cleanup outcome: ${result?.status || 'UNKNOWN'}. ${result?.deletedCount || 0} logs deleted; ${result?.failureCount || 0} failed.`),
+                    variant: successMessage || cleanupSucceeded ? 'success' : 'warning'
                 })
             );
             await this.refresh();

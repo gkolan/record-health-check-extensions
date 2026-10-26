@@ -18,12 +18,15 @@ extension.
 
 ## What installation adds
 
-- private RHC Diagnostic Log and RHC Logs Settings objects;
+- a private RHC Diagnostic Log object and shared RHC Logs Settings object;
 - direct canonical Log-event ingestion with unique Event ID duplicate suppression and transient retry;
 - deliberately configured, bounded retention cleanup and one optional daily schedule;
 - the RHC Logs Setup Assistant, Log Review UI, operations snapshot, and three list views;
 - Admin and least-privilege Viewer permission sets; and
 - Apex and LWC tests plus security, operations, troubleshooting, and development guidance.
+
+Development tests also verify the pinned dependency security fixes; the full dependency audit is
+clean. See [Development dependencies](docs/SECURITY.md#development-dependencies).
 
 It does not evaluate records, run or schedule health checks, retain ordinary results, notify people,
 execute corrective Flows, make callouts, or access another extension.
@@ -36,7 +39,7 @@ execute corrective Flows, make callouts, or access another extension.
 4. Confirm the canonical event contract is available and review which visible Check Sets publish.
 5. Assign core **Record Health Check Error Log Publisher** to every approved running identity.
 6. Configure Retention Days (1–365) and Cleanup Batch Size (1–9,998). A full batch continues in
-   up to five bounded follow-up jobs so backlogs drain within one schedule.
+   up to five bounded follow-up jobs, processing at most six batches per initiating run.
 7. Save with automated cleanup still disabled, publish one synthetic test error, and review it.
 8. Enable the daily cleanup only after validating the boundary and permissions.
 9. Follow the [administrator guide](docs/ADMINISTRATION.md) before production use.
@@ -47,7 +50,9 @@ package lifecycle and restricted-data acceptance evidence.
 
 ## Security model
 
-Both objects use Private sharing. Viewer can read correlation and classification fields but cannot
+Diagnostic Logs use Private sharing. Settings use Public Read/Write sharing so approved admins
+can manage the same singleton regardless of its owner; object and field permissions still apply.
+Viewer can read correlation and classification fields but cannot
 read Message, Structured Diagnostic Details, Record ID, or Running User ID. Admin can review those
 restricted fields and manage the three retention-policy fields. Package-owned counters, status,
 singleton identity, and cleanup lease fields are read-only to Admin. Neither permission set grants
@@ -57,6 +62,12 @@ Salesforce Debug Log retention.
 
 See [Security](docs/SECURITY.md) and [Data model](docs/DATA-MODEL.md).
 
+The source contract also passes against promoted core **2.0.11.4** (creation commit `5905f99`),
+which retains Log contract 1.0. A subscriber-source dry run against installed 2.0.11.4 passed all
+34 Apex tests with 95.15% coverage; [runtime evidence](docs/RUNTIME-VERIFICATION.md) records the
+namespace adaptation and limits. Logs artifact install acceptance remains pending; 2.0.4.2 remains
+the minimum dependency.
+
 ## Current availability
 
 The source project exists, but no RHC Logs package container or installable subscriber package
@@ -65,7 +76,7 @@ future 0Ho container as installable.
 
 Release evidence and outstanding gates are tracked in
 [Development and release](docs/DEVELOPMENT.md). Package-candidate creation remains locked by the
-[release gate ledger](docs/RELEASE-GATES.md); no-namespace runtime verification is still pending.
+[release gate ledger](docs/RELEASE-GATES.md); minimum-core and namespaced release gates remain pending.
 
 ## Documentation
 
@@ -76,6 +87,8 @@ Release evidence and outstanding gates are tracked in
 | Monitor ingestion, cleanup, storage, and limits | [Operations](docs/OPERATIONS.md) |
 | Diagnose missing or duplicate logs | [Troubleshooting](docs/TROUBLESHOOTING.md) |
 | Understand stored and excluded fields | [Data model](docs/DATA-MODEL.md) |
+| See every Salesforce metadata member | [Metadata inventory](docs/METADATA.md) |
+| Review current-source Apex runtime evidence | [Runtime verification](docs/RUNTIME-VERIFICATION.md) |
 | Build, test, analyze, package, install, and uninstall | [Development](docs/DEVELOPMENT.md) |
 | Decide whether candidate creation is unlocked | [Release gate ledger](docs/RELEASE-GATES.md) |
 | Record machine-verifiable pre-package evidence | [Pre-package evidence](docs/PREPACKAGE-EVIDENCE.md) |

@@ -11,6 +11,6 @@ module.exports = {
     "/node_modules/(?!(.*@lwc/state)|(.*@lwc/engine-dom)|(.*@salesforce/sfdx-lwc-jest/src/lightning-stubs)/)",
   ],
   coverageThreshold: {
-    global: { branches: 55, functions: 80, lines: 80, statements: 80 },
+    global: { branches: 66, functions: 94, lines: 88, statements: 88 },
   },
 };

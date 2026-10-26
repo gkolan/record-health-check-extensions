@@ -27,6 +27,7 @@ public with sharing class RHCAlertsRetentionService {
    * @return Retention configuration for the administrator interface.
    */
   public static Settings getSettings() {
+    assertSettingReadable();
     List<Record_Health_Check_Alert_Setting__c> settings = loadSettings();
     Settings result = new Settings();
     result.configured = !settings.isEmpty();
@@ -43,6 +44,7 @@ public with sharing class RHCAlertsRetentionService {
    */
   public static void saveSettings(Integer retentionDays) {
     validateRetentionDays(retentionDays);
+    assertSettingWritable();
     List<Record_Health_Check_Alert_Setting__c> settings = loadSettings();
     Record_Health_Check_Alert_Setting__c setting = settings.isEmpty()
       ? new Record_Health_Check_Alert_Setting__c(
@@ -69,6 +71,8 @@ public with sharing class RHCAlertsRetentionService {
    * @return Number of delivery rows deleted.
    */
   public static Integer purgeDeliveries() {
+    assertSettingReadable();
+    assertDeliveryDeletable();
     List<Record_Health_Check_Alert_Setting__c> settings = loadSettings();
     if (settings.isEmpty()) {
       throw handled('Save retention settings before purging delivery history.');
@@ -120,5 +124,40 @@ public with sharing class RHCAlertsRetentionService {
     AuraHandledException error = new AuraHandledException(message);
     error.setMessage(message);
     return error;
+  }
+
+  private static void assertSettingReadable() {
+    if (
+      !Schema.SObjectType.Record_Health_Check_Alert_Setting__c.isAccessible()
+    ) {
+      throw handled('You do not have access to RHC Alerts retention settings.');
+    }
+  }
+
+  private static void assertSettingWritable() {
+    Schema.DescribeSObjectResult settingDescribe = Schema.SObjectType.Record_Health_Check_Alert_Setting__c;
+    if (!settingDescribe.isCreateable() || !settingDescribe.isUpdateable()) {
+      throw handled(
+        'You do not have permission to configure RHC Alerts retention.'
+      );
+    }
+    if (
+      !Schema.SObjectType.Record_Health_Check_Alert_Setting__c.fields.RetentionDays__c.isCreateable() ||
+      !Schema.SObjectType.Record_Health_Check_Alert_Setting__c.fields.RetentionDays__c.isUpdateable()
+    ) {
+      throw handled(
+        'You do not have permission to configure RHC Alerts retention.'
+      );
+    }
+  }
+
+  private static void assertDeliveryDeletable() {
+    if (
+      !Schema.SObjectType.Record_Health_Check_Alert_Delivery__c.isDeletable()
+    ) {
+      throw handled(
+        'You do not have permission to delete RHC Alerts delivery history.'
+      );
+    }
   }
 }

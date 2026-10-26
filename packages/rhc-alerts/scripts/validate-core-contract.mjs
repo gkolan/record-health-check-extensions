@@ -18,10 +18,10 @@ const coreRoot = path.resolve(
     ? process.argv[coreRootArgument + 1]
     : (process.env.RHC_CORE_ROOT ?? defaultCoreRoot)
 );
-const coreRef = "74fe1d6";
+const coreRef = "b839c4916315c5129812bbf401e3ea7e99c7a326";
 const corePackagePath = "packages/record-health-check";
-const expectedDependency = "Record Health Check@2.0.4-2";
-const expectedSubscriberVersion = "04tak000000cZBFAA2";
+const expectedDependency = "Record Health Check@2.0.11-4";
+const expectedSubscriberVersion = "04tak000000nGjZAAU";
 const failures = [];
 
 function check(condition, message) {
@@ -97,7 +97,7 @@ check(
   `Extension dependency alias must resolve to ${expectedSubscriberVersion}`
 );
 check(
-  coreProject.packageAliases?.[expectedDependency] ===
+  coreProject.packageAliases?.["Record Health Check@2.0.11-4-2.0.11"] ===
     expectedSubscriberVersion,
   "Minimum-core source evidence must resolve the same promoted subscriber version"
 );
@@ -177,5 +177,5 @@ if (failures.length > 0) {
 
 console.log(
   `RHC Alerts minimum-core contract validation passed against core ${coreRef} ` +
-    `(Record Health Check 2.0.4.2 / ${expectedSubscriberVersion}).`
+    `(Record Health Check 2.0.11.4 / ${expectedSubscriberVersion}).`
 );

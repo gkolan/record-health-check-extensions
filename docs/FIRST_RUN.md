@@ -13,8 +13,8 @@ installable after core; they do not depend on one another.
 ## Before installing
 
 1. Use a sandbox or disposable test org.
-2. Install promoted Record Health Check core `2.0.4.2` (`04tak000000cZBFAA2`) or a later compatible
-   version.
+2. Install promoted Record Health Check core `2.0.11.4` (`04tak000000nGjZAAU`) or a later compatible
+   version. Core versions earlier than `2.0.11.4` are no longer supported.
 3. Confirm the selected extension README documents an approved `04t`. Stop if it does not.
 4. Review that extension's security, operations, data-retention, and uninstall guidance.
 5. Export or record any configuration that must be recreated after uninstall.

@@ -28,7 +28,7 @@ same change.
 
 ## Contract rules
 
-- API `66.0`, namespace `rhc`, and core dependency `Record Health Check@2.0.4-2` match the suite.
+- API `66.0`, namespace `rhc`, and core dependency `Record Health Check@2.0.11-4` match the suite.
 - No packaged `PlatformEventChannelMember` is emitted. Administrators enable the standard CDC
   entity deliberately; subscriber code owns concrete adapters.
 - No class uses `without sharing`, user impersonation, dynamic Apex, administrator-authored SOQL,

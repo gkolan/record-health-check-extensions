@@ -87,6 +87,35 @@ public inherited sharing class RHCBuilderTestDataFactory {
   }
 
   /**
+   * Creates a user with no Builder permission set, used to prove that authoring and
+   * query-readability gates deny rather than decorate.
+   * @param uniqueSuffix Distinguishes concurrent users inside one test.
+   * @return Inserted minimum-access user.
+   */
+  public static User restrictedUser(String uniqueSuffix) {
+    Profile minimumAccess = [
+      SELECT Id
+      FROM Profile
+      WHERE Name IN ('Minimum Access - Salesforce', 'Standard User')
+      ORDER BY Name
+      LIMIT 1
+    ];
+    User restricted = new User(
+      ProfileId = minimumAccess.Id,
+      LastName = 'RhcBuilderDenied',
+      Alias = 'rhcbd',
+      Email = 'rhc.builder.denied@example.com',
+      Username = 'rhc.builder.denied.' + uniqueSuffix + '@example.com.invalid',
+      EmailEncodingKey = 'UTF-8',
+      LanguageLocaleKey = 'en_US',
+      LocaleSidKey = 'en_US',
+      TimeZoneSidKey = 'America/Los_Angeles'
+    );
+    insert restricted;
+    return restricted;
+  }
+
+  /**
    * Creates one persisted validated complete version.
    * @return Builder Check Set Version record identifier.
    */

@@ -10,7 +10,9 @@ const coreRootArgument = process.argv.indexOf('--core-root');
 const coreRoot = path.resolve(
     coreRootArgument >= 0 ? process.argv[coreRootArgument + 1] : process.env.RHC_CORE_ROOT ?? defaultCoreRoot
 );
-const coreRef = '74fe1d6022f819397fc879c076f4f4dd2093cfab';
+const coreRefArgument = process.argv.indexOf('--core-ref');
+const coreRef = coreRefArgument >= 0 ? process.argv[coreRefArgument + 1]
+    : 'b839c4916315c5129812bbf401e3ea7e99c7a326';
 const corePackagePath = 'packages/record-health-check';
 const failures = [];
 
@@ -58,16 +60,16 @@ check(extensionProject.namespace === 'rhc', 'Extension namespace must be rhc');
 check(coreProject.namespace === extensionProject.namespace, 'Core and extension namespaces must match');
 check(coreProject.sourceApiVersion === extensionProject.sourceApiVersion, 'Core and extension API versions must match');
 check(
-    extensionProject.packageDirectories?.[0]?.dependencies?.[0]?.package === 'Record Health Check@2.0.4-2',
-    'Extension dependency must remain pinned to Record Health Check@2.0.4-2'
+    extensionProject.packageDirectories?.[0]?.dependencies?.[0]?.package === 'Record Health Check@2.0.11-4',
+    'Extension dependency must remain pinned to Record Health Check@2.0.11-4'
 );
 check(
-    extensionProject.packageAliases?.['Record Health Check@2.0.4-2'] === '04tak000000cZBFAA2',
-    'Extension minimum-core alias must resolve to the promoted 2.0.4.2 subscriber version'
+    extensionProject.packageAliases?.['Record Health Check@2.0.11-4'] === '04tak000000nGjZAAU',
+    'Extension minimum-core alias must resolve to the promoted 2.0.11.4 subscriber version'
 );
 check(
-    coreProject.packageAliases?.['Record Health Check@2.0.4-2'] === '04tak000000cZBFAA2',
-    'Minimum-core source evidence must resolve 2.0.4.2 to the expected subscriber version'
+    coreProject.packageAliases?.['Record Health Check@2.0.11-4-2.0.11'] === '04tak000000nGjZAAU',
+    'Minimum-core source evidence must resolve 2.0.11.4 to the expected subscriber version'
 );
 
 const eventRoot = 'force-app/main/default/objects/Record_Health_Check_Log__e';
@@ -188,5 +190,5 @@ if (failures.length > 0) {
 
 console.log(
     `RHC Logs minimum-core contract validation passed against core ${coreRef.slice(0, 7)} `
-    + '(Record Health Check 2.0.4.2 / 04tak000000cZBFAA2).'
+    + '(extension minimum: Record Health Check 2.0.11.4 / 04tak000000nGjZAAU).'
 );

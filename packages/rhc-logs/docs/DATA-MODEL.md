@@ -10,7 +10,9 @@ and Running User ID are Admin-only. Stack Trace is deliberately excluded on Day 
 Replay ID, auth material, headers, debug logs, source inference, and ordinary health-check results
 are never stored.
 
-Record_Health_Check_Log_Settings__c is a Private singleton with unique Settings Key Default. It stores the bounded
+Record_Health_Check_Log_Settings__c uses Public Read/Write sharing and unique Settings Key Default.
+Approved admins share the singleton regardless of its owner, subject to object and field permissions.
+It stores the bounded
 retention policy, schedule enablement, last-run snapshots, sanitized ingestion error categories, and
 a stale-recoverable overlap token. Admin can edit only Retention Days, Cleanup Batch Size, and
 Automated Cleanup; singleton identity, counters, outcomes, and lease state are package-owned and

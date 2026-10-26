@@ -1,0 +1,90 @@
+name: Package Salesforce gates
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check-dev-hub-secret:
+    runs-on: ubuntu-latest
+    outputs:
+      has-secret: ${{ steps.check.outputs.has-secret }}
+    steps:
+      - id: check
+        env:
+          SFDX_AUTH_URL: ${{ secrets.SFDX_AUTH_URL }}
+          IS_FORK_PR: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository }}
+        run: |
+          if [ -n "${SFDX_AUTH_URL}" ]; then
+            echo "has-secret=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "has-secret=false" >> "$GITHUB_OUTPUT"
+          if [ "${IS_FORK_PR}" = "true" ]; then
+            echo "::warning::SFDX_AUTH_URL is not available to fork pull requests; org validation is skipped for this run."
+            exit 0
+          fi
+          echo "::error::SFDX_AUTH_URL is not configured, so org validation cannot run. Failing instead of reporting a green run for gates that never executed."
+          exit 1
+
+  source-tests:
+    needs: check-dev-hub-secret
+    if: needs.check-dev-hub-secret.outputs.has-secret == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    name: Org validation (${{ matrix.package }})
+    runs-on: ubuntu-latest
+    concurrency:
+      group: ${{ matrix.package }}-salesforce-${{ github.ref }}
+      cancel-in-progress: true
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - package: rhc-actions
+            org_alias: rhc-actions-ci
+            dry_run_test_level: NoTestRun
+            test_args: --class-names RHCActionPolicyServiceTest,RHCActionCaptureServiceTest,RHCActionExecutionServiceTest,RHCActionReviewControllerTest,RHCActionRetentionServiceTest
+          - package: rhc-reports
+            org_alias: rhc-reports-ci
+            dry_run_test_level: RunLocalTests
+            test_args: --test-level RunLocalTests
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          package-manager-cache: false
+      - name: Install pinned Salesforce CLI
+        run: npm install --global @salesforce/cli@2.149.9
+      - name: Authenticate Dev Hub
+        env:
+          SFDX_AUTH_URL: ${{ secrets.SFDX_AUTH_URL }}
+        run: echo "$SFDX_AUTH_URL" | sf org login sfdx-url --sfdx-url-stdin --alias devhub --set-default-dev-hub
+      - name: Create disposable namespaced scratch org
+        working-directory: packages/${{ matrix.package }}
+        run: sf org create scratch --definition-file config/project-scratch-def.json --alias ${{ matrix.org_alias }} --set-default --duration-days 1 --wait 15
+      - name: Install pinned core dependency
+        run: sf package install --package 04tak000000nGjZAAU --target-org ${{ matrix.org_alias }} --wait 30 --publish-wait 10 --no-prompt
+      - name: Dry-run source compilation
+        working-directory: packages/${{ matrix.package }}
+        run: sf project deploy start --source-dir force-app --target-org ${{ matrix.org_alias }} --test-level ${{ matrix.dry_run_test_level }} --dry-run --wait 30
+      - name: Deploy source to the disposable org
+        working-directory: packages/${{ matrix.package }}
+        run: sf project deploy start --source-dir force-app --target-org ${{ matrix.org_alias }} --test-level NoTestRun --wait 30
+      - name: Run Apex tests with coverage
+        env:
+          TEST_ARGS: ${{ matrix.test_args }}
+        run: |
+          # shellcheck disable=SC2086 # TEST_ARGS is a flag list
+          sf apex run test --target-org ${{ matrix.org_alias }} ${TEST_ARGS} --code-coverage --wait 30 --result-format human
+      - name: Delete disposable scratch org
+        if: always()
+        continue-on-error: true
+        run: |
+          if command -v sf >/dev/null 2>&1 && sf org display --target-org ${{ matrix.org_alias }} >/dev/null 2>&1; then
+            sf org delete scratch --target-org ${{ matrix.org_alias }} --no-prompt
+          fi

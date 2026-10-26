@@ -8,12 +8,19 @@
     "validate:core-contract": "node scripts/validate-core-contract.mjs",
     "release:check-candidate-unlock": "node scripts/check-candidate-unlock.mjs",
     "validate:xml": "python3 -c \"import pathlib,xml.etree.ElementTree as ET; [ET.parse(path) for path in pathlib.Path('force-app').rglob('*.xml')]\"",
-    "test": "sfdx-lwc-jest -- --runInBand",
+    "test": "npm run test:dependencies && sfdx-lwc-jest -- --runInBand",
+    "test:dependencies": "node --test scripts/dependency-security.test.cjs",
     "test:unit": "sfdx-lwc-jest",
-    "test:coverage": "sfdx-lwc-jest --coverage -- --no-cache",
-    "test:unit:coverage": "sfdx-lwc-jest --coverage -- --no-cache"
+    "test:coverage": "npm run test:dependencies && sfdx-lwc-jest --coverage -- --no-cache",
+    "test:unit:coverage": "npm run test:coverage"
   },
   "devDependencies": {
-    "@salesforce/sfdx-lwc-jest": "^8.0.0"
+    "@salesforce/sfdx-lwc-jest": "8.0.0"
+  },
+  "overrides": {
+    "braces": "npm:@dieub/braces-depth-guard@3.0.3-pn.3",
+    "@istanbuljs/load-nyc-config": {
+      "js-yaml": "4.3.2"
+    }
   }
 }

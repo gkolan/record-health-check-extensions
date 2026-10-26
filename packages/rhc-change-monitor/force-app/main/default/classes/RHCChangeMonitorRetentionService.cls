@@ -23,7 +23,7 @@ public with sharing class RHCChangeMonitorRetentionService {
     result.configured = !settings.isEmpty();
     result.retentionDays = settings.isEmpty()
       ? DEFAULT_RETENTION_DAYS
-      : settings[0].RetentionDays__c.intValue();
+      : settings[0].RetentionDays__c?.intValue() ?? DEFAULT_RETENTION_DAYS;
     result.maxDeleteRows = MAX_PURGE_ROWS;
     return result;
   }
@@ -63,7 +63,7 @@ public with sharing class RHCChangeMonitorRetentionService {
     if (settings.isEmpty()) {
       throw handled('Save retention settings before purging Change Evaluations.');
     }
-    Integer retentionDays = settings[0].RetentionDays__c.intValue();
+    Integer retentionDays = settings[0].RetentionDays__c?.intValue();
     validateRetentionDays(retentionDays);
     Datetime cutoff = Datetime.now().addDays(-retentionDays);
     List<Record_Health_Check_Change_Evaluation__c> evaluations = [

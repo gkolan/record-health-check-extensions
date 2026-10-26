@@ -194,4 +194,23 @@ describe("c-rhc-change-monitor-console", () => {
     await flushPromises();
     expect(element.shadowRoot.querySelector("[role='alert']").textContent).toContain("boom");
   });
+
+  it("tolerates a status without recent rows or policy names", async () => {
+    getStatus.mockResolvedValueOnce({ ...status, recent: undefined });
+    const element = await mount();
+    expect(element.shadowRoot.querySelectorAll("lightning-datatable")[2].data).toEqual([]);
+
+    getStatus.mockResolvedValueOnce({ ...status, recent: [{ Id: "a02000000000002AAA" }] });
+    element.shadowRoot.querySelector("lightning-button").click();
+    await flushPromises();
+    expect(element.shadowRoot.querySelectorAll("lightning-datatable")[2].data[0].policyName).toBeUndefined();
+  });
+
+  it("falls back to a generic message for an opaque rejection", async () => {
+    retryFailed.mockRejectedValueOnce({});
+    const element = await mount();
+    element.shadowRoot.querySelector("[data-action='retry']").click();
+    await flushPromises();
+    expect(element.shadowRoot.querySelector("[role='alert']").textContent).toContain("The request could not be completed.");
+  });
 });

@@ -1,5 +1,5 @@
 /** Parses disclosure-safe CDC header facts without retaining event payload values. */
-public class RHCChangeMonitorEventParser {
+public inherited sharing class RHCChangeMonitorEventParser {
   @SuppressWarnings('PMD.EmptyStatementBlock')
   private RHCChangeMonitorEventParser() {
   }
@@ -123,7 +123,16 @@ public class RHCChangeMonitorEventParser {
   }
 
   private static Long asLong(Object value) {
-    return value == null ? null : Decimal.valueOf(String.valueOf(value)).longValue();
+    if (value == null) {
+      return null;
+    }
+    try {
+      return Decimal.valueOf(String.valueOf(value)).longValue();
+    } catch (TypeException error) {
+      throw new RHCChangeMonitorEventEnvelope.InvalidEventException(
+        'A numeric ChangeEventHeader field is malformed.'
+      );
+    }
   }
 
   private static Datetime asDatetime(Object value) {
@@ -141,6 +150,11 @@ public class RHCChangeMonitorEventParser {
     List<String> output = new List<String>();
     if (value == null) {
       return output;
+    }
+    if (!(value instanceof List<Object>)) {
+      throw new RHCChangeMonitorEventEnvelope.InvalidEventException(
+        'A ChangeEventHeader list field is malformed.'
+      );
     }
     for (Object item : (List<Object>) value) {
       output.add(String.valueOf(item));
